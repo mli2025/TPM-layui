@@ -1,0 +1,121 @@
+@using DeviceMgmt.Repository.Domain
+@{
+    ViewData["Title"] = "工作台";
+    Layout = "_LayoutInner";
+    var user = ViewData["CurrentUser"] as Sys_User;
+    var hour = DateTime.Now.Hour;
+    var greeting = hour < 6 ? "凌晨好" : hour < 12 ? "上午好" : hour < 14 ? "中午好" : hour < 18 ? "下午好" : "晚上好";
+}
+
+@section Style {
+<style>
+    .welcome-hero { background: linear-gradient(135deg, #1a3f31 0%, #1f4d3b 60%, #2c6f4e 100%);
+        color: #fff; border-radius: 12px; padding: 28px 32px; position: relative; overflow: hidden; }
+    .welcome-hero::before { content: ""; position: absolute; right: -60px; top: -60px;
+        width: 280px; height: 280px; border-radius: 50%;
+        background: radial-gradient(closest-side, rgba(255,255,255,.12), transparent); }
+    .stat-card { background:#fff; border:1px solid var(--border-soft); border-radius:8px;
+        padding:18px 20px; display:flex; align-items:center; gap:14px; }
+    .stat-icon { width:40px; height:40px; border-radius:8px; display:flex;
+        align-items:center; justify-content:center; flex-shrink:0; }
+    .stat-icon i { width:20px; height:20px; }
+    .stat-value { font-size:24px; font-weight:600; color:var(--fg); line-height:1; }
+    .stat-label { font-size:12px; color:var(--fg-muted); margin-top:6px; }
+    .stat-trend { font-size:11px; color:var(--fg-subtle); margin-top:4px; }
+</style>
+}
+
+<div class="space-y-4">
+    <!-- 欢迎区 -->
+    <div class="welcome-hero">
+        <div class="relative">
+            <div class="text-xs text-white/70 mb-1">@DateTime.Now.ToString("yyyy 年 MM 月 dd 日 dddd", new System.Globalization.CultureInfo("zh-CN"))</div>
+            <h1 class="text-2xl font-semibold mb-2">@greeting，@(user?.Name ?? user?.Account ?? "")</h1>
+            <p class="text-sm text-white/75">欢迎使用 arbore TPM 设备管理系统。今日是您高效工作的开始。</p>
+        </div>
+    </div>
+
+    <!-- 4 张统计卡 -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#def0e5;color:#1f4d3b;"><i data-lucide="cog"></i></div>
+            <div class="flex-1">
+                <div class="stat-value">—</div>
+                <div class="stat-label">在用设备</div>
+                <div class="stat-trend">P2 阶段接入实时数据</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#fef3c7;color:#d97706;"><i data-lucide="wrench"></i></div>
+            <div class="flex-1">
+                <div class="stat-value">—</div>
+                <div class="stat-label">待保养</div>
+                <div class="stat-trend">P2 阶段接入实时数据</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#fee2e2;color:#dc2626;"><i data-lucide="alert-triangle"></i></div>
+            <div class="flex-1">
+                <div class="stat-value">—</div>
+                <div class="stat-label">待维修</div>
+                <div class="stat-trend">P2 阶段接入实时数据</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#dbeafe;color:#2563eb;"><i data-lucide="clipboard-check"></i></div>
+            <div class="flex-1">
+                <div class="stat-value">—</div>
+                <div class="stat-label">今日点检</div>
+                <div class="stat-trend">P2 阶段接入实时数据</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近活动 + 快捷入口 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div class="card lg:col-span-2">
+            <div class="card-header">
+                <h3 class="card-title flex items-center gap-2">
+                    <i data-lucide="activity" class="text-brand-700"></i>
+                    最近活动
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="py-12 text-center text-slate-400 text-sm">
+                    <i data-lucide="inbox" class="mx-auto mb-3 text-slate-300" style="width:32px;height:32px;"></i>
+                    <div>暂无活动数据</div>
+                    <div class="text-xs mt-1 text-slate-300">P2 阶段将接入工单/审核/派工事件流</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title flex items-center gap-2">
+                    <i data-lucide="rocket" class="text-brand-700"></i>
+                    系统信息
+                </h3>
+            </div>
+            <div class="card-body">
+                <dl class="space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <dt class="text-slate-500">登录账号</dt>
+                        <dd class="font-medium">@(user?.Account ?? "-")</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-slate-500">姓名</dt>
+                        <dd>@(user?.Name ?? "-")</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-slate-500">系统版本</dt>
+                        <dd>v1.0 · P0 框架</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-slate-500">当前阶段</dt>
+                        <dd><span class="badge badge-brand">P0 框架</span></dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>

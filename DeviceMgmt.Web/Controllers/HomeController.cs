@@ -12,6 +12,8 @@ public class HomeController : BaseController
 
     public IActionResult Index() => View();
 
+    public IActionResult Welcome() => View();
+
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {

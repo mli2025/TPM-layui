@@ -43,6 +43,10 @@ public class BaseController : Controller
             HttpContext.Items["CurrentUser"] = user;
             HttpContext.Items["Token"] = token;
 
+            ViewData["CurrentUser"] = user.User;
+            ViewData["Modules"] = user.Modules;
+            ViewData["ModuleElements"] = user.ModuleElements;
+
             var moduleId = request.Query["moduleId"];
             if (!string.IsNullOrEmpty(moduleId.ToString()))
             {

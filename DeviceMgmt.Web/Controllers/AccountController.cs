@@ -44,4 +44,36 @@ public class AccountController : Controller
         Response.Cookies.Delete("Token");
         return Redirect(Url.Content("~/Account/Login"));
     }
+
+    [HttpGet]
+    public IActionResult Profile()
+    {
+        var token = Request.Cookies["Token"] ?? Request.Headers["Token"].ToString();
+        var ctx = _auth.GetCurrentUser(token);
+        if (ctx == null)
+        {
+            return Json(new { code = 401, msg = "未登录" });
+        }
+        return Json(new
+        {
+            code = 200,
+            msg = "ok",
+            data = new
+            {
+                id = ctx.User.Id,
+                account = ctx.User.Account,
+                name = ctx.User.Name,
+                status = ctx.User.Status,
+                moduleCount = ctx.Modules.Count
+            }
+        });
+    }
+
+    [HttpPost]
+    public IActionResult ChangePassword([FromForm] string oldPassword, [FromForm] string newPassword)
+    {
+        var token = Request.Cookies["Token"] ?? Request.Headers["Token"].ToString();
+        var result = _auth.ChangePassword(token, oldPassword, newPassword);
+        return Json(new { code = result.code, msg = result.msg, success = result.success });
+    }
 }

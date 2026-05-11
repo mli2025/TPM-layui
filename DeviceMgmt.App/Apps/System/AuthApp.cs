@@ -86,4 +86,59 @@ public class AuthApp : IAuth
         _cache.Remove(TokenPrefix + token);
         return true;
     }
+
+    public LoginResult ChangePassword(string token, string oldPassword, string newPassword)
+    {
+        var result = new LoginResult();
+        if (string.IsNullOrWhiteSpace(oldPassword) || string.IsNullOrWhiteSpace(newPassword))
+        {
+            result.code = 400;
+            result.msg = "旧密码和新密码不能为空";
+            return result;
+        }
+        if (newPassword.Length < 6)
+        {
+            result.code = 400;
+            result.msg = "新密码至少 6 位";
+            return result;
+        }
+
+        var ctx = GetCurrentUser(token);
+        if (ctx == null)
+        {
+            result.code = 401;
+            result.msg = "登录已过期，请重新登录";
+            return result;
+        }
+
+        var user = _userRepo.FindSingle("[Id]=@id", new { id = ctx.User.Id });
+        if (user == null)
+        {
+            result.code = 404;
+            result.msg = "账号不存在";
+            return result;
+        }
+
+        var oldHash = DesEncrypt.Md5(oldPassword);
+        if (!string.Equals(user.Password, oldHash, StringComparison.Ordinal)
+            && !string.Equals(user.Password, oldPassword, StringComparison.Ordinal))
+        {
+            result.code = 401;
+            result.msg = "旧密码不正确";
+            return result;
+        }
+
+        var newHash = DesEncrypt.Md5(newPassword);
+        _userRepo.ExecuteSql("UPDATE [Sys_User] SET [Password]=@p WHERE [Id]=@id",
+            new { p = newHash, id = user.Id });
+
+        user.Password = newHash;
+        ctx.User = user;
+        _cache.Set(TokenPrefix + token, ctx, TimeSpan.FromHours(8));
+
+        result.code = 200;
+        result.msg = "ok";
+        result.success = true;
+        return result;
+    }
 }

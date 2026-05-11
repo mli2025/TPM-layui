@@ -1,24 +1,46 @@
+@{
+    var title = ViewBag.Title as string ?? "登录";
+}
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <title>@ViewBag.Title - DeviceMgmt</title>
-    <link href="~/js/layui/css/layui.css" rel="stylesheet" />
-    <link href="~/js/font-awesome/css/font-awesome.css" rel="stylesheet" />
-    <style>
-        body { background: linear-gradient(135deg,#1e3c72,#2a5298); min-height: 100vh; margin: 0; }
-        .login-box { width:380px; margin: 12vh auto 0; padding: 36px 36px 28px; background:#fff; border-radius:10px; box-shadow: 0 12px 36px rgba(0,0,0,.25); }
-        .login-title { text-align:center; font-size:20px; font-weight:600; color:#333; margin-bottom: 24px; }
-        .login-btn { width:100%; }
-        .login-hint { color:#999; font-size:12px; margin-top:14px; text-align:center; }
-    </style>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@title · arbore TPM</title>
+    <link rel="icon" href="~/favicon.ico" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50:  "#f1f7f4", 100: "#def0e5", 200: "#bee1cd",
+                            300: "#91c9ac", 400: "#61a983", 500: "#3f8b63",
+                            600: "#2c6f4e", 700: "#235840", 800: "#1f4d3b",
+                            900: "#1a3f31", 950: "#0f2620"
+                        }
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system",
+                               "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+                               "Microsoft YaHei", "sans-serif"]
+                    }
+                }
+            }
+        };
+    </script>
+    <link href="~/css/app.css" rel="stylesheet" />
 </head>
-<body>
+<body class="font-sans antialiased">
     @RenderBody()
-    <script src="~/js/layui/lang/zh-Hans.js"></script>
-    <script src="~/js/jQuery/jquery-1.11.3.js"></script>
-    <script src="~/js/layui/layui.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@1.11.3/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.428.0/dist/umd/lucide.min.js"></script>
+    <script src="~/js/app.js"></script>
     @RenderSection("Script", required: false)
+    <script>
+        if (window.lucide) lucide.createIcons();
+    </script>
 </body>
 </html>
