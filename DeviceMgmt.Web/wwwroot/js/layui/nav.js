@@ -1,0 +1,129 @@
+var navs = [{
+    'title': '我的待办任务',
+    'icon': 'fa-stop-circle',
+    'href': 'https://www.baidu.com',
+    'spread': false
+}, {
+    'title': '我的申请',
+    'icon': 'fa-cubes',
+    'spread': true,
+    'children': [{
+        'title': '起草申请',
+        'icon': '&#xe641;',
+        'href': 'FlowInst/FlowStartPanel.aspx'
+    }, {
+        'title': '申请查询',
+        'icon': '&#xe63c;',
+        'href': 'FlowInst/FlowMyInst.aspx'
+    }, {
+        'title': '单据接收',
+        'icon': '&#xe63c;',
+        'href': 'FlowInst/FlowMyReceive.aspx'
+    }, {
+        'title': '草稿',
+        'icon': '&#xe609;',
+        'href': 'FlowInst/FlowMyDraft.aspx'
+    }]
+}, {
+    'title': '我的审批',
+    'icon': 'fa-stop-circle',
+    'spread': false,
+    'children': [{
+        'title': '待我审批',
+        'icon': 'fa-table',
+        'href': 'FlowStep/FlowMyChecking.aspx'
+    }, {
+        'title': '已办审批',
+        'icon': 'fa-navicon',
+        'href': 'FlowStep/FlowMyChecked.aspx'
+    }, {
+        'title': '待我参考',
+        'icon': '&#xe62a;',
+        'href': 'tab.html'
+    }, {
+        'title': '已办参考',
+        'icon': '&#xe628;',
+        'href': 'paging.html'
+    }]
+}, {
+    'title': '流程管理',
+    'icon': '&#x1002;',
+    'spread': false,
+    'children': [{
+        'title': '流程模板管理',
+        'icon': 'fa-check-square-o',
+        'href': 'FlowManager/FlowList.aspx'
+    }, {
+        'title': '模板类型管理',
+        'icon': 'fa-cog',
+        'href': 'FlowManager/FlowType.aspx'
+    }, {
+        'title': '子表模板管理',
+        'icon': 'fa-cog',
+        'href': 'FlowManager/FlowType.aspx?isSub=1'
+    }]
+}, {
+    'title': '流程监控',
+    'icon': 'fa-address-book',
+    'href': '',
+    'spread': false,
+    'children': [{
+        'title': '在办查询',
+        'icon': 'fa-hourglass-half',
+        'href': 'FlowManager/FlowProcessing.aspx'
+    }, {
+        'title': '已办查询',
+        'icon': 'fa-hourglass-end',
+        'href': 'FlowManager/FlowProcessed.aspx'
+    }, {
+        'title': '流程监控',
+        'icon': 'fa-search-plus',
+        'href': 'FlowManager/FlowMonitor.aspx'
+    }, {
+        'title': '异常监控',
+        'icon': 'fa-warning',
+        'href': 'FlowManager/FlowException.aspx'
+    }]
+},  {
+    'title': '系统管理',
+    'icon': 'fa-cogs',
+    'href': '#',
+    'spread': false,
+    'children': [{
+        'title': '系统参数设置',
+        'icon': 'fa-cog',
+        'href': 'SysManager/Param.aspx'
+    }, {
+        'title': '审批角色管理',
+        'icon': 'fa-cog',
+        'href': 'cop.html'
+    }, {
+        'title': '分级权限管理',
+        'icon': 'fa-cog',
+        'href': 'cop.html'
+    }, {
+        'title': '快速通道管理',
+        'icon': 'fa-cog',
+        'href': 'cop.html'
+    }, {
+        'title': '终止流程管理',
+        'icon': 'fa-cog',
+        'href': 'cop.html'
+    }, {
+        'title': '子站服务器管理',
+        'icon': 'fa-cog',
+        'href': 'cop.html'
+    }, {
+        'title': '邮件黑白名单',
+        'icon': 'fa-cog',
+        'href': 'cop.html'
+    }, {
+        'title': '公告管理',
+        'icon': 'fa-cog',
+        'href': 'cop.html'
+    }, {
+        'title': '文件模板设置',
+        'icon': 'fa-cog',
+        'href': 'cop.html'
+    }]
+}];

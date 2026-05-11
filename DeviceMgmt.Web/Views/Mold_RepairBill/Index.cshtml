@@ -1,0 +1,59 @@
+@{
+    ViewData["Title"] = "妯″叿缁翠慨 Mold_RepairBill";
+}
+<div class="layui-fluid" style="padding:0;margin-top:10px">
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <div class="pull-left">妯″叿缁翠慨 Mold_RepairBill</div>
+                    <div class="demoTable pull-right no-print">
+                        <div class="layui-inline" id="searchPanel"></div>
+                        <div class="layui-btn-group">
+                            <button class="layui-btn layui-btn-sm layui-btn-warm" id="btn_Export">瀵煎嚭</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-card-body" style="padding:0">
+                    <div class="layui-inline" style="width:100%">
+                        <table class="layui-hide" lay-filter="GridMain" id="GridMain"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@section Script{
+    <script type='text/html' class="no-print" id='barDemo'>
+        <a class='layui-btn layui-btn-xs layui-btn-normal' lay-event='viewModel'>鏌ョ湅</a>
+    </script>
+    <script>
+        var URLThisGetList = '@Url.Action("GetMainList")';
+        var URLThisExportList = '@Url.Action("ExportExcel")';
+        var Cols = [
+            { field: 'Id', title: 'Id', width: 80, sort: true },
+            { field: 'BillNo', title: 'BillNo', search: 'input', width: 130 },
+            { field: 'BillDate', title: 'BillDate', search: 'input', width: 130, templet: function(d){ return d.BillDate ? d.BillDate.substring(0, 10) : ''; } },
+            { field: 'MoldId', title: 'MoldId', search: 'input', width: 110 },
+            { field: 'Status', title: 'Status', search: 'input', width: 110 },
+            { field: 'Descr', title: 'Descr', search: 'input', width: 170 },
+            { field: 'Remark', title: 'Remark', search: 'input', width: 170 },
+            { field: 'LastRepairEnd', title: 'LastRepairEnd', search: 'input', width: 130, templet: function(d){ return d.LastRepairEnd ? d.LastRepairEnd.substring(0, 10) : ''; } },
+            { field: 'RepairStaff', title: 'RepairStaff', search: 'input', width: 130 },
+            { field: 'RepairBeginDate', title: 'RepairBeginDate', search: 'input', width: 130, templet: function(d){ return d.RepairBeginDate ? d.RepairBeginDate.substring(0, 10) : ''; } },
+            { field: 'RepairEndDate', title: 'RepairEndDate', search: 'input', width: 130, templet: function(d){ return d.RepairEndDate ? d.RepairEndDate.substring(0, 10) : ''; } },
+            { fixed: 'right', title: '鎿嶄綔', width: 90, align: 'center', toolbar: '#barDemo' }
+        ];
+        function viewModel(obj) {
+            var Id = obj.data.Id || obj.data.id;
+            layui.layer.open({
+                title: '妯″叿缁翠慨 Mold_RepairBill - 鏌ョ湅',
+                content: '@Url.Action("ViewList")?id=' + Id,
+                type: 2,
+                area: ['90%', '90%'],
+                btn: ['鍏抽棴']
+            });
+        }
+    </script>
+    <script src="~/js/Page/NomalListPage.js"></script>
+}

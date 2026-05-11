@@ -1,0 +1,61 @@
+@{
+    ViewData["Title"] = "妯″叿鍗曟嵁涓昏〃 Mold_BillMain - 鏌ョ湅";
+    var id = (long)(ViewBag.Id ?? 0L);
+}
+<div class="layui-fluid" style="padding:14px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><b>妯″叿鍗曟嵁涓昏〃 Mold_BillMain</b> &nbsp;<span style="color:#999;font-size:12px;">Id = @id</span></div>
+        <div class="layui-card-body">
+            <form id="viewFormMain" class="layui-form layui-form-pane">
+                <div class="layui-row layui-col-space10">
+                    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Id</label><div class='layui-input-block'><input type='text' name='Id' class='layui-input' readonly /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>BillNo</label><div class='layui-input-block'><input type='text' name='BillNo' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>BillDate</label><div class='layui-input-block'><input type='text' name='BillDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>BillType</label><div class='layui-input-block'><input type='text' name='BillType' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>BeginDate</label><div class='layui-input-block'><input type='text' name='BeginDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>EndDate</label><div class='layui-input-block'><input type='text' name='EndDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>MoldID</label><div class='layui-input-block'><input type='text' name='MoldID' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>TempID</label><div class='layui-input-block'><input type='text' name='TempID' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>MaintainType</label><div class='layui-input-block'><input type='text' name='MaintainType' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Status</label><div class='layui-input-block'><input type='text' name='Status' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Remark</label><div class='layui-input-block'><input type='text' name='Remark' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>LastMaintainTime</label><div class='layui-input-block'><input type='text' name='LastMaintainTime' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Dispatch</label><div class='layui-input-block'><input type='text' name='Dispatch' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>DispatchDate</label><div class='layui-input-block'><input type='text' name='DispatchDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>RepairStaff</label><div class='layui-input-block'><input type='text' name='RepairStaff' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>RepairStaffDate</label><div class='layui-input-block'><input type='text' name='RepairStaffDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Checker</label><div class='layui-input-block'><input type='text' name='Checker' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CheckDate</label><div class='layui-input-block'><input type='text' name='CheckDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Closer</label><div class='layui-input-block'><input type='text' name='Closer' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CloseDate</label><div class='layui-input-block'><input type='text' name='CloseDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>QXYId</label><div class='layui-input-block'><input type='text' name='QXYId' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CreateUserld</label><div class='layui-input-block'><input type='text' name='CreateUserld' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CreateDate</label><div class='layui-input-block'><input type='text' name='CreateDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>LastUpdateUserld</label><div class='layui-input-block'><input type='text' name='LastUpdateUserld' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>LastUpdateDate</label><div class='layui-input-block'><input type='text' name='LastUpdateDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>FGC_Creator</label><div class='layui-input-block'><input type='text' name='FGC_Creator' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>FGC_CreateDate</label><div class='layui-input-block'><input type='text' name='FGC_CreateDate' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>FGC_LastModifier</label><div class='layui-input-block'><input type='text' name='FGC_LastModifier' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>FGC_LastModifyDate</label><div class='layui-input-block'><input type='text' name='FGC_LastModifyDate' class='layui-input' /></div></div></div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@section Script{
+    <script>
+        layui.use(['form','laydate'], function () {
+            var form = layui.form, laydate = layui.laydate;
+            $('input[lay-verify*=datetime]').each(function () { laydate.render({ type: 'datetime', elem: this }); });
+            $.get('@Url.Action("GetMainInfo")', { Id: @id }, function (res) {
+                if (res && res.data) {
+                    for (var k in res.data) {
+                        $("#viewFormMain *[name='" + k + "']").val(res.data[k]);
+                    }
+                    $("#viewFormMain input, #viewFormMain textarea, #viewFormMain select").attr('readonly', 'readonly').attr('disabled', 'disabled');
+                    form.render();
+                }
+            });
+        });
+    </script>
+}

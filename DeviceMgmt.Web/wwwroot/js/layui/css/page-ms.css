@@ -1,0 +1,226 @@
+﻿.ms {
+    margin-bottom:50px;
+}
+.ms .layui-nav-white {
+    background: #fff;
+    color: #666;
+}
+
+.ms .layui-nav.layui-nav-white .layui-nav-item {
+    line-height: 32px;
+    font-size: 12px;
+}
+
+    .ms .layui-nav.layui-nav-white .layui-nav-item a {
+        color: #666;
+    }
+
+.ms .layui-nav.layui-nav-white .layui-nav-child {
+    top: 35px;
+}
+
+.ms .w-step {
+    background-color: #fff;
+    color: #999;
+    height: 44px;
+    display: inline-block;
+    position: relative;
+    padding: 0 0 0 25px;
+    line-height: 44px;
+}
+
+    .ms .w-step:before, .w-step:after {
+        content: "";
+        width: 0;
+        height: 0;
+        position: absolute;
+        display: block;
+        border-width: 23px;
+        border-style: solid;
+        z-index: 1;
+    }
+
+    .ms .w-step:before {
+        right: -48px;
+        top: 0px;
+        border-color: transparent transparent transparent #eee;
+    }
+
+    .ms .w-step:after {
+        right: -46px;
+        top: 0px;
+        border-color: transparent transparent transparent white;
+    }
+
+    .ms .w-step:last-child:before {
+        border: none;
+    }
+
+    .ms .w-step:last-child:after {
+        border: none;
+    }
+
+    .ms .w-step:first-child {
+        border-left: 1px solid #eee;
+    }
+
+.ms .w-step-current {
+    background-color: #fafafa;
+}
+
+    .ms .w-step-current:after {
+        border-color: transparent transparent transparent #fafafa;
+    }
+
+.ms .w-table {
+    margin-top: 0 !important;
+}
+    .ms .w-table .layui-btn .layui-icon {
+        margin-right: 0 !important;
+    }
+    .ms .w-table thead {
+        box-shadow: 1px 1px 15px #eee;
+    }
+        .ms .w-table thead th {
+            font-weight: 600;
+            border-top: 0;
+        }
+
+        .ms .w-table thead tr {
+            background: #fff !important;
+        }
+    .ms .layui-form-noborder{
+        margin:10px;
+    }
+    .ms .layui-form-noborder .layui-input, .layui-form-noborder .layui-select, .layui-form-noborder .layui-textarea {
+        /*border: none;
+    border-bottom: 1px dashed #ddd;*/
+    }
+
+.ms .layui-form-noborder .layui-form-item {
+    /*margin-bottom: 0px;
+    clear: both;*/
+}
+
+.ms .layui-form-noborder .layui-form-label {
+    /*width: 150px;
+    padding: 9px 0;
+    text-align: right;
+    font-weight: 600;*/
+}
+
+.ms .layui-form-noborder .layui-input-block {
+    /*margin-left: 160px;
+    min-height: 26px*/
+}
+
+.ms .ms-title {
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+    margin-bottom: 0;
+    left: 0;
+    background: white;
+    box-shadow: 1px 1px 10px #ccc;
+    z-index: 88888;
+}
+    .ms .ms-title .layui-card-header{
+        display:none
+    }
+
+    .ms .ms-title .layui-card-header .layui-breadcrumb a.ms-billType {
+        font-size: 20px;
+        color: #009688 !important
+    }
+
+    .ms .ms-title .layui-card-header .layui-breadcrumb a {
+        font-size: 18px;
+    }
+
+    .ms .ms-title .layui-card-header .ms-title-right {
+        float: right
+    }
+
+        .ms .ms-title .layui-card-header .ms-title-right a {
+            font-size: 16px
+        }
+
+    .ms .ms-title .layui-card-body .ms-guide {
+        float: right;
+        position: relative;
+        height: 25px;
+        top: -10px
+    }
+    .ms .ms-title .layui-card-body .ms-operate-btn {
+        float: left;
+        height: 25px;
+        margin-top: -3px;
+    }
+    .ms .ms-foot .layui-form-item .layui-form-label {
+        text-align: right
+    }
+
+.ms .ms-foot .layui-form-item .layui-input-block span.layui-input {
+    line-height: 38px;
+    text-align: right
+}
+
+    .ms .ms-foot .layui-form-item .layui-input-block span.layui-input.sm-foot-item-lg {
+        line-height: 38px;
+        text-align: right;
+        font-size: 1.2rem
+    }
+
+.ms .ms-separator {
+    clear: both;
+    width: 100%;
+    min-height: 5px;
+}
+
+.ms .ms-tab {
+    margin: 0 -15px;
+    clear: both
+}
+    .ms .ms-foot .layui-form-item .layui-input-block span.layui-input.sm-foot-item-lg{
+        border:0
+    }
+    .ms .ms-tab li:first-child {
+        margin-left: 15px
+    }
+.ms [lay-verify*=required] {
+    border-left-color: #FF5722 !important;
+}
+.ms .layui-table-body{
+    margin-bottom:0;
+}
+.ms .select2-container--bootstrap.select2-container--focus .select2-selection,.ms .select2-container--bootstrap .select2-selection--single,.ms .select2-container--bootstrap.select2-container--open .select2-selection {
+    /*border: none;
+    box-shadow: none;
+    border-bottom: 1px dashed #ddd;*/
+}
+.ms div[lay-id] .layui-table-tool {
+    position: relative;
+    width: auto;
+    right: 0;
+    top: 0px;
+    background-color: transparent;
+    min-width: 0;
+    padding: 0;
+    min-height: 0;
+}
+
+.ms div[lay-id] .layui-table-tool-self {
+    position: absolute;
+    right: 5px;
+    top: 0px;
+}
+.ms div[lay-id] .layui-table-tool-temp {
+    padding-right: 0;
+}
+
+.ms div[lay-id] .layui-table-tool .layui-inline[lay-event] {
+    border: 0;
+}
+.ms .ms-tab .layui-table-tool-panel li:first-child {
+    margin-left: 0;
+}

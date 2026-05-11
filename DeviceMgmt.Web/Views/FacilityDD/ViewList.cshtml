@@ -1,0 +1,37 @@
+@{
+    ViewData["Title"] = "璁惧鐐规娲惧伐 v_FacilityDD - 鏌ョ湅";
+    var id = (long)(ViewBag.Id ?? 0L);
+}
+<div class="layui-fluid" style="padding:14px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><b>璁惧鐐规娲惧伐 v_FacilityDD</b> &nbsp;<span style="color:#999;font-size:12px;">Id = @id</span></div>
+        <div class="layui-card-body">
+            <form id="viewFormMain" class="layui-form layui-form-pane">
+                <div class="layui-row layui-col-space10">
+                    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Id</label><div class='layui-input-block'><input type='text' name='Id' class='layui-input' readonly /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>ResourceId</label><div class='layui-input-block'><input type='text' name='ResourceId' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>FacilityCode</label><div class='layui-input-block'><input type='text' name='FacilityCode' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>FacilityName</label><div class='layui-input-block'><input type='text' name='FacilityName' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>BillDate</label><div class='layui-input-block'><input type='text' name='BillDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@section Script{
+    <script>
+        layui.use(['form','laydate'], function () {
+            var form = layui.form, laydate = layui.laydate;
+            $('input[lay-verify*=datetime]').each(function () { laydate.render({ type: 'datetime', elem: this }); });
+            $.get('@Url.Action("GetMainInfo")', { Id: @id }, function (res) {
+                if (res && res.data) {
+                    for (var k in res.data) {
+                        $("#viewFormMain *[name='" + k + "']").val(res.data[k]);
+                    }
+                    $("#viewFormMain input, #viewFormMain textarea, #viewFormMain select").attr('readonly', 'readonly').attr('disabled', 'disabled');
+                    form.render();
+                }
+            });
+        });
+    </script>
+}

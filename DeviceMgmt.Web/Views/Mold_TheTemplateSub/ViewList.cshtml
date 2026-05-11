@@ -1,0 +1,44 @@
+@{
+    ViewData["Title"] = "妯″叿淇濆吇妯℃澘鏄庣粏 Mold_TheTemplateSub - 鏌ョ湅";
+    var id = (long)(ViewBag.Id ?? 0L);
+}
+<div class="layui-fluid" style="padding:14px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><b>妯″叿淇濆吇妯℃澘鏄庣粏 Mold_TheTemplateSub</b> &nbsp;<span style="color:#999;font-size:12px;">Id = @id</span></div>
+        <div class="layui-card-body">
+            <form id="viewFormMain" class="layui-form layui-form-pane">
+                <div class="layui-row layui-col-space10">
+                    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Id</label><div class='layui-input-block'><input type='text' name='Id' class='layui-input' readonly /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>HInspectionItemID</label><div class='layui-input-block'><input type='text' name='HInspectionItemID' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>HRemark</label><div class='layui-input-block'><input type='text' name='HRemark' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>ControlType</label><div class='layui-input-block'><input type='text' name='ControlType' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>MaxValue</label><div class='layui-input-block'><input type='text' name='MaxValue' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>MinValue</label><div class='layui-input-block'><input type='text' name='MinValue' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>StdMaxValue</label><div class='layui-input-block'><input type='text' name='StdMaxValue' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>StdMinValue</label><div class='layui-input-block'><input type='text' name='StdMinValue' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>MainId</label><div class='layui-input-block'><input type='text' name='MainId' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>HContent</label><div class='layui-input-block'><input type='text' name='HContent' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>HMethods</label><div class='layui-input-block'><input type='text' name='HMethods' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>HStandard</label><div class='layui-input-block'><input type='text' name='HStandard' class='layui-input' /></div></div></div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@section Script{
+    <script>
+        layui.use(['form','laydate'], function () {
+            var form = layui.form, laydate = layui.laydate;
+            $('input[lay-verify*=datetime]').each(function () { laydate.render({ type: 'datetime', elem: this }); });
+            $.get('@Url.Action("GetMainInfo")', { Id: @id }, function (res) {
+                if (res && res.data) {
+                    for (var k in res.data) {
+                        $("#viewFormMain *[name='" + k + "']").val(res.data[k]);
+                    }
+                    $("#viewFormMain input, #viewFormMain textarea, #viewFormMain select").attr('readonly', 'readonly').attr('disabled', 'disabled');
+                    form.render();
+                }
+            });
+        });
+    </script>
+}

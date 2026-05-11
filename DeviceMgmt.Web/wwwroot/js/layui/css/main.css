@@ -1,0 +1,647 @@
+body {
+    font-size: 12px;
+}
+
+.admin-main {
+    margin: 14px;
+}
+
+*[lay-verify="required"] {
+    border-left-color: red !important
+}
+
+.admin-main .layui-field-title .layui-field-box {
+    padding: 10px 30px;
+}
+
+    .admin-main .layui-field-title .layui-field-box p {
+        padding: 5px 0;
+    }
+
+.layui-form-label {
+    padding: 9px 10px;
+    width: 100px;
+    line-height: 10px;
+}
+
+.layui-form-pane .layui-form-label {
+    height: 28px;
+    line-height: 12px;
+}
+
+.layui-form-switch {
+    height: 18px;
+}
+
+    .layui-form-switch i {
+        top: 2px;
+        width: 16px;
+        height: 14px;
+    }
+
+    .layui-form-switch em {
+        top: -1px;
+    }
+
+.layui-input-block {
+    margin-left: 120px;
+    min-height: 28px;
+}
+
+.layui-form-item .layui-form-checkbox[lay-skin=primary] {
+    margin-top: 5px;
+}
+
+.layui-form-pane .layui-form-radio, .layui-form-pane .layui-form-switch {
+    margin-top: 4px;
+    margin-left: 10px;
+}
+
+.layui-form-mid {
+    padding: 8px 0 !important;
+    line-height: 12px;
+}
+
+.layui-form-select dl {
+    top: 30px;
+}
+
+.layui-form-selectup dl {
+    top: auto;
+    bottom: 32px;
+}
+
+.layui-form-select dl dd, .layui-form-select dl dt {
+    line-height: 28px;
+}
+
+.layui-form-radio {
+    line-height: 20px;
+    margin-top: 5px;
+}
+
+.layui-input, .layui-select, .layui-textarea {
+    height: 28px !important;
+    line-height: 1.3;
+    line-height: 38px\9;
+    border-width: 1px;
+    border-style: solid;
+    background-color: #fff;
+    border-radius: 2px;
+}
+
+.select2-container--bootstrap .select2-selection--single {
+    height: 28px !important;
+    line-height: 1.2857143 !important;
+    font-size: 12px !important;
+}
+
+.layui-form-item {
+    margin-bottom: 5px;
+    clear: both;
+}
+
+.state-overview {
+    margin-bottom: 10px;
+    margin-left: -5px;
+    margin-right: -5px;
+}
+
+.laytable-cell-space {
+    padding: 0;
+    width: 0px !important;
+}
+
+.state-overview .symbol, .state-overview .value {
+    display: inline-block;
+    text-align: center;
+}
+
+.state-overview .value {
+    float: right;
+}
+
+    .state-overview .value h1, .state-overview .value p {
+        margin: 0;
+        padding: 0;
+        color: #979DAF;
+        font-family: Arial,Helvetica,sans-serif;
+    }
+
+    .state-overview .value p {
+        text-align: left;
+        padding-left: 10px;
+        margin-top: -5px
+    }
+
+    .state-overview .value h1 {
+        margin-top: 5px
+    }
+
+    .state-overview .value:hover h1, .state-overview .value:hover p {
+        color: #A7ACBB;
+    }
+
+    .state-overview .value h1 {
+        font-weight: 300;
+        font-size: 30px;
+    }
+
+.state-overview .symbol i {
+    color: #fff;
+    font-size: 30px;
+}
+
+.state-overview .symbol {
+    width: 42%;
+    padding: 20px 0px;
+    -webkit-border-radius: 4px 0px 0px 4px;
+    border-radius: 4px 0px 0px 4px;
+    display: none
+}
+
+.state-overview .value {
+    width: 100%;
+    padding-top: 12px;
+    background: #f6f6f6;
+    border-radius: 2px;
+    height: 65px;
+}
+
+.state-overview .userblue {
+    background: #54ade8;
+}
+
+.state-overview .commred {
+    background: #ff6c60;
+}
+
+.state-overview .articlegreen {
+    background: #4dccb3;
+}
+
+.state-overview .rsswet {
+    background: #6385a7;
+}
+
+.state-overview .panel {
+    padding: 5px;
+}
+
+.layui-form-mid {
+    float: left;
+    display: block;
+    /*padding: 0 !important;*/
+    margin-right: 10px;
+}
+
+.layui-tab-card > .layui-tab-title {
+    background-color: #ffffff;
+}
+
+.layui-tab-title {
+    border-bottom-color: #f5f5f5;
+}
+
+.layui-tab-card {
+    border-color: #f2f2f2;
+}
+
+body {
+    background: #fafafa;
+}
+
+.layui-tab-content {
+    background-color: #ffffff;
+}
+
+.layui-row.layui-col-space10 .layui-tab {
+    margin: 0;
+}
+
+.percent {
+    margin: 5px auto;
+}
+
+    .percent + .percent {
+        margin-top: 20px;
+    }
+
+    .percent h1 {
+        color: #999;
+    }
+
+    .percent h3 {
+        color: #999;
+        padding-top: 5px;
+        font-size: 14px;
+    }
+
+#searchPanel .layui-form-mid {
+    padding: 0 !important;
+}
+
+.height180 {
+    height: 180px !important
+}
+
+@media screen and (max-width: 750px) {
+    .height180 {
+        height: auto !important
+    }
+}
+
+@media screen and (max-width: 585px) {
+    .layui-form-item .layui-form-label {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        text-align: left;
+        display: block;
+        width: 99%;
+        padding-left: 0;
+    }
+
+    .height180 {
+        height: auto !important
+    }
+
+    .layui-form-item .layui-input-block {
+        margin-left: 0px;
+    }
+
+    .layui-form-select .layui-edge {
+        /*margin-top: 15px;*/
+    }
+
+    .layui-form-selected .layui-edge {
+        /*margin-top: 15px;*/
+    }
+
+    .layui-form-item .layui-input-inline + .layui-form-mid {
+        margin-left: 3px !important;
+    }
+
+    .layui-form-item .layui-input-inline {
+        margin: 0 0 10px 3px !important;
+    }
+
+    .demoTable {
+        display: block;
+        clear: both;
+        width: 100%;
+        position: relative;
+        z-index: 19891010;
+    }
+
+        .demoTable .layui-btn-group {
+            position: relative;
+            top: -8px;
+        }
+
+        .demoTable #searchPanel {
+            width: 100%;
+        }
+
+            .demoTable #searchPanel .searchWidth {
+                width: 100% !important;
+                min-width: unset !important;
+            }
+
+                .demoTable #searchPanel .searchWidth .searchpanel {
+                    position: relative;
+                    left: 0;
+                    width: 100%;
+                    height: auto;
+                }
+
+                    .demoTable #searchPanel .searchWidth .searchpanel .layui-form-item .layui-input-inline {
+                        width: 100% !important;
+                        display: inline-block !important;
+                    }
+
+                    .demoTable #searchPanel .searchWidth .searchpanel .layui-form-item .layui-btn-group {
+                        position: absolute;
+                        right: 0;
+                        top: auto;
+                        bottom: -30px;
+                    }
+}
+
+.layui-card-body .layui-table-view {
+    /*    border-bottom: 0;*/
+    margin-bottom: 0;
+    margin-top: 0;
+    /*    border: 0;*/
+}
+
+.layui-nav-item-2 a {
+    margin-left: 20px;
+}
+
+li.layui-nav-item.layui-nav-item-2.layui-nav-itemed.layui-nav-itemed-2 > a {
+    background: #5FB878 !important;
+}
+
+li.layui-nav-item.layui-nav-item-2.layui-nav-itemed-2 > dl.layui-nav-child.layui-nav-child-2 {
+    display: block;
+}
+
+li.layui-nav-item.layui-nav-item-2 > dl.layui-nav-child.layui-nav-child-2 {
+    display: none;
+}
+
+@media print {
+    .no-print, .layui-table-fixed, .layui-table-page {
+        display: none;
+    }
+
+    input {
+        border: 0 !important;
+    }
+
+    .select2-container--bootstrap .select2-selection--single .select2-selection__rendered, .select2-container--bootstrap.select2-container--focus .select2-selection, .select2-container--bootstrap.select2-container--open .select2-selection {
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    @page {
+        margin: 14mm 18mm 10mm;
+        size: A4;
+        page-break-inside: avoid;
+        page-break-before: always;
+    }
+}
+
+
+.layui-layer .select2-container {
+    z-index: 20180403;
+}
+
+.tableSelect .layui-btn-sm {
+    height: 28px;
+    line-height: 28px;
+}
+
+div.iconTableselect::after {
+    font-family: layui-icon !important;
+    content: '\e615';
+    font-size: 20px;
+    color: #9c9c9c;
+    position: absolute;
+    right: 10px;
+    top: 3px;
+    background: #fff;
+}
+
+div.iconPercent::after {
+    font-family: layui-icon !important;
+    content: '%';
+    font-size: 18px;
+    color: #9c9c9c;
+    position: absolute;
+    right: 10px;
+    top: 1px;
+    background: #fff;
+}
+
+div.iconDate::after {
+    font-family: layui-icon !important;
+    content: '\e637';
+    font-size: 20px;
+    color: #9c9c9c;
+    position: absolute;
+    right: 10px;
+    top: 2px;
+    background: #fff;
+}
+
+.select2-container--bootstrap.select2-container--open {
+    z-index: 199000000
+}
+
+.layui-btn-primary {
+    border: none;
+    background-color: #2F4056;
+    color: #fff;
+}
+
+    .layui-btn-primary:hover {
+        color: #fff;
+    }
+
+.tableSelect .layui-btn-primary, .ms-title .layui-btn-primary {
+    border: 1px solid #ccc;
+    background-color: #fff;
+    color: #2F4056;
+}
+
+    .tableSelect .layui-btn-primary:hover, .ms-title .layui-btn-primary:hover {
+        color: #222;
+    }
+
+table[lay-size=sm] .layui-btn-xs {
+    height: 19px;
+    line-height: 19px;
+    padding: 0 5px;
+    font-size: 11px;
+}
+
+.layui-table-cell {
+    padding: 0 10px !important;
+}
+
+.searchpanel .layui-input, .searchpanel .layui-select, .searchpanel .layui-textarea {
+    height: 30px;
+    padding-left: 5px;
+}
+
+.searchpanel {
+    height: 30px;
+}
+
+    .searchpanel .layui-form-item {
+        margin: 0;
+        line-height: 28px
+    }
+
+        .searchpanel .layui-form-item .layui-input-inline {
+            margin-right: 5px;
+        }
+
+    .searchpanel .layui-form-mid {
+        margin-right: 5px;
+    }
+
+.p-indent2 {
+    text-indent: 2em;
+}
+
+div[lay-id="GridMain"] .layui-table-tool {
+    position: absolute;
+    width: auto;
+    right: 0;
+    top: -12px;
+    background-color: transparent;
+    min-width: 0;
+    padding: 0;
+    min-height: 10px;
+}
+
+div[lay-id="GridMain"] .layui-table-tool-temp {
+    padding-right: 0;
+}
+
+div[lay-id="GridMain"] .layui-table-tool .layui-inline[lay-event] {
+    border: 0;
+}
+
+table[lay-size="sm"] .layui-form-switch {
+    height: 16px;
+    line-height: 16px;
+}
+
+    table[lay-size="sm"] .layui-form-switch i {
+        top: 1px;
+        width: 14px;
+        height: 14px;
+    }
+
+.disp {
+    width: 100%;
+    height: 88px;
+    font-family: "Titillium Web", sans serif;
+    color: #758D96;
+    overflow-x: auto;
+    position: relative;
+}
+
+    .disp .timeline {
+        display: flex;
+        text-align: center;
+        justify-content: space-around;
+        position: absolute;
+        width: 100%;
+    }
+
+    .disp .li {
+        transition: all 200ms ease-in;
+        width: 100%;
+    }
+
+    .disp .timestamp {
+        margin-bottom: 20px;
+        padding: 0px 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-weight: 100;
+    }
+
+    .disp .status {
+        padding: 0px 40px;
+        display: flex;
+        justify-content: center;
+        border-top: 2px solid #D6DCE0;
+        position: relative;
+        transition: all 200ms ease-in;
+    }
+
+        .disp .status h4 {
+            font-weight: 600;
+            margin: 13px 0 0;
+            white-space: nowrap;
+        }
+
+        .disp .status:before {
+            content: "";
+            width: 25px;
+            height: 25px;
+            background-color: white;
+            border-radius: 25px;
+            border: 1px solid #ddd;
+            position: absolute;
+            top: -15px;
+            transition: all 200ms ease-in;
+        }
+
+    .disp .li.complete .status, .disp .li.current .status {
+        border-top: 2px solid #009688;
+    }
+
+        .disp .li.complete .status:before {
+            background-color: #009688;
+            border: none;
+            transition: all 200ms ease-in;
+        }
+
+        .disp .li.current .status:before {
+            background-color: #009688;
+            border: none;
+            animation: curProcess 1s infinite;
+            transition: all 200ms ease-in;
+        }
+
+        .disp .li.complete .status h4 {
+            color: #009688;
+        }
+
+@keyframes curProcess {
+    0% {
+        background-color: #009688;
+    }
+
+    50% {
+        background-color: #222;
+    }
+
+    100% {
+        background-color: #009688;
+    }
+}
+
+@media (min-device-width: 320px) and (max-device-width: 700px) {
+    .disp .timeline {
+        list-style-type: none;
+        display: block;
+    }
+
+    .disp .li {
+        transition: all 200ms ease-in;
+        display: flex;
+        width: inherit;
+    }
+
+    .disp .timestamp {
+        width: 100px;
+    }
+
+    .disp .status:before {
+        left: -8%;
+        top: 30%;
+        transition: all 200ms ease-in;
+    }
+}
+
+.ColName {
+    width: 10%;
+    min-width: 80px;
+    text-align: right;
+}
+
+.layui-table-tips-main {
+    overflow-y: auto !important;
+}
+
+.layui-table-tips-c {
+    right: -10px !important
+}
+
+.layui-table tbody tr:hover, .layui-table-hover {
+    background-color: #979DAF !important;
+    color: white
+}
+
+.layui-table-header th {
+    font-weight: bold
+}

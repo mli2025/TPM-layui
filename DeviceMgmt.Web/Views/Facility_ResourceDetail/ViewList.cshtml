@@ -1,0 +1,53 @@
+@{
+    ViewData["Title"] = "设备台账查看";
+    var id = (long)(ViewBag.Id ?? 0L);
+}
+<div class="layui-fluid" style="padding:14px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><b>设备台账查看</b> &nbsp;<span style="color:#999;font-size:12px;">Id = @id</span></div>
+        <div class="layui-card-body">
+            <form id="viewFormMain" class="layui-form layui-form-pane ms-edit">
+                <div class="layui-tab layui-tab-brief">
+                    <ul class="layui-tab-title">
+                        <li class="layui-this">基础信息</li>
+                        <li>采购/资产</li>
+                        <li>保养/状态</li>
+                        <li>计量器具</li>
+                    </ul>
+                    <div class="layui-tab-content" style="padding:14px 0;">
+                        <div class="layui-tab-item layui-show">
+                            @await Html.PartialAsync("_FacilityFormBasic")
+                        </div>
+                        <div class="layui-tab-item">
+                            @await Html.PartialAsync("_FacilityFormPurchase")
+                        </div>
+                        <div class="layui-tab-item">
+                            @await Html.PartialAsync("_FacilityFormMaintain")
+                        </div>
+                        <div class="layui-tab-item">
+                            @await Html.PartialAsync("_FacilityFormMeasure")
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@section Script{
+    <script>
+        layui.use(['form','element','laydate'], function () {
+            var form = layui.form, laydate = layui.laydate;
+            $('input[lay-verify*=date]').each(function () { laydate.render({ type: 'date', elem: this }); });
+            $('input[lay-verify*=datetime]').each(function () { laydate.render({ type: 'datetime', elem: this }); });
+            $.get('@Url.Action("GetMainInfo")', { Id: @id }, function (res) {
+                if (res && res.data) {
+                    for (var k in res.data) {
+                        $("#viewFormMain *[name='" + k + "']").val(res.data[k]);
+                    }
+                    $("#viewFormMain input, #viewFormMain textarea, #viewFormMain select").attr('readonly', 'readonly').attr('disabled', 'disabled');
+                    form.render();
+                }
+            });
+        });
+    </script>
+}

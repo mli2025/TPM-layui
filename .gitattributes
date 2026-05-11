@@ -1,0 +1,25 @@
+* text=auto eol=lf
+
+*.cs        text diff=csharp eol=lf
+*.cshtml    text eol=lf
+*.csproj    text merge=union eol=lf
+*.sln       text merge=union eol=crlf
+*.json      text eol=lf
+*.js        text eol=lf
+*.css       text eol=lf
+*.md        text eol=lf
+*.ps1       text eol=lf
+*.sh        text eol=lf
+
+*.dll       binary
+*.exe       binary
+*.png       binary
+*.jpg       binary
+*.gif       binary
+*.ico       binary
+*.eot       binary
+*.ttf       binary
+*.woff      binary
+*.woff2     binary
+*.pdb       binary
+*.snk       binary

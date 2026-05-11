@@ -1,0 +1,50 @@
+@{
+    ViewData["Title"] = "澶栧淇濆吇 Facility_OutsourcingMaintenance - 鏌ョ湅";
+    var id = (long)(ViewBag.Id ?? 0L);
+}
+<div class="layui-fluid" style="padding:14px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><b>澶栧淇濆吇 Facility_OutsourcingMaintenance</b> &nbsp;<span style="color:#999;font-size:12px;">Id = @id</span></div>
+        <div class="layui-card-body">
+            <form id="viewFormMain" class="layui-form layui-form-pane">
+                <div class="layui-row layui-col-space10">
+                    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Id</label><div class='layui-input-block'><input type='text' name='Id' class='layui-input' readonly /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>BillMainid</label><div class='layui-input-block'><input type='text' name='BillMainid' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Number</label><div class='layui-input-block'><input type='text' name='Number' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>MaintenanceType</label><div class='layui-input-block'><input type='text' name='MaintenanceType' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Status</label><div class='layui-input-block'><input type='text' name='Status' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Creater</label><div class='layui-input-block'><input type='text' name='Creater' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Acceptance</label><div class='layui-input-block'><input type='text' name='Acceptance' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Appendix</label><div class='layui-input-block'><input type='text' name='Appendix' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>EstimatedTime</label><div class='layui-input-block'><input type='text' name='EstimatedTime' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CreaterTime</label><div class='layui-input-block'><input type='text' name='CreaterTime' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>AcceptanceTime</label><div class='layui-input-block'><input type='text' name='AcceptanceTime' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>SupplierID</label><div class='layui-input-block'><input type='text' name='SupplierID' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Maintainer</label><div class='layui-input-block'><input type='text' name='Maintainer' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>FacilityId</label><div class='layui-input-block'><input type='text' name='FacilityId' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CreateUserId</label><div class='layui-input-block'><input type='text' name='CreateUserId' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CreateDate</label><div class='layui-input-block'><input type='text' name='CreateDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>LastUpdateUserId</label><div class='layui-input-block'><input type='text' name='LastUpdateUserId' class='layui-input' /></div></div></div>
+    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>LastUpdateDate</label><div class='layui-input-block'><input type='text' name='LastUpdateDate' class='layui-input' lay-verify='datetime' /></div></div></div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@section Script{
+    <script>
+        layui.use(['form','laydate'], function () {
+            var form = layui.form, laydate = layui.laydate;
+            $('input[lay-verify*=datetime]').each(function () { laydate.render({ type: 'datetime', elem: this }); });
+            $.get('@Url.Action("GetMainInfo")', { Id: @id }, function (res) {
+                if (res && res.data) {
+                    for (var k in res.data) {
+                        $("#viewFormMain *[name='" + k + "']").val(res.data[k]);
+                    }
+                    $("#viewFormMain input, #viewFormMain textarea, #viewFormMain select").attr('readonly', 'readonly').attr('disabled', 'disabled');
+                    form.render();
+                }
+            });
+        });
+    </script>
+}

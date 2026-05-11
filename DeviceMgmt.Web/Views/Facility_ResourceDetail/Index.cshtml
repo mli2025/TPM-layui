@@ -1,0 +1,111 @@
+@{
+    ViewData["Title"] = "设备资源台账";
+}
+@section Style{
+    <style>
+        .borderRed { background: NavajoWhite; }
+        .ms-edit .layui-form-label{ width:130px; }
+        .ms-edit .layui-input-block { margin-left: 130px; }
+    </style>
+}
+<div class="layui-fluid" style="padding:0;margin-top:10px">
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <div class="pull-left">设备资源台账（Facility_ResourceDetail）</div>
+                    <div class="demoTable pull-right no-print">
+                        <div class="layui-inline" id="searchPanel"></div>
+                        <div class="layui-btn-group">
+                            <button class="layui-btn layui-btn-sm" id="btn_Add">新增</button>
+                            <button class="layui-btn layui-btn-sm layui-btn-warm" id="btn_Export">导出</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-card-body" style="padding:0">
+                    <div class="layui-inline" style="width:100%">
+                        <table class="layui-hide" lay-filter="GridMain" id="GridMain"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div style="width:0;height:0;overflow:hidden">
+    <div id="pnl_edit">
+        <form action="#" id="ItemDetail" class="layui-form layui-form-pane ms-edit" lay-filter="ItemDetail" style="padding:10px;">
+            <input type="hidden" name="Id" value="0" />
+            <div class="layui-tab layui-tab-brief" lay-filter="resTabs">
+                <ul class="layui-tab-title">
+                    <li class="layui-this">基础信息</li>
+                    <li>采购/资产</li>
+                    <li>保养/状态</li>
+                    <li>计量器具</li>
+                    <li>备注</li>
+                </ul>
+                <div class="layui-tab-content" style="padding:14px 0;">
+                    <div class="layui-tab-item layui-show">
+                        @await Html.PartialAsync("_FacilityFormBasic")
+                    </div>
+                    <div class="layui-tab-item">
+                        @await Html.PartialAsync("_FacilityFormPurchase")
+                    </div>
+                    <div class="layui-tab-item">
+                        @await Html.PartialAsync("_FacilityFormMaintain")
+                    </div>
+                    <div class="layui-tab-item">
+                        @await Html.PartialAsync("_FacilityFormMeasure")
+                    </div>
+                    <div class="layui-tab-item">
+                        <div class="layui-form-item layui-form-text">
+                            <label class="layui-form-label">备注</label>
+                            <div class="layui-input-block" style="margin-left:130px;">
+                                <textarea name="Remark" placeholder="请输入备注" class="layui-textarea"></textarea>
+                            </div>
+                        </div>
+                        <div class="layui-form-item layui-form-text">
+                            <label class="layui-form-label">说明</label>
+                            <div class="layui-input-block" style="margin-left:130px;">
+                                <textarea name="UseCondition" placeholder="使用条件" class="layui-textarea"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button class="layui-btn layui-hide" lay-submit lay-filter="saveItem" id="saveItem">保存</button>
+        </form>
+    </div>
+</div>
+
+@section Script{
+    <script type='text/html' class="no-print" id='barDemo'>
+        <a class='layui-btn layui-btn-xs layui-btn-normal' lay-event='edit'>编辑</a>
+        <a class='layui-btn layui-btn-xs layui-btn-warm' lay-event='detail'>查看</a>
+        <a class='layui-btn layui-btn-xs layui-btn-danger' lay-event='del'>删除</a>
+    </script>
+    <script>
+        var URLThisGetList = '@Url.Action("GetMainList")';
+        var URLThisSaveItem = '@Url.Action("SaveFacility")';
+        var URLThisDeleteItem = '@Url.Action("DeleteFacility")';
+        var URLThisEditItem = '@Url.Action("GetMainInfo")';
+        var URLThisExportList = '@Url.Action("ExportExcel")';
+        var Cols = [
+            { field: 'Id', title: 'Id', width: 80, sort: true },
+            { field: 'FacilityCode', title: '设备编码', search: 'input', sort: true, width: 130 },
+            { field: 'FacilityName', title: '设备名称', search: 'input', sort: true, minWidth: 160 },
+            { field: 'FacilityType', title: '设备类型', search: 'input', width: 110 },
+            { field: 'Manufacturer', title: '制造商', search: 'input', width: 130 },
+            { field: 'Model', title: '型号', search: 'input', width: 110 },
+            { field: 'Location', title: '安装位置', search: 'input', width: 130 },
+            { field: 'SerialNumber', title: '出厂编号', width: 130 },
+            { field: 'ResourceId', title: '资源Id', width: 90, sort: true },
+            { field: 'DeptId', title: '部门Id', width: 90 },
+            { field: 'PurchaseDate', title: '购置日期', search: 'date', width: 110, templet: function (d) { return d.PurchaseDate ? d.PurchaseDate.substring(0,10) : ''; } },
+            { field: 'AssetNumber', title: '资产编码', width: 130 },
+            { field: 'Status', title: '状态', width: 80 },
+            { fixed: 'right', title: '操作', width: 180, align: 'center', toolbar: '#barDemo' }
+        ];
+    </script>
+    <script src="~/js/Page/NomalListPage.js"></script>
+}

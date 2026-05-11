@@ -1,0 +1,72 @@
+﻿@{
+    ViewData["Title"] = "设备管理 · 首页";
+}
+@section Style {
+<style>
+    .home-wrap { padding: 20px; }
+    .module-card { display: inline-block; width: 240px; height: 110px; margin: 10px; padding: 16px 18px; border-radius: 8px; background:#fff; box-shadow: 0 2px 8px rgba(0,0,0,.06); vertical-align: top; }
+    .module-card h3 { font-size: 16px; margin: 0 0 8px; color:#1e3c72; }
+    .module-card a { display:inline-block; margin: 4px 8px 0 0; color:#0a5; font-size:12px; }
+    .module-card a:hover { text-decoration: underline; }
+</style>
+}
+<div class="home-wrap">
+    <div class="layui-card">
+        <div class="layui-card-header"><b>设备管理系统</b> &nbsp;<span style="color:#999;font-size:12px;">字段对齐 waes_mes_hamaton · 风格复刻 waes_nppms_core</span></div>
+        <div class="layui-card-body">
+            <div class="module-card">
+                <h3>1. 设备台账</h3>
+                <a href="@Url.Action("Index","Facility_ResourceDetail")">设备资源台账（CRUD）</a>
+                <a href="@Url.Action("Index_view","Facility_ResourceDetail")">全部台账</a>
+                <a href="@Url.Action("Index","Basic_EquipmentResources")">设备资源</a>
+            </div>
+            <div class="module-card">
+                <h3>2. 设备保养</h3>
+                <a href="@Url.Action("Index","Facility_BillMain")">保养工单</a>
+                <a href="@Url.Action("Index","Facility_TheTemplateMain")">保养模板</a>
+                <a href="@Url.Action("Index","Facility_OutsourcingMaintenance")">外委保养</a>
+            </div>
+            <div class="module-card">
+                <h3>3. 设备维修</h3>
+                <a href="@Url.Action("Index","Facility_RepairBillMain")">维修单</a>
+                <a href="@Url.Action("Index","Facility_OutsourcingRepair")">外委维修</a>
+                <a href="@Url.Action("Index","Facility_RepairHistory")">维修履历</a>
+            </div>
+            <div class="module-card">
+                <h3>4. 设备点检</h3>
+                <a href="@Url.Action("Index","Facility_DATA")">点检数据</a>
+                <a href="@Url.Action("Index","Facility_DATA_History")">点检历史</a>
+                <a href="@Url.Action("Index","Facility_Item")">点检项</a>
+                <a href="@Url.Action("Index","DianJianDept")">部门点检</a>
+            </div>
+            <div class="module-card">
+                <h3>5. 状态履历</h3>
+                <a href="@Url.Action("Index","Facility_Status_History")">状态历史</a>
+                <a href="@Url.Action("Index","Facility_OutQC")">出厂检验</a>
+                <a href="@Url.Action("Index","Facility_ResourceDetailGather")">采集</a>
+            </div>
+            <div class="module-card">
+                <h3>6. OEE</h3>
+                <a href="@Url.Action("Index","OEE_Rate")">OEE 速率</a>
+                <a href="@Url.Action("Index","OEE_Scrap")">报废</a>
+                <a href="@Url.Action("Index","OEE_StopTimes")">停机</a>
+                <a href="@Url.Action("Index","OEE_TotalTimes")">总工时</a>
+                <a href="@Url.Action("Index","Rpt_OEE")">OEE 报表</a>
+            </div>
+            <div class="module-card">
+                <h3>7. 备品备件</h3>
+                <a href="@Url.Action("Index","Basic_Spare")">备件资料</a>
+                <a href="@Url.Action("Index","Spare_InvoiceMain")">出入库单</a>
+                <a href="@Url.Action("Index","Spare_NowQuan")">现存量</a>
+            </div>
+            <div class="module-card">
+                <h3>8. 模具管理</h3>
+                <a href="@Url.Action("Index","Basic_Mold")">模具资料</a>
+                <a href="@Url.Action("Index","Mold_BillMain")">模具单据</a>
+                <a href="@Url.Action("Index","Mold_OnOff")">上下模</a>
+                <a href="@Url.Action("Index","Mold_RepairBill")">模具维修</a>
+            </div>
+            <p style="color:#888;font-size:12px;margin-top:18px;">登录账号：admin / 123456（首次需在 Sys_User 表中插入：Password 字段使用 MD5("123456") = e10adc3949ba59abbe56e057f20f883e）</p>
+        </div>
+    </div>
+</div>

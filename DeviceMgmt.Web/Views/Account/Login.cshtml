@@ -1,0 +1,38 @@
+@{
+    ViewData["Title"] = "登录";
+    Layout = "_LayoutLogin";
+}
+<div class="login-box">
+    <div class="login-title">设备管理系统 · 登录</div>
+    <form class="layui-form" id="loginForm">
+        <div class="layui-form-item">
+            <input type="text" name="account" required lay-verify="required" placeholder="账号" autocomplete="off" class="layui-input" />
+        </div>
+        <div class="layui-form-item">
+            <input type="password" name="password" required lay-verify="required" placeholder="密码" autocomplete="off" class="layui-input" />
+        </div>
+        <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+        <div class="layui-form-item">
+            <button class="layui-btn login-btn" lay-submit lay-filter="loginSubmit">登 录</button>
+        </div>
+        <div class="login-hint">字段对齐 waes_nppms_core · 数据来自 waes_mes_hamaton</div>
+    </form>
+</div>
+@section Script {
+    <script>
+        layui.use(['form', 'layer'], function () {
+            var form = layui.form, layer = layui.layer;
+            form.on('submit(loginSubmit)', function (data) {
+                $.post('@Url.Action("DoLogin", "Account")', data.field, function (res) {
+                    if (res.code === 200) {
+                        var target = (res.data && res.data.returnUrl) ? res.data.returnUrl : '/';
+                        window.location.href = target;
+                    } else {
+                        layer.msg(res.msg || '登录失败');
+                    }
+                });
+                return false;
+            });
+        });
+    </script>
+}

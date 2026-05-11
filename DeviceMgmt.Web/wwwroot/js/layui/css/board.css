@@ -1,0 +1,199 @@
+﻿@font-face {
+    font-family: 'UniDreamLED';
+    src: local('UniDreamLED'),url('../font/UnidreamLED.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'Pixel LCD7';
+    src: local('UniDreamLED'),url('../font/Pixel LCD-7.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'LED';
+    src: local('UniDreamLED'),url('../font/LED.ttf') format('truetype');
+}
+
+html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+body {
+    background-color: #ededed;
+    background-repeat: no-repeat;
+    background-position-x: center;
+    background-size: cover;
+}
+
+.page-header {
+    position: fixed;
+    width: 100%;
+    top: 0;
+    padding: 5px 10px;
+    background: #ffffff;
+    margin: 0;
+    color: #000;
+    opacity: 0.6;
+}
+
+.box {
+    position: absolute;
+    background: rgba(119,204,85,0.42);
+    z-index: 10;
+    width: 150px;
+    height: 150px;
+}
+
+    .box input {
+        width: 70%;
+    }
+
+    .box p {
+        position: absolute;
+        font-size: 9px;
+        text-align: center;
+        margin: 0 auto;
+        width: 100%;
+        vertical-align: middle;
+        top: 50%;
+        margin-top: -5px;
+        text-shadow: #fff 0px 0px 2px;
+        font-weight: 600;
+    }
+
+    .box h3 {
+        margin: 5px;
+        font-size: 10px;
+        word-break: break-all;
+    }
+
+    .box:hover {
+        cursor: move;
+    }
+
+    .box.is-pointer-down {
+        background: #09F;
+    }
+
+    .box.is-dragging {
+        opacity: 0.7;
+    }
+
+    .box .layui-table, .box .layui-table-view {
+        margin: 0;
+    }
+
+.bianji li:hover {
+    color: #000;
+}
+
+.bianji {
+    color: #666;
+    width: 40px;
+    right: 0;
+    height: 100%;
+    position: absolute;
+    background: #ddd;
+    text-align: center;
+    top: 0;
+}
+
+    .bianji ul {
+        padding: 0;
+        height: 100%;
+        right: 45px;
+        width: 100%;
+        margin: 0;
+    }
+
+    .bianji li {
+        right: 40px;
+        width: 100%;
+        text-align: center;
+        margin-top: 2%;
+        cursor: pointer;
+        font-size: 0.6vw;
+        font-family: 微软雅黑;
+        list-style: none;
+        float: left;
+    }
+
+.contral {
+    position: fixed;
+    right: 0;
+    padding: 10px;
+}
+
+.total-centered {
+    height: 100%;
+    background-color: #fffe9b;
+    width: 0%;
+    z-index: -1;
+    opacity: 0.6;
+    position: relative;
+}
+
+.width120 {
+    width: 120px !important;
+}
+
+.editing {
+    background-color: rgba(0,0,225,0.34) !important;
+}
+
+.layui-table-body.layui-table-main {
+    overflow: hidden;
+}
+
+.layui-table-header .layui-table {
+    width: 100%;
+}
+
+.layui-table-view .layui-table {
+    width: 99%
+}
+
+.layui-bg-white {
+    background-color: #fff !important;
+}
+
+.layui-bg-purple {
+    background-color: #8900f1 !important;
+}
+
+.layui-text-red {
+    color: #FF5722 !important;
+}
+
+.layui-text-orange {
+    color: #FFB800 !important;
+}
+
+.layui-text-green {
+    color: #009688 !important;
+}
+
+.layui-text-cyan {
+    color: #2F4056 !important;
+}
+
+.layui-text-blue {
+    color: #1E9FFF !important;
+}
+
+.layui-text-black {
+    color: #393D49 !important;
+}
+
+.layui-text-gray {
+    color: #eee !important;
+}
+
+.layui-text-white {
+    color: #fff !important;
+}
+
+.layui-text-purple {
+    color: #8900f1 !important;
+}
