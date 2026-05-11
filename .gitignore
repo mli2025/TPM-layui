@@ -16,7 +16,11 @@ out/
 
 ## Local secrets / settings
 appsettings.*.local.json
+appsettings.Development.json
 secrets.json
+
+## Generator helpers (transient)
+.gen-sql.ps1
 
 ## Logs
 logs/
