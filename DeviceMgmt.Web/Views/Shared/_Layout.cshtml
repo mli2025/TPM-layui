@@ -130,9 +130,46 @@
             </div>
         </div>
 
-        <div class="input-group max-w-md flex-1" style="height: 32px;">
+        <div class="input-group max-w-md flex-1 relative" style="height: 32px;"
+             @@click.outside="searchOpen = false">
             <i data-lucide="search" class="input-icon"></i>
-            <input type="text" class="input" placeholder="全局搜索（开发中）..." disabled />
+            <input type="text" class="input pr-12"
+                   placeholder="搜索菜单 (Ctrl + K)..."
+                   x-ref="searchInput"
+                   x-model="searchQuery"
+                   @@input="onSearchInput()"
+                   @@focus="onSearchInput(); searchOpen = true;"
+                   @@keydown.escape.prevent="searchOpen = false"
+                   @@keydown.down.prevent="moveSearch(1)"
+                   @@keydown.up.prevent="moveSearch(-1)"
+                   @@keydown.enter.prevent="selectSearchHit()" />
+            <kbd class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 select-none pointer-events-none bg-slate-50">⌘K</kbd>
+
+            <div x-show="searchOpen" x-cloak x-transition
+                 class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-96 overflow-auto">
+                <template x-if="searchResults.length === 0">
+                    <div class="px-3 py-6 text-center text-xs text-slate-400">
+                        <span x-show="!searchQuery">输入关键字搜索菜单</span>
+                        <span x-show="searchQuery">没有匹配的菜单</span>
+                    </div>
+                </template>
+                <template x-for="(r, idx) in searchResults" :key="r.id">
+                    <div class="px-3 py-2 cursor-pointer flex items-center gap-2 text-sm border-b border-slate-50 last:border-0"
+                         :class="{ 'bg-brand-50 text-brand-900': idx === searchHitIdx, 'hover:bg-slate-50': idx !== searchHitIdx }"
+                         @@mouseenter="searchHitIdx = idx"
+                         @@click="selectSearchHit(r)">
+                        <i data-lucide="hash" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0"></i>
+                        <span class="flex-shrink-0" x-html="r.highlighted"></span>
+                        <span class="text-xs text-slate-400 truncate" x-text="r.crumb ? '· ' + r.crumb : ''"></span>
+                        <span class="ml-auto text-xs text-slate-400 truncate" x-text="r.url"></span>
+                    </div>
+                </template>
+                <div class="px-3 py-1.5 border-t border-slate-100 bg-slate-50 text-[10px] text-slate-400 flex items-center gap-3">
+                    <span><kbd class="px-1 bg-white border border-slate-200 rounded">↑↓</kbd> 选择</span>
+                    <span><kbd class="px-1 bg-white border border-slate-200 rounded">↵</kbd> 打开</span>
+                    <span><kbd class="px-1 bg-white border border-slate-200 rounded">Esc</kbd> 关闭</span>
+                </div>
+            </div>
         </div>
 
         <div class="flex-1"></div>
@@ -350,6 +387,12 @@
             activeTabId: "home",
             activeMenuId: null,
 
+            /* ===== 全局搜索 ===== */
+            searchOpen: false,
+            searchQuery: "",
+            searchHitIdx: 0,
+            searchResults: [],
+
             init() {
                 this.tabs[0].url = "@Url.Action("Welcome", "Home")";
                 this.theme = localStorage.getItem("theme") || "light";
@@ -366,8 +409,86 @@
                     }
                 });
                 document.addEventListener("keydown", (e) => {
-                    if (e.key === "Escape") this.closeTabCtx();
+                    if (e.key === "Escape") { this.closeTabCtx(); this.searchOpen = false; }
+                    // Ctrl/Cmd + K 聚焦搜索
+                    if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+                        e.preventDefault();
+                        if (this.$refs.searchInput) {
+                            this.$refs.searchInput.focus();
+                            this.$refs.searchInput.select();
+                        }
+                        this.searchOpen = true;
+                        this.onSearchInput();
+                    }
                 });
+            },
+
+            /* ===== 全局搜索方法 ===== */
+            _searchableMenus() {
+                // 仅返回有 URL 的菜单（即可打开的叶子节点）
+                return this.menus.filter(m => m.url && m.url.length > 0);
+            },
+            _highlight(text, q) {
+                if (!q) return text;
+                var lower = (text || "").toLowerCase();
+                var i = lower.indexOf(q);
+                if (i < 0) return text;
+                return text.substring(0, i)
+                     + '<mark class="bg-yellow-200 text-brand-900 rounded px-0.5">' + text.substring(i, i + q.length) + '</mark>'
+                     + text.substring(i + q.length);
+            },
+            _wrapHit(m, q) {
+                var parent = this.menus.find(x => x.id === m.parentId);
+                return {
+                    id: m.id,
+                    name: m.name,
+                    url: m.url,
+                    crumb: parent ? parent.name : "",
+                    highlighted: this._highlight(m.name || "", q)
+                };
+            },
+            onSearchInput() {
+                var q = (this.searchQuery || "").trim().toLowerCase();
+                this.searchHitIdx = 0;
+                var all = this._searchableMenus();
+                if (!q) {
+                    // 无关键字：展示常用前 8 项
+                    this.searchResults = all.slice(0, 8).map(m => this._wrapHit(m, ""));
+                    return;
+                }
+                var hits = [];
+                for (var i = 0; i < all.length; i++) {
+                    var m = all[i];
+                    var name = (m.name || "").toLowerCase();
+                    var code = (m.code || "").toLowerCase();
+                    var url  = (m.url  || "").toLowerCase();
+                    if (name.indexOf(q) >= 0 || code.indexOf(q) >= 0 || url.indexOf(q) >= 0) {
+                        hits.push(this._wrapHit(m, q));
+                    }
+                    if (hits.length >= 30) break;
+                }
+                this.searchResults = hits;
+            },
+            moveSearch(delta) {
+                if (!this.searchResults.length) return;
+                var n = this.searchResults.length;
+                this.searchHitIdx = (this.searchHitIdx + delta + n) % n;
+                this.$nextTick(() => {
+                    var box = document.querySelector('[x-ref="searchInput"]');
+                    var panel = box && box.parentElement && box.parentElement.querySelector('div.absolute');
+                    var rows = panel ? panel.querySelectorAll('div.cursor-pointer') : [];
+                    if (rows[this.searchHitIdx]) rows[this.searchHitIdx].scrollIntoView({ block: "nearest" });
+                });
+            },
+            selectSearchHit(r) {
+                var hit = r || this.searchResults[this.searchHitIdx];
+                if (!hit) return;
+                var menu = this.menus.find(x => x.id === hit.id);
+                if (!menu) return;
+                this.searchOpen = false;
+                this.searchQuery = "";
+                this.searchResults = [];
+                this.openTab(menu);
             },
             isReadableTabTitle(title) {
                 if (!title) return false;

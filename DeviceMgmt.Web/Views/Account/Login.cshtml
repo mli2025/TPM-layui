@@ -3,15 +3,47 @@
     Layout = "_LayoutLogin";
 }
 
-<div class="min-h-screen flex bg-white">
+<div class="min-h-screen flex">
     <!-- 左：品牌区 -->
     <div class="hidden md:flex md:flex-1 relative overflow-hidden"
-         style="background: linear-gradient(135deg, #1a3f31 0%, #1f4d3b 45%, #2c6f4e 100%);">
+         style="background: linear-gradient(135deg, #0f2620 0%, #1a3f31 40%, #1f4d3b 70%, #2c6f4e 100%);">
         <!-- 装饰光晕 -->
-        <div class="absolute -top-32 -left-32 w-[480px] h-[480px] rounded-full"
-             style="background: radial-gradient(closest-side, rgba(255,255,255,.08), transparent);"></div>
-        <div class="absolute bottom-0 right-0 w-[420px] h-[420px] rounded-full"
-             style="background: radial-gradient(closest-side, rgba(255,255,255,.05), transparent);"></div>
+        <div class="absolute -top-32 -left-32 w-[480px] h-[480px] rounded-full pointer-events-none"
+             style="background: radial-gradient(closest-side, rgba(255,255,255,.10), transparent);"></div>
+        <div class="absolute bottom-0 right-0 w-[420px] h-[420px] rounded-full pointer-events-none"
+             style="background: radial-gradient(closest-side, rgba(97,169,131,.18), transparent);"></div>
+
+        <!-- 等高线纹理（SVG，零外部依赖） -->
+        <svg class="absolute inset-0 w-full h-full opacity-[0.08] pointer-events-none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 800 600">
+            <defs>
+                <pattern id="dotgrid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+                    <circle cx="1" cy="1" r="1" fill="#ffffff" />
+                </pattern>
+            </defs>
+            <rect width="800" height="600" fill="url(#dotgrid)" />
+            <!-- 抽象拓扑环线 -->
+            <g fill="none" stroke="#ffffff" stroke-width="1">
+                <path d="M -80 460 C 120 380, 280 520, 460 420 S 760 360, 920 440" />
+                <path d="M -80 500 C 140 420, 300 560, 480 460 S 780 400, 940 480" opacity=".7" />
+                <path d="M -80 420 C 100 340, 260 480, 440 380 S 740 320, 900 400" opacity=".5" />
+                <path d="M -80 540 C 160 460, 320 600, 500 500 S 800 440, 960 520" opacity=".4" />
+            </g>
+            <!-- 抽象齿轮（左下角，呼应 TPM 设备语义） -->
+            <g transform="translate(120 470)" opacity=".18" stroke="#ffffff" stroke-width="1.2" fill="none">
+                <circle r="48" />
+                <circle r="22" />
+                <g>
+                    <line x1="0" y1="-58" x2="0" y2="-48" />
+                    <line x1="0" y1="48" x2="0" y2="58" />
+                    <line x1="-58" y1="0" x2="-48" y2="0" />
+                    <line x1="48" y1="0" x2="58" y2="0" />
+                    <line x1="-41" y1="-41" x2="-34" y2="-34" />
+                    <line x1="34" y1="34" x2="41" y2="41" />
+                    <line x1="-41" y1="41" x2="-34" y2="34" />
+                    <line x1="34" y1="-34" x2="41" y2="-41" />
+                </g>
+            </g>
+        </svg>
 
         <div class="relative flex flex-col justify-between w-full p-12 text-white">
             <div class="flex items-center gap-3">
@@ -37,8 +69,24 @@
     </div>
 
     <!-- 右：表单区 -->
-    <div class="flex-1 flex items-center justify-center px-6 py-12 bg-white">
-        <div x-data="loginForm()" x-cloak class="w-full max-w-sm">
+    <div class="flex-1 flex items-center justify-center px-6 py-12 relative overflow-hidden"
+         style="background:
+                radial-gradient(circle at 0% 0%, #f3f8f5 0%, transparent 45%),
+                radial-gradient(circle at 100% 100%, #eef4f0 0%, transparent 45%),
+                linear-gradient(135deg, #ffffff 0%, #f8faf9 100%);">
+        <!-- 细点阵纹理 -->
+        <div class="absolute inset-0 pointer-events-none opacity-60"
+             style="background-image: radial-gradient(circle, rgba(31,77,59,0.10) 1px, transparent 1px);
+                    background-size: 22px 22px;
+                    mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+                    -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);"></div>
+        <!-- 装饰光斑 -->
+        <div class="absolute -top-40 -right-40 w-[460px] h-[460px] rounded-full pointer-events-none"
+             style="background: radial-gradient(closest-side, rgba(31,77,59,0.06), transparent);"></div>
+        <div class="absolute -bottom-40 -left-40 w-[460px] h-[460px] rounded-full pointer-events-none"
+             style="background: radial-gradient(closest-side, rgba(63,139,99,0.06), transparent);"></div>
+
+        <div x-data="loginForm()" x-cloak class="w-full max-w-sm relative z-10 bg-white/70 backdrop-blur-sm rounded-2xl shadow-[0_8px_40px_rgba(15,38,32,0.08)] border border-white/60 p-8">
             <!-- 移动端 logo -->
             <div class="md:hidden flex items-center justify-center mb-8">
                 <img src="~/img/logo.png" alt="arbore" class="w-12 h-12 rounded-lg" />
