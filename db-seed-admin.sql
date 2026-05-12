@@ -9,8 +9,9 @@
    1. Sys_User 表里 Account='waes' 这条记录的 Id 是  425623414465769472
       （来自你给我看的 SSMS 截图）。如果是别的值，把下面所有 425623414465769472
       替换成你的真实 Id。
-   2. Sys_Role / Sys_UserRole / Sys_Module / Sys_RoleModule 4 张表已存在
-      （hamaton 原生库一般都有；没有的话先跑 db-schema.sql）。
+   2. Sys_Role / Sys_UserRole / Sys_Module / Sys_RoleModule 表已存在。
+      若登录报「对象名 dbo.Sys_UserRole 无效」，先执行仓库根目录的
+      `db-fix-sys-auth-junction.sql`（只建关联表，不动 Sys_User），或整库跑 `db-schema.sql`。
    3. 本脚本所有插入都用 IF NOT EXISTS 包裹，可以重复执行。
    4. 如果你的 hamaton 真表对 Sys_Module 等还有 NOT NULL 的额外字段
       （CreateTime/CreateUserId 之类），按报错信息往 INSERT 列表里补默认值即可。

@@ -1,5 +1,6 @@
 using DeviceMgmt.Repository.Domain;
 using DeviceMgmt.Repository.Interface;
+using Microsoft.Data.SqlClient;
 
 namespace DeviceMgmt.App.Apps.System;
 
@@ -22,11 +23,39 @@ public class ModuleApp : BaseApp<Sys_Module>
 
     public List<Sys_Module> GetModulesByUser(long userId)
     {
-        var roleIds = _userRoleRepo.Find("[UserId]=@uid", new { uid = userId }).Select(x => x.RoleId).ToArray();
+        long[] roleIds;
+        try
+        {
+            roleIds = _userRoleRepo.Find("[UserId]=@uid", new { uid = userId }).Select(x => x.RoleId).ToArray();
+        }
+        catch (SqlException ex) when (ex.Number == 208)
+        {
+            // Table missing (e.g. hamaton DB has Sys_User but not Sys_UserRole) — show all modules
+            return Repository.Find().ToList();
+        }
+
         if (roleIds.Length == 0) return Repository.Find().ToList();
-        var moduleIds = _roleModuleRepo.Find("[RoleId] IN @rids", new { rids = roleIds }).Select(x => x.ModuleId).Distinct().ToArray();
+
+        long[] moduleIds;
+        try
+        {
+            moduleIds = _roleModuleRepo.Find("[RoleId] IN @rids", new { rids = roleIds }).Select(x => x.ModuleId).Distinct().ToArray();
+        }
+        catch (SqlException ex) when (ex.Number == 208)
+        {
+            return Repository.Find().ToList();
+        }
+
         if (moduleIds.Length == 0) return new List<Sys_Module>();
-        return Repository.Find("[Id] IN @mids", new { mids = moduleIds }, "[Sort] ASC").ToList();
+
+        try
+        {
+            return Repository.Find("[Id] IN @mids", new { mids = moduleIds }, "[Sort] ASC").ToList();
+        }
+        catch (SqlException ex) when (ex.Number == 208)
+        {
+            return Repository.Find().ToList();
+        }
     }
 
     public List<Sys_ModuleButtons> GetButtonsByUser(long userId)
@@ -34,6 +63,13 @@ public class ModuleApp : BaseApp<Sys_Module>
         var modules = GetModulesByUser(userId);
         if (modules.Count == 0) return new List<Sys_ModuleButtons>();
         var ids = modules.Select(m => m.Id).ToArray();
-        return _buttonRepo.Find("[ModuleId] IN @mids", new { mids = ids }).ToList();
+        try
+        {
+            return _buttonRepo.Find("[ModuleId] IN @mids", new { mids = ids }).ToList();
+        }
+        catch (SqlException ex) when (ex.Number == 208)
+        {
+            return new List<Sys_ModuleButtons>();
+        }
     }
 }
