@@ -2,6 +2,12 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 
+/*
+ * Run on your SQL Server if application save fails with:
+ *   Invalid column name 'WeekTempId'
+ * (Adds WeekTempId to Facility_ResourceDetail when missing.)
+ */
+
 /* device-side: add WeekTempId column to Facility_ResourceDetail */
 IF NOT EXISTS (
     SELECT 1 FROM sys.columns

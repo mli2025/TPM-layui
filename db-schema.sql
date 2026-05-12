@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    DeviceMgmt schema DDL (idempotent)
    Target DB: wantong_mes_20250211
    Generated from DeviceMgmt.Repository/Domain/*.cs
@@ -442,6 +442,7 @@ BEGIN
     [MonthTempId] BIGINT NULL,
     [SeasonTempId] BIGINT NULL,
     [HalfYearTempId] BIGINT NULL,
+    [WeekTempId] BIGINT NULL,
     [YearTempId] BIGINT NULL,
     [LastMonthMainTainDate] DATETIME NULL,
     [LastYSeasonMainTainDate] DATETIME NULL,
