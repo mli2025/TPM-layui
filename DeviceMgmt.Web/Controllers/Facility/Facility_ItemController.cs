@@ -25,7 +25,7 @@ public class Facility_ItemController : BaseController
     public IActionResult GetMainList([FromForm] PageReq req) => Json(_app.Getmainlist(req));
 
     [HttpGet]
-    public IActionResult GetMainInfo([FromQuery] long Id) => Json(new ResponseData { code = 200, data = _app.Get(Id) });
+    public IActionResult GetMainInfo([FromQuery] long Id) => Json(new ResponseData { code = 0, data = _app.Get(Id) });
 
     [HttpPost]
     public IActionResult SaveItem([FromForm] Facility_Item model)
@@ -41,7 +41,7 @@ public class Facility_ItemController : BaseController
 
         if (model.Id == 0) _app.Add(model);
         else _app.Update(model);
-        return Json(new ResponseData { code = 200, msg = "ok", data = model.Id });
+        return Json(new ResponseData { code = 0, msg = "ok", data = model.Id });
     }
 
     [HttpPost]
@@ -49,7 +49,7 @@ public class Facility_ItemController : BaseController
     {
         if (id <= 0) return Json(new ResponseData { code = 400, msg = "参数错误" });
         _app.Delete(id);
-        return Json(new ResponseData { code = 200, msg = "ok" });
+        return Json(new ResponseData { code = 0, msg = "ok" });
     }
 
     [HttpPost]

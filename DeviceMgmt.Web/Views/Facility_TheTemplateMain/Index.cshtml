@@ -92,6 +92,7 @@
     <script>
         layui.use(['table', 'form', 'layer', 'laydate'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate;
+            function ok(res) { return res && (res.code === 0 || res.code === 200); }
 
             function getMainWhere() {
                 var list = [{ field: 'Type', conditional: 'eq', value: '2' }];
@@ -139,7 +140,7 @@
                         var row = form.val('mainForm');
                         row.Type = 2;
                         $.post('@Url.Action("SaveTemplate")', row, function (res) {
-                            if (res.code === 200) {
+                            if (ok(res)) {
                                 layer.close(idx);
                                 table.reload('GridTpl', { where: getMainWhere() });
                                 App.success('保存成功');
@@ -166,7 +167,7 @@
                         var row = form.val('subForm');
                         row.MainId = mainId;
                         $.post('@Url.Action("SaveTemplateSub")', row, function (res) {
-                            if (res.code === 200) {
+                            if (ok(res)) {
                                 layer.close(idx);
                                 reloadFn();
                                 App.success('保存成功');
@@ -232,7 +233,7 @@
                         layer.confirm('确认删除该明细？', function (idx) {
                             $.post('@Url.Action("DeleteTemplateSub")', { id: obj.data.Id }, function (res) {
                                 layer.close(idx);
-                                if (res.code === 200) {
+                                if (ok(res)) {
                                     obj.del();
                                     App.success('删除成功');
                                 } else App.error(res.msg || '删除失败');
@@ -246,7 +247,7 @@
                 openMainForm(null, function (id) {
                     if (id) {
                         $.get('@Url.Action("GetMainInfo")', { Id: id }, function (res) {
-                            if (res.code === 200 && res.data) openDetail(res.data);
+                            if (ok(res) && res.data) openDetail(res.data);
                         });
                     }
                 });
@@ -260,7 +261,7 @@
                     layer.confirm('确认删除该模板及其明细？', function (idx) {
                         $.post('@Url.Action("DeleteTemplate")', { id: obj.data.Id }, function (res) {
                             layer.close(idx);
-                            if (res.code === 200) {
+                            if (ok(res)) {
                                 obj.del();
                                 App.success('删除成功');
                             } else App.error(res.msg || '删除失败');

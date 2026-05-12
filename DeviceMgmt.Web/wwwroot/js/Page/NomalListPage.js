@@ -3,6 +3,7 @@ var table_data = new Array();
 var tableIns;
 const check_data = new Array();
 var searchParam = {};
+function isSuccessCode(code) { return code === 0 || code === 200; }
 
 const __COLUMN_TITLE_MAP__ = {
     Id: "ID",
@@ -125,12 +126,13 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
                     if (!res.data) {
                         res = eval('(' + res + ')');
                     }
+                    if (res && res.code === 200) res.code = 0;
                     //console.log(res.Data.ds);
                     return res
                 },
                 response: {
                     //statusName: 'status' //规定数据状态的字段名称，默认：code
-                    statusCode: 200 //规定成功的状态码，默认：0
+                    statusCode: 0 //规定成功的状态码，默认：0
                     //, msgName: 'hint' //规定状态信息的字段名称，默认：msg
                     //, countName: 'total' //规定数据总数的字段名称，默认：count
                     //, dataName: 'rows' //规定数据列表的字段名称，默认：data
@@ -276,7 +278,7 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
                 else {
                     layer.closeAll('loading'); 
                     var demoListView = $('#res_' + code);
-                    if (res.code == 200) {
+                    if (isSuccessCode(res.code)) {
                         let fileJson = $("input[name='" + code + "']").val();
                         if (fileJson != "")
                             fileJson = JSON.parse(fileJson);
@@ -345,11 +347,12 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
                 if (!res.data) {
                     res = eval('(' + res + ')');
                 }
+                if (res && res.code === 200) res.code = 0;
                 //console.log(res.Data.ds);
                 return res
             },
             response: {
-                statusCode: 200 //规定成功的状态码，默认：0
+                statusCode: 0 //规定成功的状态码，默认：0
             },
             done: function (res, curr, count) {
                 //数据表格加载完成时调用此函数
@@ -516,7 +519,7 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
                 /*res.data = data.field;
                 console.log(res);*/
                 layerTips.close(loadIndex);
-                if (res.code == 200) {
+                if (isSuccessCode(res.code)) {
                     table.reload('GridMain');
                     layer.closeAll();
                     layerTips.msg((typeof Glb_SaveSuccess == "undefined" ? "保存成功" : Glb_SaveSuccess));
@@ -595,7 +598,7 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
                 type: "POST",
                 success: function (res) {
                     layerTips.close(loadIndex);
-                    if (res.code == 200) {
+                    if (isSuccessCode(res.code)) {
                         table.reload('GridMain');
                     } else {
                         layerTips.alert((typeof Glb_DelFail=="undefined"?"删除失败":Glb_DelFail)+': ' + res.msg);
@@ -695,7 +698,7 @@ function layRowDel(obj) {
             type: "POST",
             success: function (res) {
                 layerTips.close(loadIndex);
-                if (res.code == 200) {
+                if (isSuccessCode(res.code)) {
                     obj.del();
                 } else {
                     layerTips.alert((typeof Glb_DelSuccess=="undefined"?"删除失败":Glb_DelSuccess)+':' + res.msg);

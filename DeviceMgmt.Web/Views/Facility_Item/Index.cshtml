@@ -83,6 +83,7 @@
         layui.use(['table', 'form', 'layer'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer;
             var typeVal = 2;
+            function ok(res) { return res && (res.code === 0 || res.code === 200); }
 
             function getSearchParam() {
                 var list = [];
@@ -130,7 +131,7 @@
                         var row = form.val('itemForm');
                         row.Type = typeVal;
                         $.post('@Url.Action("SaveItem")', row, function (res) {
-                            if (res.code === 200) {
+                            if (ok(res)) {
                                 layer.close(idx);
                                 table.reload('GridMain');
                                 App.success('保存成功');
@@ -153,7 +154,7 @@
                     layer.confirm('确认删除该项目？', function (idx) {
                         $.post('@Url.Action("DeleteItem")', { id: obj.data.Id }, function (res) {
                             layer.close(idx);
-                            if (res.code === 200) {
+                            if (ok(res)) {
                                 obj.del();
                                 App.success('删除成功');
                             } else App.error(res.msg || '删除失败');

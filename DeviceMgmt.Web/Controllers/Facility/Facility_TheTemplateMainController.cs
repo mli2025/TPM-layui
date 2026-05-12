@@ -27,7 +27,7 @@ public class Facility_TheTemplateMainController : BaseController
     public IActionResult GetMainList([FromForm] PageReq req) => Json(_app.Getmainlist(req));
 
     [HttpGet]
-    public IActionResult GetMainInfo([FromQuery] long Id) => Json(new ResponseData { code = 200, data = _app.Get(Id) });
+    public IActionResult GetMainInfo([FromQuery] long Id) => Json(new ResponseData { code = 0, data = _app.Get(Id) });
 
     [HttpPost]
     public IActionResult SaveTemplate([FromForm] Facility_TheTemplateMain model)
@@ -46,7 +46,7 @@ public class Facility_TheTemplateMainController : BaseController
         if (model.Id == 0) _app.Add(model);
         else _app.Update(model);
 
-        return Json(new ResponseData { code = 200, msg = "ok", data = model.Id });
+        return Json(new ResponseData { code = 0, msg = "ok", data = model.Id });
     }
 
     [HttpPost]
@@ -56,14 +56,14 @@ public class Facility_TheTemplateMainController : BaseController
         var subs = _subApp.GetByMainId(id).Select(x => x.Id).ToArray();
         if (subs.Length > 0) _subApp.Delete(subs);
         _app.Delete(id);
-        return Json(new ResponseData { code = 200, msg = "ok" });
+        return Json(new ResponseData { code = 0, msg = "ok" });
     }
 
     [HttpGet]
     public IActionResult GetTemplateSubs([FromQuery] long mainId)
     {
         var rows = _subApp.GetByMainId(mainId).ToList();
-        return Json(new TableData { code = 200, count = rows.Count, data = rows });
+        return Json(new TableData { code = 0, count = rows.Count, data = rows });
     }
 
     [HttpPost]
@@ -75,7 +75,7 @@ public class Facility_TheTemplateMainController : BaseController
         model.HStandard ??= string.Empty;
         if (model.Id == 0) _subApp.Add(model);
         else _subApp.Update(model);
-        return Json(new ResponseData { code = 200, msg = "ok", data = model.Id });
+        return Json(new ResponseData { code = 0, msg = "ok", data = model.Id });
     }
 
     [HttpPost]
@@ -83,7 +83,7 @@ public class Facility_TheTemplateMainController : BaseController
     {
         if (id <= 0) return Json(new ResponseData { code = 400, msg = "参数错误" });
         _subApp.Delete(id);
-        return Json(new ResponseData { code = 200, msg = "ok" });
+        return Json(new ResponseData { code = 0, msg = "ok" });
     }
 
     [HttpPost]
