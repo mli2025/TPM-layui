@@ -155,24 +155,24 @@
                     <div class="text-sm font-medium text-slate-800">@userDisplayName</div>
                     <div class="text-xs text-slate-500">@(user?.Account)</div>
                 </div>
-                <div class="dropdown-item" @@click="openProfile">
+                <button type="button" class="dropdown-item w-full text-left" @@click.stop="openProfile">
                     <i data-lucide="user" class="icon"></i>
                     <span>个人资料</span>
-                </div>
-                <div class="dropdown-item" @@click="openChangePwd">
+                </button>
+                <button type="button" class="dropdown-item w-full text-left" @@click.stop="openChangePwd">
                     <i data-lucide="key-round" class="icon"></i>
                     <span>修改密码</span>
-                </div>
-                <div class="dropdown-item" @@click="toggleTheme">
+                </button>
+                <button type="button" class="dropdown-item w-full text-left" @@click.stop="toggleTheme">
                     <i data-lucide="moon" class="icon" x-show="theme === 'light'"></i>
                     <i data-lucide="sun" class="icon" x-show="theme === 'dark'"></i>
                     <span x-text="theme === 'light' ? '切换到暗色' : '切换到亮色'"></span>
-                </div>
+                </button>
                 <div class="dropdown-divider"></div>
-                <div class="dropdown-item dropdown-item-danger" @@click="logout">
+                <button type="button" class="dropdown-item dropdown-item-danger w-full text-left" @@click.stop="logout">
                     <i data-lucide="log-out" class="icon"></i>
                     <span>退出登录</span>
-                </div>
+                </button>
             </div>
         </div>
     </header>
@@ -232,7 +232,12 @@
                      :class="{ active: activeTabId === t.id, 'home-tab': t.id === 'home' }"
                      @@click="activateTab(t.id)"
                      @@contextmenu.prevent="openTabCtx($event, t.id)"
-                     @@mousedown="onTabMouseDown($event, t.id)">
+                     @@mousedown="onTabMouseDown($event, t.id)"
+                     :draggable="t.id !== 'home'"
+                     @@dragstart="onTabDragStart($event, t.id)"
+                     @@dragover="onTabDragOver($event, t.id)"
+                     @@drop="onTabDrop($event, t.id)"
+                     @@dragend="onTabDragEnd()">
                     <span class="tab-name" x-text="t.title"></span>
                     <span class="tab-close" @@click.stop="closeTab(t.id)" x-show="t.id !== 'home'">
                         <i data-lucide="x" class="w-3 h-3"></i>
@@ -340,6 +345,7 @@
             menuOpen: false,
             expanded: {},
             tabCtxMenu: { open: false, x: 0, y: 0, tabId: null },
+            draggingTabId: null,
             tabs: [{ id: "home", title: "首页", url: "about:blank", menuId: null }],
             activeTabId: "home",
             activeMenuId: null,
@@ -441,6 +447,42 @@
                 if (e.button !== 1) return;
                 e.preventDefault();
                 if (tabId !== "home") this.closeTab(tabId);
+            },
+
+            onTabDragStart(e, tabId) {
+                if (tabId === "home") return;
+                this.draggingTabId = tabId;
+                if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = "move";
+                    try { e.dataTransfer.setData("text/plain", tabId); } catch (_) { }
+                }
+            },
+
+            onTabDragOver(e, tabId) {
+                if (!this.draggingTabId || this.draggingTabId === tabId) return;
+                e.preventDefault();
+                if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+            },
+
+            onTabDrop(e, tabId) {
+                if (!this.draggingTabId || this.draggingTabId === tabId) return;
+                e.preventDefault();
+
+                var fromIdx = this.tabs.findIndex(t => t.id === this.draggingTabId);
+                var toIdx = this.tabs.findIndex(t => t.id === tabId);
+                if (fromIdx < 0 || toIdx < 0) { this.draggingTabId = null; return; }
+
+                var dragged = this.tabs[fromIdx];
+                if (!dragged || dragged.id === "home") { this.draggingTabId = null; return; }
+
+                this.tabs.splice(fromIdx, 1);
+                if (fromIdx < toIdx) toIdx--;
+                this.tabs.splice(toIdx, 0, dragged);
+                this.draggingTabId = null;
+            },
+
+            onTabDragEnd() {
+                this.draggingTabId = null;
             },
 
             ctxCloseTab() {
