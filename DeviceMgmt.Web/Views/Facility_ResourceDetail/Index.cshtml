@@ -148,30 +148,40 @@
 
             // -------------- 弹窗 --------------
             var TPL_CYCLES = [
-                { tag: 'tplCheck',   type: 1, mt: null,      field: 'TheTemplateMainId' },
-                { tag: 'tplWeek',    type: 2, mt: 'WEEK',    field: 'WeekTempId' },
-                { tag: 'tplMonth',   type: 2, mt: 'MONTH',   field: 'MonthTempId' },
-                { tag: 'tplQuarter', type: 2, mt: 'QUARTER', field: 'SeasonTempId' },
-                { tag: 'tplYear',    type: 2, mt: 'YEAR',    field: 'YearTempId' },
-                { tag: 'tpl5S',      type: 2, mt: '5S',      field: 'The5STemplateMainId' }
+                { type: 1, mt: null,      field: 'TheTemplateMainId' },
+                { type: 2, mt: 'WEEK',    field: 'WeekTempId' },
+                { type: 2, mt: 'MONTH',   field: 'MonthTempId' },
+                { type: 2, mt: 'QUARTER', field: 'SeasonTempId' },
+                { type: 2, mt: 'YEAR',    field: 'YearTempId' },
+                { type: 2, mt: null,      field: 'The5STemplateMainId' }
             ];
 
-            function loadTemplateOptions(callback) {
-                var pending = TPL_CYCLES.length;
-                var done = function () { pending--; if (pending === 0 && callback) callback(); };
+            var __dialogState = { entity: null, tplLoaded: false, historyLoaded: false };
+
+            function loadOneTemplate(c, currentValue) {
+                var params = { type: c.type };
+                if (c.mt) params.maintenanceType = c.mt;
+                return $.get(URL_TPL_OPTS, params).then(function (res) {
+                    var $sel = $('#facilityForm select[name="' + c.field + '"]');
+                    if (!$sel.length) return;
+                    $sel.empty().append('<option value="">-- 请选择 --</option>');
+                    if (ok(res) && Array.isArray(res.data)) {
+                        res.data.forEach(function (it) {
+                            var sel = (currentValue != null && String(currentValue) === String(it.Id)) ? ' selected' : '';
+                            $sel.append('<option value="' + it.Id + '"' + sel + '>' + (it.HNumber || '') + ' / ' + (it.HName || '') + '</option>');
+                        });
+                    }
+                });
+            }
+
+            function loadTemplatesForEntity(entity) {
+                if (__dialogState.tplLoaded) return;
+                __dialogState.tplLoaded = true;
                 TPL_CYCLES.forEach(function (c) {
-                    var params = { type: c.type };
-                    if (c.mt) params.maintenanceType = c.mt;
-                    $.get(URL_TPL_OPTS, params, function (res) {
-                        var $sel = $('#facilityForm select[name="' + c.field + '"]');
-                        $sel.empty().append('<option value="">-- 请选择 --</option>');
-                        if (ok(res) && Array.isArray(res.data)) {
-                            res.data.forEach(function (it) {
-                                $sel.append('<option value="' + it.Id + '">' + (it.HNumber || '') + ' / ' + (it.HName || '') + '</option>');
-                            });
-                        }
-                        done();
-                    }).fail(done);
+                    var cur = entity ? entity[c.field] : null;
+                    loadOneTemplate(c, cur).always(function () {
+                        try { form.render('select', 'facilityForm'); } catch (e) { try { form.render(); } catch (e2) {} }
+                    });
                 });
             }
 
@@ -184,6 +194,8 @@
                 var isView = mode === 'view';
                 var isEdit = mode === 'edit';
                 var title = isView ? '设备台账查看' : (isEdit ? '设备台账编辑' : '设备台账新增');
+                __dialogState = { entity: null, tplLoaded: false, historyLoaded: false };
+
                 layer.open({
                     type: 1,
                     title: title,
@@ -191,23 +203,32 @@
                     content: $('#tplFacilityForm').html(),
                     btn: isView ? ['关闭'] : ['保存', '取消'],
                     success: function () {
-                        element.render('tab');
+                        try { element.render('tab'); } catch (e) {}
                         bindDates();
-                        form.render();
+                        try { form.render(); } catch (e) {}
 
-                        loadTemplateOptions(function () {
-                            if (isEdit || isView) {
-                                $.get(URL_GET, { Id: row.Id }, function (res) {
-                                    if (!ok(res) || !res.data) { toastErr(res && res.msg || '加载失败'); return; }
-                                    fillForm(res.data);
-                                    if (isView) lockForm();
-                                });
-                            } else {
-                                fillForm({ Id: 0, Status: 0, EntityId: 1 });
+                        // 步骤 1：先加载主数据，立即填表
+                        if (isEdit || isView) {
+                            $.get(URL_GET, { Id: row.Id }, function (res) {
+                                if (!ok(res) || !res.data) { toastErr(res && res.msg || '加载失败'); return; }
+                                __dialogState.entity = res.data;
+                                fillForm(res.data);
+                                if (isView) lockForm();
+                                // 步骤 2：填完后异步加载模板下拉（不阻塞）
+                                loadTemplatesForEntity(res.data);
+                            }).fail(function () { toastErr('加载失败，请检查网络或服务'); });
+                        } else {
+                            fillForm({ Id: 0, Status: 0, EntityId: 1 });
+                            loadTemplatesForEntity(null);
+                        }
+
+                        // 步骤 3：切到保养/点检记录 tab 时再加载历史
+                        element.on('tab(resTabs)', function (data) {
+                            if (data.index === 5 && !__dialogState.historyLoaded) {
+                                __dialogState.historyLoaded = true;
+                                bindHistoryTab(__dialogState.entity && __dialogState.entity.Id);
                             }
                         });
-
-                        bindHistoryTab(row && row.Id);
                     },
                     yes: function (idx) {
                         if (isView) { layer.close(idx); return; }
@@ -224,19 +245,21 @@
             }
 
             function fillForm(d) {
+                if (!d) return;
                 Object.keys(d).forEach(function (k) {
                     var v = d[k];
                     var $el = $('#facilityForm *[name="' + k + '"]');
                     if (!$el.length) return;
+                    var ver = ($el.attr('lay-verify') || '');
                     if ($el.is('select')) {
                         $el.val(v == null ? '' : v);
-                    } else if ($el.is('input') && $el.attr('lay-verify') && $el.attr('lay-verify').indexOf('date') >= 0) {
+                    } else if ($el.is('input') && ver.indexOf('date') >= 0) {
                         $el.val(v ? (v + '').replace('T', ' ').substring(0, 19) : '');
                     } else {
                         $el.val(v == null ? '' : v);
                     }
                 });
-                form.render();
+                try { form.render(); } catch (e) {}
             }
 
             function lockForm() {
@@ -258,11 +281,6 @@
             }
 
             function bindHistoryTab(facilityId) {
-                if (!facilityId) {
-                    table.render({ elem: '#GridMaintHist', data: [], page: false, cols: [[{ field: 'Id', title: '--' }]] });
-                    table.render({ elem: '#GridCheckHist', data: [], page: false, cols: [[{ field: 'Id', title: '--' }]] });
-                    return;
-                }
                 var statusMap = { 0:'新建', 1:'已派工', 2:'保养中', 3:'已保养', 4:'已审核' };
                 var historyCols = [[
                     { field: 'BillNo', title: '单号', width: 160 },
@@ -276,6 +294,11 @@
                     { field: 'CheckDate', title: '审核日期', width: 160, templet: function(d){ return fmtDt(d.CheckDate); } },
                     { field: 'Remark', title: '备注', minWidth: 160 }
                 ]];
+                if (!facilityId) {
+                    table.render({ elem: '#GridMaintHist', data: [], page: false, height: 360, cols: historyCols });
+                    table.render({ elem: '#GridCheckHist', data: [], page: false, height: 360, cols: historyCols });
+                    return;
+                }
                 $.get(URL_HISTORY, { facilityId: facilityId, billType: 'MAINTENANCE' }, function (res) {
                     table.render({ elem: '#GridMaintHist', data: ok(res) ? (res.data || []) : [], page: false, height: 360, cols: historyCols });
                 });
