@@ -1,59 +1,586 @@
 @{
-    ViewData["Title"] = "缁翠慨鍗曚富琛?Facility_RepairBillMain";
+    ViewData["Title"] = "维修工单列表";
 }
-<div class="layui-fluid" style="padding:0;margin-top:10px">
-    <div class="layui-row layui-col-space15">
-        <div class="layui-col-md12">
-            <div class="layui-card">
-                <div class="layui-card-header">
-                    <div class="pull-left">缁翠慨鍗曚富琛?Facility_RepairBillMain</div>
-                    <div class="demoTable pull-right no-print">
-                        <div class="layui-inline" id="searchPanel"></div>
-                        <div class="layui-btn-group">
-                            <button class="layui-btn layui-btn-sm layui-btn-warm" id="btn_Export">瀵煎嚭</button>
-                        </div>
-                    </div>
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>维修工单列表</strong>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md4">
+                    <input type="text" id="kw" class="layui-input" placeholder="输入单号 / 设备编码 / 描述查询">
                 </div>
-                <div class="layui-card-body" style="padding:0">
-                    <div class="layui-inline" style="width:100%">
-                        <table class="layui-hide" lay-filter="GridMain" id="GridMain"></table>
-                    </div>
+                <div class="layui-col-md5" id="statusPills">
+                    <button class="layui-btn layui-btn-sm" data-status="">全部</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="0">新建</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="1">待接单</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="2">维修中</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="3">已完成</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="4">已审核</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="5">已关闭</button>
+                </div>
+                <div class="layui-col-md3" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增报修单</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
                 </div>
             </div>
+
+            <table id="GridMain" lay-filter="GridMain"></table>
         </div>
     </div>
 </div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="view">查看</a>
+    {{# if(d.Status == 0 || d.Status == null){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="dispatch">派工</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+    {{# } }}
+</script>
+
+<script type="text/html" id="statusTpl">
+    {{# var map = {0:'新建',1:'待接单',2:'维修中',3:'已完成',4:'已审核',5:'已关闭'}; }}
+    {{# var color = {0:'#f7b500',1:'#1e88e5',2:'#7c3aed',3:'#16a34a',4:'#475569',5:'#94a3b8'}; }}
+    {{# var s = (d.Status == null) ? 0 : d.Status; }}
+    <span class="layui-badge" style="background-color:{{= color[s] || '#999' }};">{{= map[s] || s }}</span>
+</script>
+
+<script type="text/html" id="outsourceTpl">
+    {{# if(d.OutsourcingFlag == 1){ }}
+    <span class="layui-badge layui-bg-orange">外协</span>
+    {{# } else { }}
+    <span class="layui-badge layui-bg-gray">非外协</span>
+    {{# } }}
+</script>
+
+<script type="text/html" id="tplBillDetail">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="billForm">
+            <input type="hidden" name="Id" />
+            <input type="hidden" name="Status" />
+            <input type="hidden" name="Dispatch" />
+            <input type="hidden" name="DispatchDate" />
+            <input type="hidden" name="RepairStaff" />
+            <input type="hidden" name="FGC_Creator" />
+            <input type="hidden" name="FGC_CreateDate" />
+
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">报修单号</label>
+                    <div class="layui-input-inline"><input type="text" name="BillNo" class="layui-input" readonly placeholder="保存时自动生成" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">报修人</label>
+                    <div class="layui-input-inline"><input type="text" name="Maker" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">报修时间</label>
+                    <div class="layui-input-inline"><input type="text" name="BillDate" id="fld_BillDate" class="layui-input" placeholder="yyyy-MM-dd HH:mm" /></div>
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">设备</label>
+                    <div class="layui-input-inline" style="width:280px;">
+                        <select name="FacilityId" id="fld_FacilityId" lay-filter="fld_FacilityId">
+                            <option value="">-- 请选择 --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">维修所用时间(秒)</label>
+                    <div class="layui-input-inline"><input type="number" name="RepairTime" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">描述</label>
+                    <div class="layui-input-inline"><input type="text" name="Descr" class="layui-input" /></div>
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">是否外协</label>
+                    <div class="layui-input-inline">
+                        <input type="radio" name="OutsourcingFlag" value="0" title="非外协维修" checked />
+                        <input type="radio" name="OutsourcingFlag" value="1" title="外协维修" />
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">故障部件</label>
+                    <div class="layui-input-inline"><input type="text" name="FaultLocation" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">故障类别</label>
+                    <div class="layui-input-inline"><input type="text" name="FaultCategory" class="layui-input" /></div>
+                </div>
+            </div>
+
+            <div class="layui-form-item layui-form-text">
+                <label class="layui-form-label">备注</label>
+                <div class="layui-input-block">
+                    <textarea name="Remark" class="layui-textarea" rows="2"></textarea>
+                </div>
+            </div>
+
+            <fieldset class="layui-elem-field layui-field-title" style="margin-top:14px;">
+                <legend>派工 / 维修</legend>
+            </fieldset>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">派单人</label>
+                    <div class="layui-input-inline"><input type="text" name="DispatchText" class="layui-input" readonly /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">派单时间</label>
+                    <div class="layui-input-inline"><input type="text" name="DispatchDateText" class="layui-input" readonly /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">维修人员</label>
+                    <div class="layui-input-inline"><input type="text" name="RepairStaffText" class="layui-input" readonly /></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">响应时间</label>
+                    <div class="layui-input-inline"><input type="text" name="ResponseDate" id="fld_ResponseDate" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">开始时间</label>
+                    <div class="layui-input-inline"><input type="text" name="RepairBeginDate" id="fld_RepairBeginDate" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">结束时间</label>
+                    <div class="layui-input-inline"><input type="text" name="RepairEndDate" id="fld_RepairEndDate" class="layui-input" /></div>
+                </div>
+            </div>
+
+            <fieldset class="layui-elem-field layui-field-title" style="margin-top:14px;">
+                <legend>外协 / 关闭 / 审核</legend>
+            </fieldset>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">外协创建时间</label>
+                    <div class="layui-input-inline"><input type="text" name="OutsourcingCreateDate" id="fld_OutsourcingCreateDate" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">外协完成时间</label>
+                    <div class="layui-input-inline"><input type="text" name="OutsourcingLastDate" id="fld_OutsourcingLastDate" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">关闭人</label>
+                    <div class="layui-input-inline"><input type="text" name="Closer" class="layui-input" /></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">关闭时间</label>
+                    <div class="layui-input-inline"><input type="text" name="CloseDate" id="fld_CloseDate" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">审核人</label>
+                    <div class="layui-input-inline"><input type="text" name="Checker" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">审核时间</label>
+                    <div class="layui-input-inline"><input type="text" name="CheckDate" id="fld_CheckDate" class="layui-input" /></div>
+                </div>
+            </div>
+
+            <fieldset class="layui-elem-field layui-field-title" style="margin-top:14px;">
+                <legend>设备 / 生产 / 质量 确认</legend>
+            </fieldset>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">设备确认人</label>
+                    <div class="layui-input-inline"><input type="text" name="EquipmentComfirm" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">生产确认人</label>
+                    <div class="layui-input-inline"><input type="text" name="ProduceComfirm" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">质量确认人</label>
+                    <div class="layui-input-inline"><input type="text" name="QualityComfirm" class="layui-input" /></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">设备确认时间</label>
+                    <div class="layui-input-inline"><input type="text" name="EquipmentComfirmTime" id="fld_EquipmentComfirmTime" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">生产确认时间</label>
+                    <div class="layui-input-inline"><input type="text" name="ProduceComfirmTime" id="fld_ProduceComfirmTime" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">质量确认时间</label>
+                    <div class="layui-input-inline"><input type="text" name="QualityComfirmTime" id="fld_QualityComfirmTime" class="layui-input" /></div>
+                </div>
+            </div>
+
+            <fieldset class="layui-elem-field layui-field-title" style="margin-top:14px;">
+                <legend>报修原因 / 维修记录</legend>
+                <div style="float:right;padding:6px 10px;">
+                    <button class="layui-btn layui-btn-xs" id="btnAddSub" type="button"><i class="layui-icon layui-icon-add-1"></i> 添加</button>
+                </div>
+            </fieldset>
+            <table class="layui-table" id="GridSubs" style="margin-top:0;">
+                <thead>
+                    <tr>
+                        <th style="width:18%;">报修原因</th>
+                        <th style="width:22%;">维修描述记录</th>
+                        <th style="width:18%;">原因分析</th>
+                        <th style="width:18%;">预防措施</th>
+                        <th>备注</th>
+                        <th style="width:60px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="SubsBody"></tbody>
+            </table>
+
+            <div style="text-align:center;margin-top:18px;">
+                <button class="layui-btn" lay-submit lay-filter="submitBill" id="btnSubmit">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+<script type="text/html" id="tplDispatch">
+    <div style="padding:14px;">
+        <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+            <div class="layui-col-md8">
+                <input type="text" id="dispEmpKw" class="layui-input" placeholder="按姓名 / 工号搜索" />
+            </div>
+            <div class="layui-col-md4" style="text-align:right;">
+                <button class="layui-btn layui-btn-sm" type="button" id="btnEmpSearch"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+            </div>
+        </div>
+        <table class="layui-table" id="GridEmp">
+            <thead><tr><th style="width:60px;"></th><th>工号</th><th>姓名</th></tr></thead>
+            <tbody id="EmpBody"></tbody>
+        </table>
+        <div style="text-align:center;margin-top:10px;">
+            <button class="layui-btn" type="button" id="btnDoDispatch">确认派工</button>
+            <button class="layui-btn layui-btn-primary" type="button" id="btnDispCancel">取消</button>
+        </div>
+    </div>
+</script>
+
 @section Script{
-    <script type='text/html' class="no-print" id='barDemo'>
-        <a class='layui-btn layui-btn-xs layui-btn-normal' lay-event='viewModel'>鏌ョ湅</a>
-    </script>
-    <script>
-        var URLThisGetList = '@Url.Action("GetMainList")';
-        var URLThisExportList = '@Url.Action("ExportExcel")';
-        var Cols = [
-            { field: 'Id', title: 'Id', width: 80, sort: true },
-            { field: 'BillNo', title: 'BillNo', search: 'input', width: 130 },
-            { field: 'BillDate', title: 'BillDate', search: 'input', width: 130, templet: function(d){ return d.BillDate ? d.BillDate.substring(0, 10) : ''; } },
-            { field: 'FacilityId', title: 'FacilityId', search: 'input', width: 110 },
-            { field: 'Descr', title: 'Descr', search: 'input', width: 170 },
-            { field: 'RepairTime', title: 'RepairTime', search: 'input', width: 110 },
-            { field: 'Status', title: 'Status', search: 'input', width: 110 },
-            { field: 'Remark', title: 'Remark', search: 'input', width: 170 },
-            { field: 'LastRepairEnd', title: 'LastRepairEnd', search: 'input', width: 130, templet: function(d){ return d.LastRepairEnd ? d.LastRepairEnd.substring(0, 10) : ''; } },
-            { field: 'Dispatch', title: 'Dispatch', search: 'input', width: 130 },
-            { field: 'DispatchDate', title: 'DispatchDate', search: 'input', width: 130, templet: function(d){ return d.DispatchDate ? d.DispatchDate.substring(0, 10) : ''; } },
-            { fixed: 'right', title: '鎿嶄綔', width: 90, align: 'center', toolbar: '#barDemo' }
-        ];
-        function viewModel(obj) {
-            var Id = obj.data.Id || obj.data.id;
-            layui.layer.open({
-                title: '缁翠慨鍗曚富琛?Facility_RepairBillMain - 鏌ョ湅',
-                content: '@Url.Action("ViewList")?id=' + Id,
-                type: 2,
-                area: ['90%', '90%'],
-                btn: ['鍏抽棴']
+<script>
+(function () {
+    var URLGetList = '@Url.Action("GetMainList")';
+    var URLGetDetail = '@Url.Action("GetBillDetail")';
+    var URLSaveBill = '@Url.Action("SaveBill")';
+    var URLDelBill = '@Url.Action("DeleteBill")';
+    var URLDispatch = '@Url.Action("Dispatch")';
+    var URLGetEmp = '@Url.Action("GetEmployees")';
+    var URLGetDev = '@Url.Action("GetDevices")';
+
+    function ok(res){ return res && (res.code === 0 || res.code === 200); }
+    function toastOk(m){ try{ layui.layer.msg(m || '操作成功',{icon:1}); }catch(e){ alert(m); } }
+    function toastErr(m){ try{ layui.layer.msg(m || '操作失败',{icon:2}); }catch(e){ alert(m); } }
+    function toastWarn(m){ try{ layui.layer.msg(m || '提示',{icon:3}); }catch(e){ alert(m); } }
+
+    var currentStatus = '';
+    var deviceCache = [];
+
+    layui.use(['table','layer','form','laydate'], function () {
+        var table = layui.table, layer = layui.layer, form = layui.form, laydate = layui.laydate, $ = layui.$;
+
+        function buildSearchParam(){
+            var arr = [];
+            var kw = ($('#kw').val() || '').trim();
+            if (kw) {
+                arr.push({ Key:'BillNo', Value: kw, Contrast:'like' });
+            }
+            if (currentStatus !== '' && currentStatus != null) {
+                arr.push({ Key:'Status', Value: currentStatus, Contrast:'=' });
+            }
+            return JSON.stringify(arr);
+        }
+
+        function renderList(){
+            table.render({
+                elem:'#GridMain', url: URLGetList, method:'post',
+                where: { searchParam: buildSearchParam() },
+                contentType:'application/x-www-form-urlencoded',
+                page:true, limit:20, limits:[10,20,50,100], even:true,
+                request:{ pageName:'page', limitName:'limit' },
+                response:{ statusCode:0, statusName:'code', countName:'count', dataName:'data', msgName:'msg' },
+                parseData:function(res){ return { code: ok(res) ? 0 : res.code, msg: res.msg, count: res.count, data: res.data || [] }; },
+                cols:[[
+                    { field:'BillNo', title:'报修单号', width:160 },
+                    { field:'BillDate', title:'报修时间', width:150, templet:function(d){ return d.BillDate ? d.BillDate.substring(0,16).replace('T',' ') : ''; } },
+                    { field:'FacilityId', title:'设备', width:140 },
+                    { field:'OutsourcingFlag', title:'类型', width:80, templet:'#outsourceTpl' },
+                    { field:'Status', title:'状态', width:90, templet:'#statusTpl' },
+                    { field:'RepairStaff', title:'维修人员', width:120 },
+                    { field:'Dispatch', title:'派单人', width:100 },
+                    { field:'DispatchDate', title:'派单时间', width:150, templet:function(d){ return d.DispatchDate ? d.DispatchDate.substring(0,16).replace('T',' ') : ''; } },
+                    { field:'FaultLocation', title:'故障部件', width:120 },
+                    { field:'FaultCategory', title:'故障类别', width:120 },
+                    { field:'Remark', title:'备注', minWidth:120 },
+                    { fixed:'right', title:'操作', width:240, align:'center', toolbar:'#barRow' }
+                ]],
+                done:function(){
+                    // map FacilityId to name when device cache is available
+                    if (deviceCache && deviceCache.length){
+                        $('#GridMain').next('.layui-table-view').find('td[data-field="FacilityId"] div').each(function(){
+                            var v = $(this).text().trim();
+                            if (!v) return;
+                            for (var i=0;i<deviceCache.length;i++){
+                                if (String(deviceCache[i].Id) === v){ $(this).text(deviceCache[i].FacilityName + ' (' + deviceCache[i].FacilityCode + ')'); break; }
+                            }
+                        });
+                    }
+                }
             });
         }
-    </script>
-    <script src="~/js/Page/NomalListPage.js"></script>
+
+        function loadDevices(){
+            return $.ajax({ url: URLGetDev, method:'GET' }).done(function(res){
+                if (ok(res)){ deviceCache = res.data || []; }
+            });
+        }
+
+        $('#statusPills button').on('click', function(){
+            currentStatus = $(this).attr('data-status') || '';
+            $('#statusPills button').removeClass('layui-btn-normal').addClass('layui-btn-primary');
+            $(this).removeClass('layui-btn-primary').addClass('layui-btn-normal');
+            renderList();
+        });
+
+        $('#kw').on('keyup', function(e){ if (e.keyCode === 13) renderList(); });
+        $('#btnReload').on('click', renderList);
+        $('#btnAdd').on('click', function(){ openBillDialog(null, 'add'); });
+
+        table.on('tool(GridMain)', function(obj){
+            var d = obj.data, e = obj.event;
+            if (e === 'view') openBillDialog(d.Id, 'view');
+            else if (e === 'edit') openBillDialog(d.Id, 'edit');
+            else if (e === 'dispatch') openDispatchDialog(d);
+            else if (e === 'del') {
+                layer.confirm('确认删除该报修单?', function(idx){
+                    $.post(URLDelBill, { id: d.Id }, function(res){
+                        layer.close(idx);
+                        if (ok(res)){ toastOk('删除成功'); renderList(); } else toastErr(res.msg || '删除失败');
+                    });
+                });
+            }
+        });
+
+        function fillDeviceSelect(currentId){
+            var $sel = $('#fld_FacilityId').empty().append('<option value="">-- 请选择 --</option>');
+            for (var i=0;i<deviceCache.length;i++){
+                var dev = deviceCache[i];
+                var sel = String(dev.Id) === String(currentId||'') ? ' selected' : '';
+                $sel.append('<option value="'+dev.Id+'"'+sel+'>'+dev.FacilityName+' ('+dev.FacilityCode+')</option>');
+            }
+            try { form.render('select','billForm'); } catch(e){}
+        }
+
+        function bindDates(){
+            ['fld_BillDate','fld_ResponseDate','fld_RepairBeginDate','fld_RepairEndDate',
+             'fld_OutsourcingCreateDate','fld_OutsourcingLastDate','fld_CloseDate','fld_CheckDate',
+             'fld_EquipmentComfirmTime','fld_ProduceComfirmTime','fld_QualityComfirmTime'].forEach(function(id){
+                try { laydate.render({ elem:'#'+id, type:'datetime' }); } catch(e){}
+            });
+        }
+
+        function appendSubRow(s, readonly){
+            s = s || {};
+            var dis = readonly ? ' readonly' : '';
+            var html =
+                '<tr>'
+                + '<td><input class="layui-input s-reason" type="text" value="'+(s.ReasonId||'')+'"'+dis+' /></td>'
+                + '<td><input class="layui-input s-descr" type="text" value="'+(s.Descr||'')+'"'+dis+' /></td>'
+                + '<td><input class="layui-input s-fa" type="text" value="'+(s.FaultAnalysis||'')+'"'+dis+' /></td>'
+                + '<td><input class="layui-input s-pm" type="text" value="'+(s.PreventiveMeasure||'')+'"'+dis+' /></td>'
+                + '<td><input class="layui-input s-rk" type="text" value="'+(s.Remark||'')+'"'+dis+' /></td>'
+                + '<td style="text-align:center;">' + (readonly?'':'<a href="javascript:;" class="layui-btn layui-btn-xs layui-btn-danger sub-del">删除</a>') + '</td>'
+                + '</tr>';
+            $('#SubsBody').append(html);
+        }
+
+        function collectSubs(){
+            var subs = [];
+            $('#SubsBody tr').each(function(){
+                var $tr = $(this);
+                subs.push({
+                    ReasonId: null,
+                    Descr: $tr.find('.s-descr').val(),
+                    FaultAnalysis: $tr.find('.s-fa').val(),
+                    PreventiveMeasure: $tr.find('.s-pm').val(),
+                    Remark: $tr.find('.s-rk').val()
+                });
+            });
+            return subs;
+        }
+
+        function setReadonlyForm(readonly){
+            var $f = $('form[lay-filter="billForm"]');
+            $f.find('input,textarea,select').each(function(){
+                if (this.type === 'hidden') return;
+                if (readonly){
+                    $(this).attr('readonly','readonly').attr('disabled','disabled');
+                } else {
+                    $(this).removeAttr('readonly').removeAttr('disabled');
+                }
+            });
+            if (readonly) $('#btnSubmit').hide(); else $('#btnSubmit').show();
+        }
+
+        function openBillDialog(id, mode){
+            layer.open({
+                type:1, area:['1100px','86%'], title: (mode==='add'?'新增报修单':(mode==='edit'?'编辑报修单':'查看报修单')),
+                content: $('#tplBillDetail').html(), shadeClose:false,
+                success: function(layero){
+                    bindDates();
+                    fillDeviceSelect(null);
+                    $('#btnCancel').on('click', function(){ layer.closeAll(); });
+                    $('#btnAddSub').on('click', function(){ appendSubRow({}, false); });
+                    $('#SubsBody').on('click', '.sub-del', function(){ $(this).closest('tr').remove(); });
+
+                    if (id){
+                        $.ajax({ url: URLGetDetail, method:'GET', data:{ id:id } }).done(function(res){
+                            if (!ok(res)){ toastErr(res.msg || '加载失败'); return; }
+                            var d = res.data || {}, m = d.Main || {}, subs = d.Subs || [];
+                            try { form.val('billForm', {
+                                Id: m.Id, BillNo: m.BillNo||'', Status: m.Status==null?0:m.Status,
+                                Maker: m.Maker||'', BillDate: fmt(m.BillDate),
+                                Dispatch: m.Dispatch||'', DispatchDate: fmt(m.DispatchDate),
+                                RepairStaff: m.RepairStaff||'',
+                                DispatchText: m.Dispatch||'', DispatchDateText: fmt(m.DispatchDate), RepairStaffText: m.RepairStaff||'',
+                                ResponseDate: fmt(m.ResponseDate), RepairBeginDate: fmt(m.RepairBeginDate), RepairEndDate: fmt(m.RepairEndDate),
+                                RepairTime: m.RepairTime||'',
+                                OutsourcingFlag: String(m.OutsourcingFlag||0),
+                                OutsourcingCreateDate: fmt(m.OutsourcingCreateDate), OutsourcingLastDate: fmt(m.OutsourcingLastDate),
+                                FaultLocation: m.FaultLocation||'', FaultCategory: m.FaultCategory||'',
+                                Closer: m.Closer||'', CloseDate: fmt(m.CloseDate),
+                                Checker: m.Checker||'', CheckDate: fmt(m.CheckDate),
+                                EquipmentComfirm: m.EquipmentComfirm||'', ProduceComfirm: m.ProduceComfirm||'', QualityComfirm: m.QualityComfirm||'',
+                                EquipmentComfirmTime: fmt(m.EquipmentComfirmTime), ProduceComfirmTime: fmt(m.ProduceComfirmTime), QualityComfirmTime: fmt(m.QualityComfirmTime),
+                                Remark: m.Remark||'', Descr: m.Descr||'',
+                                FGC_Creator: m.FGC_Creator||'', FGC_CreateDate: m.FGC_CreateDate||''
+                            }); } catch(e){}
+                            fillDeviceSelect(m.FacilityId);
+                            $('#SubsBody').empty();
+                            for (var i=0;i<subs.length;i++) appendSubRow(subs[i], mode==='view');
+                            setReadonlyForm(mode==='view');
+                            try { form.render(); } catch(e){}
+                        });
+                    } else {
+                        try { form.val('billForm', { Id:0, Status:0, OutsourcingFlag:'0', BillDate: fmt(new Date()) }); } catch(e){}
+                        setReadonlyForm(false);
+                        try { form.render(); } catch(e){}
+                    }
+                }
+            });
+
+            form.off('submit(submitBill)').on('submit(submitBill)', function(data){
+                var f = data.field;
+                var payload = {
+                    Main: {
+                        Id: parseInt(f.Id||0,10),
+                        BillNo: f.BillNo,
+                        BillDate: f.BillDate || null,
+                        FacilityId: f.FacilityId ? parseInt(f.FacilityId,10) : null,
+                        Descr: f.Descr || null,
+                        RepairTime: f.RepairTime ? parseInt(f.RepairTime,10) : null,
+                        Status: parseInt(f.Status||0,10),
+                        Remark: f.Remark || null,
+                        Dispatch: f.Dispatch || null,
+                        DispatchDate: f.DispatchDate || null,
+                        RepairStaff: f.RepairStaff || null,
+                        ResponseDate: f.ResponseDate || null,
+                        RepairBeginDate: f.RepairBeginDate || null,
+                        RepairEndDate: f.RepairEndDate || null,
+                        Checker: f.Checker || null,
+                        CheckDate: f.CheckDate || null,
+                        Closer: f.Closer || null,
+                        CloseDate: f.CloseDate || null,
+                        Maker: f.Maker || null,
+                        OutsourcingFlag: f.OutsourcingFlag ? parseInt(f.OutsourcingFlag,10) : 0,
+                        OutsourcingCreateDate: f.OutsourcingCreateDate || null,
+                        OutsourcingLastDate: f.OutsourcingLastDate || null,
+                        FaultCategory: f.FaultCategory || null,
+                        FaultLocation: f.FaultLocation || null,
+                        ProduceComfirm: f.ProduceComfirm || null,
+                        EquipmentComfirm: f.EquipmentComfirm || null,
+                        QualityComfirm: f.QualityComfirm || null,
+                        ProduceComfirmTime: f.ProduceComfirmTime || null,
+                        EquipmentComfirmTime: f.EquipmentComfirmTime || null,
+                        QualityComfirmTime: f.QualityComfirmTime || null,
+                        ComfirmFlag: 0,
+                        ReviewerUserId: 0
+                    },
+                    Subs: collectSubs()
+                };
+                $.ajax({
+                    url: URLSaveBill, method:'POST',
+                    contentType:'application/json', data: JSON.stringify(payload)
+                }).done(function(res){
+                    if (ok(res)){ toastOk('保存成功'); layer.closeAll(); renderList(); }
+                    else toastErr(res.msg || '保存失败');
+                });
+                return false;
+            });
+        }
+
+        function openDispatchDialog(row){
+            var selectedEmp = null;
+            layer.open({
+                type:1, area:['640px','520px'], title:'派工 - ' + (row.BillNo||''),
+                content: $('#tplDispatch').html(), shadeClose:false,
+                success:function(){
+                    function loadEmp(){
+                        var kw = ($('#dispEmpKw').val()||'').trim();
+                        $.ajax({ url: URLGetEmp, method:'GET', data:{ kw: kw } }).done(function(res){
+                            if (!ok(res)){ toastErr(res.msg||'加载失败'); return; }
+                            var rows = res.data || [];
+                            var html = '';
+                            for (var i=0;i<rows.length;i++){
+                                var e = rows[i];
+                                html += '<tr data-id="'+e.Id+'" data-name="'+(e.Name||'')+'"><td style="text-align:center;"><input type="radio" name="empPick" /></td><td>'+(e.EmployeeNumber||'')+'</td><td>'+(e.Name||'')+'</td></tr>';
+                            }
+                            $('#EmpBody').html(html || '<tr><td colspan="3" style="text-align:center;color:#999;">无数据</td></tr>');
+                        });
+                    }
+                    loadEmp();
+                    $('#btnEmpSearch').on('click', loadEmp);
+                    $('#dispEmpKw').on('keyup', function(e){ if (e.keyCode === 13) loadEmp(); });
+                    $('#EmpBody').on('click','tr', function(){
+                        $('#EmpBody tr').css('background','');
+                        $(this).css('background','#fffbe6');
+                        $(this).find('input[name="empPick"]').prop('checked', true);
+                        selectedEmp = { id: $(this).attr('data-id'), name: $(this).attr('data-name') };
+                    });
+                    $('#btnDispCancel').on('click', function(){ layer.closeAll(); });
+                    $('#btnDoDispatch').on('click', function(){
+                        if (!selectedEmp){ toastWarn('请选择维修人员'); return; }
+                        $.post(URLDispatch, { id: row.Id, repairStaff: selectedEmp.name }, function(res){
+                            if (ok(res)){ toastOk('派工成功'); layer.closeAll(); renderList(); }
+                            else toastErr(res.msg || '派工失败');
+                        });
+                    });
+                }
+            });
+        }
+
+        function fmt(s){
+            if (!s) return '';
+            if (typeof s === 'string') return s.length > 16 ? s.substring(0,16).replace('T',' ') : s.replace('T',' ');
+            try { var d = new Date(s); var pad=function(n){return n<10?'0'+n:n;}; return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }
+            catch(e){ return ''; }
+        }
+
+        loadDevices().always(renderList);
+    });
+})();
+</script>
 }
