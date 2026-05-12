@@ -3,6 +3,76 @@ var table_data = new Array();
 var tableIns;
 const check_data = new Array();
 var searchParam = {};
+
+const __COLUMN_TITLE_MAP__ = {
+    Id: "ID",
+    Code: "编码",
+    Name: "名称",
+    Number: "编号",
+    BillNo: "单据编号",
+    BillDate: "单据日期",
+    Status: "状态",
+    Type: "类型",
+    Maker: "制单人",
+    Checker: "审核人",
+    CheckDate: "审核时间",
+    CreateDate: "创建时间",
+    CreateUserId: "创建人",
+    LastUpdateDate: "更新时间",
+    LastUpdateUserId: "更新人",
+    Project: "项目",
+    CheckMethod: "方法",
+    UpkeepMethod: "保养方法",
+    Remark: "备注",
+    FacilityID: "设备ID",
+    FacilityCode: "设备编码",
+    FacilityName: "设备名称",
+    FacilityType: "设备类型",
+    ControlType: "控件类型",
+    MaxValue: "最大值",
+    MinValue: "最小值",
+    StdMaxValue: "标准最大值",
+    StdMinValue: "标准最小值",
+    HNumber: "模板编号",
+    HName: "模板名称",
+    Hdate: "模板日期",
+    HContent: "项目",
+    HMethods: "方法",
+    HStandard: "标准描述",
+    MaintenanceType: "保养类型",
+    Maintenance_level: "保养等级",
+    BeginDate: "开始时间",
+    EndDate: "结束时间",
+    Dispatch: "派工状态",
+    DispatchDate: "派工时间",
+    RepairStaff: "维修人员",
+    RepairStaffDate: "维修时间"
+};
+
+function normalizeColumnTitles(cols) {
+    if (!Array.isArray(cols)) return cols;
+    for (let i = 0; i < cols.length; i++) {
+        const c = cols[i];
+        if (!c || typeof c !== "object") continue;
+        const field = c.field || "";
+        const title = (c.title || "").toString();
+        const mapped = __COLUMN_TITLE_MAP__[field];
+        const shouldReplace =
+            !!mapped &&
+            (
+                title.length === 0 ||
+                title === field ||
+                title.indexOf("Facility_") >= 0 ||
+                title.indexOf("Mold_") >= 0 ||
+                title.indexOf("鐐") >= 0 ||
+                title.indexOf("淇") >= 0 ||
+                title.indexOf("宸") >= 0
+            );
+        if (shouldReplace) c.title = mapped;
+    }
+    return cols;
+}
+
 layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], function () {
     var table = layui.table,
         form = layui.form,
@@ -254,6 +324,7 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
     });
 
     if (window.URLThisGetList) {
+        Cols = normalizeColumnTitles(Cols);
         tableIns = table.render({
             elem: '#GridMain',
             method: 'POST',

@@ -360,7 +360,7 @@
                 window.addEventListener("message", (e) => {
                     if (e.data && e.data.type === "iframe-loaded" && this.activeTabId) {
                         var t = this.tabs.find(x => x.id === this.activeTabId);
-                        if (t && e.data.title && t.title !== e.data.title && t.id !== "home") {
+                        if (t && e.data.title && t.title !== e.data.title && t.id !== "home" && this.isReadableTabTitle(e.data.title)) {
                             t.title = e.data.title;
                         }
                     }
@@ -368,6 +368,15 @@
                 document.addEventListener("keydown", (e) => {
                     if (e.key === "Escape") this.closeTabCtx();
                 });
+            },
+            isReadableTabTitle(title) {
+                if (!title) return false;
+                var s = String(title).trim();
+                if (!s) return false;
+                if (s.indexOf("�") >= 0) return false;
+                if (s.indexOf("Facility_") >= 0 || s.indexOf("Mold_") >= 0) return false;
+                if (/^[\w\s\-\|:\/.]+$/.test(s)) return false;
+                return true;
             },
 
             get topMenus() {
