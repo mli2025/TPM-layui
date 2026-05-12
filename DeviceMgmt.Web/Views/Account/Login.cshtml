@@ -60,7 +60,8 @@
                                :class="errors.account ? 'input-error' : ''"
                                placeholder="请输入账号"
                                autocomplete="username"
-                               @@input="errors.account = ''" />
+                               @@input="errors.account = ''"
+                               @@keydown.enter.prevent="submit" />
                     </div>
                     <p x-show="errors.account" x-text="errors.account"
                        class="text-xs text-red-500 mt-1"></p>
@@ -93,9 +94,10 @@
                     记住我
                 </label>
 
-                <button type="submit"
+                <button type="button"
                         class="btn btn-primary w-full justify-center"
-                        :disabled="loading">
+                        :disabled="loading"
+                        @@click.prevent="submit">
                     <span x-show="!loading">登 录</span>
                     <span x-show="loading" class="inline-flex items-center gap-2">
                         <span class="spinner"></span> 登录中…
@@ -122,7 +124,17 @@
             errors: { account: "", password: "" },
             serverError: "",
             returnUrl: App.getQuery("returnUrl") || "/",
+            /** 从真实 input 读值：密码管理器 / 自动化填表不会更新 Alpine x-model */
+            syncFromDom: function () {
+                var el = this.$el;
+                if (!el) return;
+                var accIn = el.querySelector('input[autocomplete="username"]');
+                var pwdIn = el.querySelector('input[autocomplete="current-password"]');
+                if (accIn && accIn.value) this.account = accIn.value.trim();
+                if (pwdIn && pwdIn.value) this.password = pwdIn.value;
+            },
             submit: function () {
+                this.syncFromDom();
                 this.errors = { account: "", password: "" };
                 this.serverError = "";
                 if (!this.account) this.errors.account = "请输入账号";
@@ -130,22 +142,31 @@
                 if (this.errors.account || this.errors.password) return;
                 this.loading = true;
                 var self = this;
+                var navigated = false;
                 $.ajax({
                     url: "@Url.Action("DoLogin", "Account")",
                     type: "POST",
                     data: { account: self.account, password: self.password, returnUrl: self.returnUrl },
-                    dataType: "json"
+                    dataType: "json",
+                    timeout: 120000
                 }).done(function (res) {
-                    if (res && res.code === 200) {
-                        var target = (res.data && res.data.returnUrl) ? res.data.returnUrl : "/";
-                        window.location.href = target;
+                    var ok = res && (res.code === 200 || res.code === "200");
+                    if (ok) {
+                        var r = (res.data && res.data.returnUrl) ? String(res.data.returnUrl).trim() : "";
+                        var target = r || "/";
+                        navigated = true;
+                        window.location.replace(target);
                     } else {
                         self.serverError = (res && res.msg) ? res.msg : "账号或密码错误";
-                        self.loading = false;
                     }
-                }).fail(function (xhr) {
-                    self.serverError = "服务器错误 (" + xhr.status + ")，请稍后再试";
-                    self.loading = false;
+                }).fail(function (xhr, status) {
+                    if (status === "timeout") {
+                        self.serverError = "请求超时，请检查数据库或网络后重试";
+                    } else {
+                        self.serverError = "服务器错误 (" + xhr.status + ")，请稍后再试";
+                    }
+                }).always(function () {
+                    if (!navigated) self.loading = false;
                 });
             }
         };

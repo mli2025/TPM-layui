@@ -27,13 +27,16 @@ public class AccountController : Controller
         {
             return Json(new { code = result.code, msg = result.msg });
         }
+        var home = Url.Content("~/");
+        var safeReturn = string.IsNullOrWhiteSpace(returnUrl) ? home : returnUrl.Trim();
         Response.Cookies.Append("Token", result.Token, new CookieOptions
         {
+            Path = "/",
             HttpOnly = false,
             SameSite = SameSiteMode.Lax,
             Expires = DateTimeOffset.Now.AddHours(8)
         });
-        return Json(new { code = 200, msg = "ok", data = new { token = result.Token, returnUrl = returnUrl ?? Url.Content("~/") } });
+        return Json(new { code = 200, msg = "ok", data = new { token = result.Token, returnUrl = safeReturn } });
     }
 
     [HttpGet]
@@ -41,7 +44,7 @@ public class AccountController : Controller
     {
         var token = Request.Cookies["Token"];
         if (!string.IsNullOrEmpty(token)) _auth.Logout(token);
-        Response.Cookies.Delete("Token");
+        Response.Cookies.Delete("Token", new CookieOptions { Path = "/" });
         return Redirect(Url.Content("~/Account/Login"));
     }
 

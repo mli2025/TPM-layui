@@ -1,4 +1,4 @@
-﻿@using DeviceMgmt.Repository.Domain
+@using DeviceMgmt.Repository.Domain
 @{
     IgnoreBody();
     var title = ViewBag.Title as string ?? "首页";
@@ -71,8 +71,19 @@
         .nav-item { display: flex; align-items: center; gap: 10px; padding: 7px 14px; color: rgba(255,255,255,.78); font-size: 13px; cursor: pointer; user-select: none; border-left: 2px solid transparent; transition: background .12s, color .12s; }
         .nav-item:hover { background: var(--bg-sidebar-hover); color: #fff; }
         .nav-item.active { background: var(--bg-sidebar-hover); color: #fff; border-left-color: var(--brand-400); }
-        .nav-item .arrow { margin-left: auto; transition: transform .15s; opacity: .6; }
-        .nav-item.expanded .arrow { transform: rotate(90deg); }
+        /* 折叠箭头：纯 CSS，避免每次 toggle 调用 lucide.createIcons 导致 SVG 重复插入 */
+        .nav-item .arrow {
+            margin-left: auto;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid currentColor;
+            border-bottom: 2px solid currentColor;
+            transform: rotate(-45deg);
+            opacity: .55;
+            flex-shrink: 0;
+            transition: transform .15s ease, opacity .15s;
+        }
+        .nav-item.expanded .arrow { transform: rotate(45deg); opacity: .75; }
         .nav-sub { background: rgba(0,0,0,.18); }
         .nav-sub .nav-item { padding-left: 38px; font-size: 12.5px; color: rgba(255,255,255,.68); }
 
@@ -176,7 +187,7 @@
                         <i :data-lucide="m.icon || 'circle-dot'"></i>
                         <span class="nav-item-label" x-text="m.name"></span>
                         <template x-if="hasChildren(m.id) && !sidebarCollapsed">
-                            <i data-lucide="chevron-right" class="arrow"></i>
+                            <span class="arrow" aria-hidden="true"></span>
                         </template>
                     </div>
                     <template x-if="hasChildren(m.id) && expanded[m.id] && !sidebarCollapsed">
@@ -387,7 +398,7 @@
             toggleSidebar() {
                 this.sidebarCollapsed = !this.sidebarCollapsed;
                 localStorage.setItem("sidebarCollapsed", this.sidebarCollapsed ? "1" : "0");
-                this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                /* 不再全量 createIcons：侧栏箭头已改为 CSS，重复调用会在部分环境下叠多个 SVG */
             },
 
             toggleTheme() {
