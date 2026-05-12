@@ -1,4 +1,4 @@
-﻿const ids = [];
+const ids = [];
 var table_data = new Array();
 var tableIns;
 const check_data = new Array();
@@ -12,6 +12,9 @@ const __COLUMN_TITLE_MAP__ = {
     Number: "编号",
     BillNo: "单据编号",
     BillDate: "单据日期",
+    BillType: "单据类型",
+    TempID: "模板ID",
+    MaintainType: "保养方式",
     Status: "状态",
     Type: "类型",
     Maker: "制单人",

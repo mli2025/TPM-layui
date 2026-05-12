@@ -32,7 +32,8 @@ public class BaseApp<T> where T : Entity
         var filters = GetSearchCondition(req.searchParam);
         var orderBy = BuildOrderBy(req.sfield, req.sorder);
         var (data, total) = Repository.FindPaged(filters, req.page, req.limit, orderBy);
-        return new TableData { code = 200, count = total, data = data };
+        // Layui table 约定成功为 code === 0（与项目内 ResponseData 一致）；勿用 200
+        return new TableData { code = 0, count = total, data = data };
     }
 
     protected static string BuildOrderBy(string? sfield, string? sorder)

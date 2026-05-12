@@ -7,11 +7,15 @@ using DeviceMgmt.App.Interface;
 using DeviceMgmt.Repository.Core;
 using DeviceMgmt.Repository.Interface;
 using Infrastructure.Cache;
+using Newtonsoft.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews()
-    .AddNewtonsoftJson();
+    .AddNewtonsoftJson(options =>
+    {
+        options.SerializerSettings.ContractResolver = new DefaultContractResolver();
+    });
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ICacheContext, MemoryCacheContext>();

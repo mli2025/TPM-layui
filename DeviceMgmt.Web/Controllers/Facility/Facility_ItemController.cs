@@ -1,4 +1,5 @@
 using DeviceMgmt.App.Apps.Facility;
+using DeviceMgmt.App.Constants;
 using DeviceMgmt.App.Interface;
 using DeviceMgmt.App.Request;
 using DeviceMgmt.App.Response;
@@ -38,6 +39,8 @@ public class Facility_ItemController : BaseController
             model.UpkeepMethod = string.Empty;
         if (string.IsNullOrWhiteSpace(model.FacilityType))
             model.FacilityType = string.Empty;
+        if (!FacilityCategoryType.IsDefined(model.Type))
+            model.Type = FacilityCategoryType.Maintenance;
 
         if (model.Id == 0) _app.Add(model);
         else _app.Update(model);

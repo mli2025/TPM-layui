@@ -37,6 +37,16 @@
     <form class="layui-form" lay-filter="itemForm" style="padding:14px 16px 0 0;">
         <input type="hidden" name="Id">
         <div class="layui-form-item">
+            <label class="layui-form-label">业务类型</label>
+            <div class="layui-input-block">
+                <select name="Type" lay-verify="required">
+                    <option value="2">保养项目</option>
+                    <option value="1">点检项目</option>
+                    <option value="3">模具保养</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
             <label class="layui-form-label">项目</label>
             <div class="layui-input-block"><input name="Project" required lay-verify="required" class="layui-input"></div>
         </div>
@@ -74,7 +84,6 @@
                 </select>
             </div>
         </div>
-        <input type="hidden" name="Type">
     </form>
 </script>
 
@@ -84,6 +93,44 @@
             var table = layui.table, form = layui.form, layer = layui.layer;
             var typeVal = 2;
             function ok(res) { return res && (res.code === 0 || res.code === 200); }
+
+            /** API 可能为 camelCase（project）或 PascalCase（Project）；Layui 列与表单 name 均为 PascalCase，需统一。 */
+            function firstDefined() {
+                for (var i = 0; i < arguments.length; i++) {
+                    var v = arguments[i];
+                    if (v !== undefined && v !== null) return v;
+                }
+                return undefined;
+            }
+            function normalizeFacilityItemRow(d) {
+                if (!d || typeof d !== 'object') return d;
+                return {
+                    Id: firstDefined(d.Id, d.id),
+                    Type: firstDefined(d.Type, d.type),
+                    Project: firstDefined(d.Project, d.project),
+                    CheckMethod: firstDefined(d.CheckMethod, d.checkMethod),
+                    UpkeepMethod: firstDefined(d.UpkeepMethod, d.upkeepMethod),
+                    Remark: firstDefined(d.Remark, d.remark),
+                    Status: firstDefined(d.Status, d.status),
+                    FacilityType: firstDefined(d.FacilityType, d.facilityType, ''),
+                    ControlType: firstDefined(d.ControlType, d.controlType, 0),
+                    MaxValue: firstDefined(d.MaxValue, d.maxValue),
+                    MinValue: firstDefined(d.MinValue, d.minValue),
+                    StdMaxValue: firstDefined(d.StdMaxValue, d.stdMaxValue),
+                    StdMinValue: firstDefined(d.StdMinValue, d.stdMinValue),
+                    Maintenance_level: firstDefined(d.Maintenance_level, d.maintenance_level),
+                    Standardvalue: firstDefined(d.Standardvalue, d.standardvalue),
+                    WXFlage: firstDefined(d.WXFlage, d.wXFlage, d.wxFlage, 0)
+                };
+            }
+
+            function itemCategoryLabel(t) {
+                var n = parseInt(t, 10);
+                if (n === 1) return '点检项目';
+                if (n === 2) return '保养项目';
+                if (n === 3) return '模具保养';
+                return '';
+            }
 
             function getSearchParam() {
                 var list = [];
@@ -96,31 +143,45 @@
             function renderTable() {
                 table.render({
                     elem: '#GridMain',
+                    id: 'GridMain',
                     url: '@Url.Action("GetMainList")',
                     method: 'post',
                     where: { page: 1, limit: 20, searchParam: getSearchParam() },
                     page: true,
                     height: 'full-250',
+                    parseData: function (res) {
+                        var raw = res && res.data ? res.data : [];
+                        var data = [];
+                        for (var i = 0; i < raw.length; i++) data.push(normalizeFacilityItemRow(raw[i]));
+                        return {
+                            code: res ? res.code : 1,
+                            msg: (res && res.msg) || '',
+                            count: res && res.count != null ? res.count : 0,
+                            data: data
+                        };
+                    },
                     cols: [[
                         { type: 'numbers', title: '#' },
+                        { field: 'Type', title: '业务类型', width: 100, templet: function (d) { return itemCategoryLabel(d.Type); } },
                         { field: 'Project', title: '项目', minWidth: 180 },
                         { field: 'UpkeepMethod', title: '方法', minWidth: 220 },
                         { field: 'CheckMethod', title: '标准描述', minWidth: 180 },
-                        { field: 'ControlType', title: '控件类型', width: 100, templet: function (d) { return d.ControlType == 1 ? '数值型' : '是否型'; } },
+                        { field: 'ControlType', title: '控件类型', width: 100, templet: function (d) { return Number(d.ControlType) === 1 ? '数值型' : '是否型'; } },
                         { field: 'MinValue', title: '最小值', width: 90 },
                         { field: 'MaxValue', title: '最大值', width: 90 },
-                        { field: 'Status', title: '状态', width: 90, templet: function (d) { return d.Status == 1 ? '启用' : '禁用'; } },
+                        { field: 'Status', title: '状态', width: 90, templet: function (d) { var s = d.Status; return (s == 1 || s === '1') ? '启用' : '禁用'; } },
                         { title: '操作', width: 130, toolbar: '#barRow', fixed: 'right' }
                     ]]
                 });
             }
 
             function openEdit(data) {
-                var payload = data || { Id: 0, Type: typeVal, Status: 1, ControlType: 0 };
+                var payload = data ? normalizeFacilityItemRow(data) : { Id: 0, Type: typeVal, Status: 1, ControlType: 0, FacilityType: '' };
+                var isEdit = payload.Id != null && Number(payload.Id) > 0;
                 layer.open({
                     type: 1,
                     area: ['560px', '520px'],
-                    title: payload.Id ? '编辑保养项目明细' : '新增保养项目明细',
+                    title: isEdit ? '编辑保养项目明细' : '新增保养项目明细',
                     content: $('#tplForm').html(),
                     btn: ['保存', '关闭'],
                     success: function () {
@@ -129,7 +190,8 @@
                     },
                     yes: function (idx) {
                         var row = form.val('itemForm');
-                        row.Type = typeVal;
+                        row.Type = parseInt(row.Type, 10);
+                        if (isNaN(row.Type) || row.Type < 1 || row.Type > 3) row.Type = typeVal;
                         $.post('@Url.Action("SaveItem")', row, function (res) {
                             if (ok(res)) {
                                 layer.close(idx);

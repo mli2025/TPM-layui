@@ -1,4 +1,5 @@
 using DeviceMgmt.App.Apps.Facility;
+using DeviceMgmt.App.Constants;
 using DeviceMgmt.App.Interface;
 using DeviceMgmt.App.Request;
 using DeviceMgmt.App.Response;
@@ -24,7 +25,7 @@ public class Facility_TheTemplateMainController : BaseController
     public IActionResult ViewList(long id) { ViewBag.Id = id; return View(); }
 
     [HttpPost]
-    public IActionResult GetMainList([FromForm] PageReq req) => Json(_app.Getmainlist(req));
+    public IActionResult GetMainList([FromForm] PageReq req) => Json(_app.GetTemplateMainList(req));
 
     [HttpGet]
     public IActionResult GetMainInfo([FromQuery] long Id) => Json(new ResponseData { code = 0, data = _app.Get(Id) });
@@ -36,15 +37,45 @@ public class Facility_TheTemplateMainController : BaseController
             return Json(new ResponseData { code = 400, msg = "模板编号不能为空" });
         if (string.IsNullOrWhiteSpace(model.HName))
             return Json(new ResponseData { code = 400, msg = "模板名称不能为空" });
+
+        if (!FacilityCategoryType.IsDefined(model.Type))
+            model.Type = FacilityCategoryType.Maintenance;
+
+        model.MaintenanceType = TemplateMaintenanceCycle.NormalizeToCode(model.MaintenanceType);
+        if (string.IsNullOrWhiteSpace(model.MaintenanceType) || !TemplateMaintenanceCycle.IsValidCode(model.MaintenanceType))
+        {
+            if (model.Id == 0)
+                return Json(new ResponseData { code = 400, msg = "请选择保养周期（年/季/月/周）" });
+            var existType = _app.Get(model.Id);
+            var prev = TemplateMaintenanceCycle.NormalizeToCode(existType?.MaintenanceType);
+            if (!string.IsNullOrWhiteSpace(prev) && TemplateMaintenanceCycle.IsValidCode(prev))
+                model.MaintenanceType = prev;
+            else
+                return Json(new ResponseData { code = 400, msg = "请选择保养周期（年/季/月/周）" });
+        }
+
         model.Hdate ??= DateTime.Now;
         model.CheckDate ??= DateTime.Now;
         model.Status ??= 1;
-        model.Type = model.Type == 0 ? (short)2 : model.Type;
         model.FGC_LastModifyDate = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
         model.FGC_CreateDate ??= DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
 
-        if (model.Id == 0) _app.Add(model);
-        else _app.Update(model);
+        var makerName = CurrentUser?.User.Name;
+        if (string.IsNullOrWhiteSpace(makerName))
+            makerName = CurrentUser?.User.Account;
+        if (model.Id == 0)
+        {
+            if (string.IsNullOrWhiteSpace(model.Maker))
+                model.Maker = makerName;
+            _app.Add(model);
+        }
+        else
+        {
+            var existing = _app.Get(model.Id);
+            if (existing != null && string.IsNullOrWhiteSpace(model.Maker))
+                model.Maker = existing.Maker ?? makerName;
+            _app.Update(model);
+        }
 
         return Json(new ResponseData { code = 0, msg = "ok", data = model.Id });
     }
@@ -91,7 +122,7 @@ public class Facility_TheTemplateMainController : BaseController
     {
         req.page = 1;
         req.limit = int.MaxValue;
-        var pageData = _app.Getmainlist(req);
+        var pageData = _app.GetTemplateMainList(req);
         var rows = (pageData.data as IEnumerable<Facility_TheTemplateMain>) ?? Enumerable.Empty<Facility_TheTemplateMain>();
         var dt = NPOIHelper.LINQToDataTable(rows);
         var bytes = NPOIHelper.ExportToBytes(dt, "Facility_TheTemplateMain");

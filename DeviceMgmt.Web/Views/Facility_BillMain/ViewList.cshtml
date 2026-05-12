@@ -1,44 +1,73 @@
 @{
-    ViewData["Title"] = "淇濆吇宸ュ崟 Facility_BillMain - 鏌ョ湅";
+    ViewData["Title"] = "保养工单查看";
     var id = (long)(ViewBag.Id ?? 0L);
 }
 <div class="layui-fluid" style="padding:14px;">
     <div class="layui-card">
-        <div class="layui-card-header"><b>淇濆吇宸ュ崟 Facility_BillMain</b> &nbsp;<span style="color:#999;font-size:12px;">Id = @id</span></div>
+        <div class="layui-card-header"><strong>保养工单</strong> <span style="color:#999;font-size:12px;">Id = @id</span></div>
         <div class="layui-card-body">
-            <form id="viewFormMain" class="layui-form layui-form-pane">
+            <form class="layui-form layui-form-pane" lay-filter="billViewForm">
                 <div class="layui-row layui-col-space10">
-                    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Id</label><div class='layui-input-block'><input type='text' name='Id' class='layui-input' readonly /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>BillNo</label><div class='layui-input-block'><input type='text' name='BillNo' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>BillDate</label><div class='layui-input-block'><input type='text' name='BillDate' class='layui-input' lay-verify='datetime' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>BillType</label><div class='layui-input-block'><input type='text' name='BillType' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>BeginDate</label><div class='layui-input-block'><input type='text' name='BeginDate' class='layui-input' lay-verify='datetime' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>EndDate</label><div class='layui-input-block'><input type='text' name='EndDate' class='layui-input' lay-verify='datetime' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>FacilityID</label><div class='layui-input-block'><input type='text' name='FacilityID' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>TempID</label><div class='layui-input-block'><input type='text' name='TempID' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>MaintainType</label><div class='layui-input-block'><input type='text' name='MaintainType' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Status</label><div class='layui-input-block'><input type='text' name='Status' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Remark</label><div class='layui-input-block'><input type='text' name='Remark' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>LastMaintainTime</label><div class='layui-input-block'><input type='text' name='LastMaintainTime' class='layui-input' lay-verify='datetime' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Dispatch</label><div class='layui-input-block'><input type='text' name='Dispatch' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>DispatchDate</label><div class='layui-input-block'><input type='text' name='DispatchDate' class='layui-input' lay-verify='datetime' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>RepairStaff</label><div class='layui-input-block'><input type='text' name='RepairStaff' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>RepairStaffDate</label><div class='layui-input-block'><input type='text' name='RepairStaffDate' class='layui-input' lay-verify='datetime' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Checker</label><div class='layui-input-block'><input type='text' name='Checker' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CheckDate</label><div class='layui-input-block'><input type='text' name='CheckDate' class='layui-input' lay-verify='datetime' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Closer</label><div class='layui-input-block'><input type='text' name='Closer' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CloseDate</label><div class='layui-input-block'><input type='text' name='CloseDate' class='layui-input' lay-verify='datetime' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Maintenance_level</label><div class='layui-input-block'><input type='text' name='Maintenance_level' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>IsOK</label><div class='layui-input-block'><input type='text' name='IsOK' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Amount</label><div class='layui-input-block'><input type='text' name='Amount' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Files</label><div class='layui-input-block'><input type='text' name='Files' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CreateUserId</label><div class='layui-input-block'><input type='text' name='CreateUserId' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CreateDate</label><div class='layui-input-block'><input type='text' name='CreateDate' class='layui-input' lay-verify='datetime' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>LastUpdateUserId</label><div class='layui-input-block'><input type='text' name='LastUpdateUserId' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>LastUpdateDate</label><div class='layui-input-block'><input type='text' name='LastUpdateDate' class='layui-input' lay-verify='datetime' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>CheckerUserId</label><div class='layui-input-block'><input type='text' name='CheckerUserId' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>FGC_Creator</label><div class='layui-input-block'><input type='text' name='FGC_Creator' class='layui-input' /></div></div></div>
-    <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>FGC_CreateDate</label><div class='layui-input-block'><input type='text' name='FGC_CreateDate' class='layui-input' /></div></div></div>
+                    <div class="layui-col-md6">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">单据编号</label>
+                            <div class="layui-input-block"><input type="text" name="BillNo" class="layui-input" readonly></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">单据日期</label>
+                            <div class="layui-input-block"><input type="text" name="BillDate" class="layui-input" readonly></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">单据类型</label>
+                            <div class="layui-input-block"><input type="text" name="BillType" class="layui-input" readonly></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">状态</label>
+                            <div class="layui-input-block"><input type="text" name="StatusText" class="layui-input" readonly></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">开始时间</label>
+                            <div class="layui-input-block"><input type="text" name="BeginDate" class="layui-input" readonly></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">结束时间</label>
+                            <div class="layui-input-block"><input type="text" name="EndDate" class="layui-input" readonly></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">设备ID</label>
+                            <div class="layui-input-block"><input type="text" name="FacilityID" class="layui-input" readonly></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">模板ID</label>
+                            <div class="layui-input-block"><input type="text" name="TempID" class="layui-input" readonly></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">保养方式</label>
+                            <div class="layui-input-block"><input type="text" name="MaintainType" class="layui-input" readonly></div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md12">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">备注</label>
+                            <div class="layui-input-block"><input type="text" name="Remark" class="layui-input" readonly></div>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
@@ -46,17 +75,37 @@
 </div>
 @section Script{
     <script>
-        layui.use(['form','laydate'], function () {
-            var form = layui.form, laydate = layui.laydate;
-            $('input[lay-verify*=datetime]').each(function () { laydate.render({ type: 'datetime', elem: this }); });
-            $.get('@Url.Action("GetMainInfo")', { Id: @id }, function (res) {
-                if (res && res.data) {
-                    for (var k in res.data) {
-                        $("#viewFormMain *[name='" + k + "']").val(res.data[k]);
-                    }
-                    $("#viewFormMain input, #viewFormMain textarea, #viewFormMain select").attr('readonly', 'readonly').attr('disabled', 'disabled');
-                    form.render();
-                }
+        layui.use(['form'], function () {
+            var form = layui.form;
+            function ok(res) { return res && (res.code === 0 || res.code === 200); }
+            function st(s) {
+                var n = parseInt(s, 10);
+                if (n === 0) return '草稿';
+                if (n === 1) return '进行中';
+                if (n === 2) return '已完成';
+                if (n === 9) return '已关闭';
+                return s != null ? String(s) : '';
+            }
+            function fmt(v) {
+                if (!v) return '';
+                return String(v).substring(0, 19).replace('T', ' ');
+            }
+            $.get('@Url.Action("GetMainInfo", "Facility_BillMain")', { Id: @id }, function (res) {
+                if (!ok(res) || !res.data) return;
+                var d = res.data;
+                var row = {
+                    BillNo: d.BillNo || d.billNo,
+                    BillDate: fmt(d.BillDate || d.billDate),
+                    BillType: d.BillType || d.billType,
+                    BeginDate: fmt(d.BeginDate || d.beginDate),
+                    EndDate: fmt(d.EndDate || d.endDate),
+                    FacilityID: d.FacilityID != null ? d.FacilityID : d.facilityID,
+                    TempID: d.TempID != null ? d.TempID : d.tempID,
+                    MaintainType: d.MaintainType || d.maintainType,
+                    Remark: d.Remark || d.remark,
+                    StatusText: st(d.Status != null ? d.Status : d.status)
+                };
+                form.val('billViewForm', row);
             });
         });
     </script>
