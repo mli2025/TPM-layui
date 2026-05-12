@@ -4,6 +4,8 @@ using DeviceMgmt.App.Response;
 using DeviceMgmt.Repository.Domain;
 using DeviceMgmt.Repository.Interface;
 using DeviceMgmt.Web.Controllers.Base;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DeviceMgmt.Web.Controllers;
@@ -19,6 +21,7 @@ public class MobileController : BaseController
     private readonly IRepository<Facility_RepairBillSub> _repairSubRepo;
     private readonly IRepository<Facility_ResourceDetail> _deviceRepo;
     private readonly IRepository<Basic_Employee> _empRepo;
+    private readonly IWebHostEnvironment _env;
 
     public MobileController(
         IAuth auth,
@@ -29,7 +32,8 @@ public class MobileController : BaseController
         IRepository<Facility_RepairBillMain> repairRepo,
         IRepository<Facility_RepairBillSub> repairSubRepo,
         IRepository<Facility_ResourceDetail> deviceRepo,
-        IRepository<Basic_Employee> empRepo) : base(auth)
+        IRepository<Basic_Employee> empRepo,
+        IWebHostEnvironment env) : base(auth)
     {
         _billApp = billApp;
         _repairApp = repairApp;
@@ -39,6 +43,7 @@ public class MobileController : BaseController
         _repairSubRepo = repairSubRepo;
         _deviceRepo = deviceRepo;
         _empRepo = empRepo;
+        _env = env;
     }
 
     [HttpGet("")]
@@ -267,11 +272,18 @@ public class MobileController : BaseController
         if (req == null) return Json(new ResponseData { code = 400, msg = "参数错误" });
         var uid = CurrentUser?.User?.Id ?? 0;
         var name = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account ?? uid.ToString();
+        // 把图片 URL 拼到 Remark 末尾，使用 [IMG]url[/IMG] 标记，避免改库结构
+        var remark = req.Remark ?? string.Empty;
+        if (req.ImageUrls != null && req.ImageUrls.Count > 0)
+        {
+            var imgs = string.Join("\n", req.ImageUrls.Select(u => $"[IMG]{u}[/IMG]"));
+            remark = string.IsNullOrWhiteSpace(remark) ? imgs : remark + "\n" + imgs;
+        }
         var main = new Facility_RepairBillMain
         {
             FacilityId = req.FacilityId,
             Descr = req.Descr,
-            Remark = req.Remark,
+            Remark = remark,
             FaultLocation = req.FaultLocation,
             FaultCategory = req.FaultCategory,
             Maker = name,
@@ -285,6 +297,41 @@ public class MobileController : BaseController
         }
         var id = _repairApp.SaveBill(main, subs, uid);
         return Json(new ResponseData { code = 0, data = id, msg = "ok" });
+    }
+
+    [HttpPost("api/upload")]
+    [RequestSizeLimit(20 * 1024 * 1024)] // 20MB per upload
+    public IActionResult ApiUpload([FromForm] IFormFile? file, [FromForm] string? kind = "repair")
+    {
+        if (file == null || file.Length == 0) return Json(new ResponseData { code = 400, msg = "未选择文件" });
+        var allowExt = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
+        var ext = System.IO.Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowExt.Contains(ext)) return Json(new ResponseData { code = 400, msg = "仅支持图片格式 (jpg/png/webp 等)" });
+
+        var safeKind = string.IsNullOrWhiteSpace(kind) ? "misc" : new string(kind.Where(char.IsLetterOrDigit).ToArray());
+        if (string.IsNullOrEmpty(safeKind)) safeKind = "misc";
+        var monthDir = DateTime.Now.ToString("yyyyMM");
+        var relDir = $"uploads/{safeKind}/{monthDir}";
+        var absDir = System.IO.Path.Combine(_env.WebRootPath ?? "wwwroot", relDir.Replace('/', System.IO.Path.DirectorySeparatorChar));
+        System.IO.Directory.CreateDirectory(absDir);
+
+        var fileName = $"{Guid.NewGuid():N}{ext}";
+        var absPath = System.IO.Path.Combine(absDir, fileName);
+        using (var fs = new System.IO.FileStream(absPath, System.IO.FileMode.CreateNew))
+        {
+            file.CopyTo(fs);
+        }
+        var url = "/" + relDir + "/" + fileName;
+        return Json(new ResponseData { code = 0, data = new { url, size = file.Length, name = file.FileName }, msg = "ok" });
+    }
+
+    [HttpGet("api/maintain/by-billno")]
+    public IActionResult ApiMaintainByBillNo([FromQuery] string billNo)
+    {
+        if (string.IsNullOrWhiteSpace(billNo)) return Json(new ResponseData { code = 400, msg = "billNo 为空" });
+        var row = _billRepo.Find("[BillNo]=@b", new { b = billNo.Trim() }, "[Id] DESC").FirstOrDefault();
+        if (row == null) return Json(new ResponseData { code = 404, msg = "未找到该单号" });
+        return Json(new ResponseData { code = 0, data = row });
     }
 
     [HttpPost("api/repair/accept")]
@@ -399,6 +446,7 @@ public class RepairCreateReq
     public string? FaultLocation { get; set; }
     public string? FaultCategory { get; set; }
     public string? ReasonText { get; set; }
+    public List<string>? ImageUrls { get; set; }
 }
 
 public class RepairFinishReq

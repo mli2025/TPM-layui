@@ -26,6 +26,18 @@
         <textarea id="remark" class="m-textarea mt-1" rows="2"></textarea>
     </div>
 
+    <div class="m-card p-3">
+        <div class="flex items-center justify-between">
+            <label class="text-xs text-slate-500">故障照片</label>
+            <span id="imgCount" class="text-xs text-slate-400">0 / 6</span>
+        </div>
+        <div id="imgGrid" class="grid grid-cols-3 gap-2 mt-2"></div>
+        <label class="mt-2 block">
+            <input id="imgInput" type="file" accept="image/*" capture="environment" multiple class="hidden" />
+            <span class="m-btn block text-center" id="btnPickImg">拍照 / 选择图片</span>
+        </label>
+    </div>
+
     <button class="m-btn primary w-full" id="btnSubmit">提交报修</button>
 </div>
 
@@ -63,6 +75,61 @@
         }, 280);
     });
 
+    // ---------------- 图片上传 ----------------
+    var MAX_IMG = 6;
+    var uploaded = []; // [{url, name}]
+    var imgGrid = document.getElementById('imgGrid');
+    var imgCount = document.getElementById('imgCount');
+    var imgInput = document.getElementById('imgInput');
+
+    function refreshImgGrid(){
+        imgCount.textContent = uploaded.length + ' / ' + MAX_IMG;
+        imgGrid.innerHTML = uploaded.map(function(it, idx){
+            return '<div class="relative">'
+                +   '<img src="' + it.url + '" class="w-full aspect-square object-cover rounded-lg border border-slate-200" />'
+                +   '<button type="button" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs leading-6 text-center img-del" data-idx="' + idx + '">×</button>'
+                + '</div>';
+        }).join('');
+        Array.prototype.forEach.call(imgGrid.querySelectorAll('.img-del'), function(btn){
+            btn.addEventListener('click', function(e){
+                e.preventDefault();
+                var i = parseInt(btn.dataset.idx, 10);
+                uploaded.splice(i, 1);
+                refreshImgGrid();
+            });
+        });
+    }
+
+    document.getElementById('btnPickImg').addEventListener('click', function(){
+        if (uploaded.length >= MAX_IMG) { M.toast('最多上传 ' + MAX_IMG + ' 张', 'warn'); return; }
+        imgInput.click();
+    });
+
+    imgInput.addEventListener('change', function(){
+        var files = Array.prototype.slice.call(imgInput.files || []);
+        if (!files.length) return;
+        var room = MAX_IMG - uploaded.length;
+        if (files.length > room) { M.toast('仅上传前 ' + room + ' 张', 'warn'); files = files.slice(0, room); }
+
+        (function next(i){
+            if (i >= files.length){ imgInput.value=''; refreshImgGrid(); return; }
+            var fd = new FormData();
+            fd.append('file', files[i]);
+            fd.append('kind', 'repair');
+            fetch('/m/api/upload', { method:'POST', body: fd, credentials:'same-origin' })
+                .then(function(r){ return r.json(); })
+                .then(function(res){
+                    if (res && res.code === 0 && res.data && res.data.url){
+                        uploaded.push({ url: res.data.url, name: res.data.name });
+                    } else {
+                        M.toast((res && res.msg) || '上传失败', 'err');
+                    }
+                    next(i+1);
+                })
+                .catch(function(){ M.toast('上传失败', 'err'); next(i+1); });
+        })(0);
+    });
+
     document.getElementById('btnSubmit').addEventListener('click', function(){
         var fid = document.getElementById('facilityId').value;
         var descr = document.getElementById('descr').value.trim();
@@ -74,7 +141,8 @@
             ReasonText: descr,
             FaultLocation: document.getElementById('faultLoc').value,
             FaultCategory: document.getElementById('faultCat').value,
-            Remark: document.getElementById('remark').value
+            Remark: document.getElementById('remark').value,
+            ImageUrls: uploaded.map(function(it){ return it.url; })
         };
         M.ajax({ url:'/m/api/repair/create', method:'POST', data: JSON.stringify(payload), contentType:'application/json' })
             .then(function(res){

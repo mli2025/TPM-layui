@@ -14,12 +14,36 @@
         </div>
         <div class="layui-card-body">
             <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
-                <div class="layui-col-md4">
-                    <input type="text" id="kw" class="layui-input" placeholder="输入设备编码/名称/型号查询">
+                <div class="layui-col-md2">
+                    <select id="fltDept" lay-filter="fltDept" lay-search>
+                        <option value="">-- 工作中心(全部) --</option>
+                    </select>
                 </div>
-                <div class="layui-col-md8" style="text-align:right;">
+                <div class="layui-col-md2">
+                    <select id="fltStatus" lay-filter="fltStatus">
+                        <option value="">-- 设备状态(全部) --</option>
+                        <option value="0">运行</option>
+                        <option value="1">闲置</option>
+                        <option value="2">停机</option>
+                        <option value="3">报废</option>
+                    </select>
+                </div>
+                <div class="layui-col-md2">
+                    <select id="kwField">
+                        <option value="FacilityName">设备名称</option>
+                        <option value="FacilityCode">设备编码</option>
+                        <option value="Model">型号</option>
+                        <option value="SerialNumber">序列号</option>
+                        <option value="ManufactureNumber">厂家厂内编号</option>
+                        <option value="AssetNumber">资产编号</option>
+                    </select>
+                </div>
+                <div class="layui-col-md2">
+                    <input type="text" id="kw" class="layui-input" placeholder="搜索...">
+                </div>
+                <div class="layui-col-md4" style="text-align:right;">
                     <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 查询</button>
                     <button class="layui-btn layui-btn-sm layui-btn-warm" id="btnExport"><i class="layui-icon layui-icon-download-circle"></i> 导出</button>
                 </div>
             </div>
@@ -31,7 +55,21 @@
 <script type="text/html" id="barRow">
     <a class="layui-btn layui-btn-xs" lay-event="view">查看</a>
     <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="repair">维修记录</a>
     <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="statusTpl">
+    {{# var map = {0:'运行',1:'闲置',2:'停机',3:'报废'}; var bg = {0:'#16a34a',1:'#f7b500',2:'#94a3b8',3:'#475569'}; }}
+    {{# var s = d.Status == null ? 0 : d.Status; }}
+    <span class="layui-badge" style="background-color:{{= bg[s] || '#999' }};">{{= map[s] || s }}</span>
+</script>
+
+<script type="text/html" id="tplRepairHistory">
+    <div style="padding:14px;">
+        <div style="margin-bottom:8px;color:#475569;">设备：<strong id="rh_dev"></strong></div>
+        <table id="GridRepairHist" lay-filter="GridRepairHist"></table>
+    </div>
 </script>
 
 <!-- 设备台账明细 弹窗模板 -->
@@ -116,8 +154,13 @@
 
             function getWhere() {
                 var list = [];
-                var kw = $('#kw').val();
-                if (kw) list.push({ field: 'FacilityName', conditional: 'like', value: kw });
+                var kw = ($('#kw').val()||'').trim();
+                var kwField = $('#kwField').val() || 'FacilityName';
+                var dept = $('#fltDept').val();
+                var status = $('#fltStatus').val();
+                if (kw) list.push({ field: kwField, conditional: 'like', value: kw });
+                if (dept !== '' && dept !== null && dept !== undefined) list.push({ field: 'DeptId', conditional: '=', value: dept });
+                if (status !== '' && status !== null && status !== undefined) list.push({ field: 'Status', conditional: '=', value: status });
                 return { page: 1, limit: 20, searchParam: list };
             }
 
@@ -131,18 +174,69 @@
                     page: true,
                     height: 'full-200',
                     cols: [[
-                        { type: 'numbers', title: '#' },
-                        { field: 'FacilityCode', title: '设备编码', width: 140 },
-                        { field: 'FacilityName', title: '设备名称', minWidth: 160 },
+                        { type: 'numbers', title: '#', width: 50, fixed:'left' },
+                        { field: 'FacilityCode', title: '设备编码', width: 140, fixed:'left' },
+                        { field: 'FacilityName', title: '设备名称', minWidth: 160, fixed:'left' },
                         { field: 'Model', title: '设备型号', width: 130 },
                         { field: 'FacilityType', title: '设备类型', width: 120 },
+                        { field: 'ManufactureNumber', title: '厂家厂内编号', width: 140 },
+                        { field: 'SerialNumber', title: '序列号', width: 140 },
                         { field: 'Manufacturer', title: '制造商', width: 130 },
                         { field: 'Location', title: '安装位置', width: 140 },
+                        { field: 'DeptId', title: '工作中心', width: 110, templet: function(d){ return deptName(d.DeptId); } },
                         { field: 'PurchaseDate', title: '购置日期', width: 110, templet: function(d){ return fmtDate(d.PurchaseDate); } },
                         { field: 'AssetNumber', title: '资产编号', width: 130 },
-                        { field: 'Status', title: '状态', width: 80 },
-                        { title: '操作', width: 200, toolbar: '#barRow', fixed: 'right' }
+                        { field: 'Status', title: '状态', width: 90, templet:'#statusTpl' },
+                        { title: '操作', width: 280, toolbar: '#barRow', fixed: 'right' }
                     ]]
+                });
+            }
+
+            var __DEPTS__ = [];
+            function deptName(id){
+                if (!id) return '';
+                for (var i=0;i<__DEPTS__.length;i++){ if (String(__DEPTS__[i].Id) === String(id)) return __DEPTS__[i].DeptName; }
+                return id;
+            }
+            function loadDepts(){
+                return $.get('/Sys_Dept/List', function(res){
+                    if (ok(res)) {
+                        __DEPTS__ = res.data || [];
+                        var $sel = $('#fltDept').empty().append('<option value="">-- 工作中心(全部) --</option>');
+                        __DEPTS__.forEach(function(d){ $sel.append('<option value="'+d.Id+'">'+ (d.DeptName||'') +'</option>'); });
+                        try { form.render('select'); } catch(e){}
+                    }
+                });
+            }
+
+            function openRepairHistory(row) {
+                layer.open({
+                    type: 1, area: ['1000px', '70%'], title: '维修记录 - ' + (row.FacilityName||''),
+                    content: $('#tplRepairHistory').html(), shadeClose: false,
+                    success: function(){
+                        $('#rh_dev').text((row.FacilityName||'') + ' (' + (row.FacilityCode||'') + ')');
+                        table.render({
+                            elem: '#GridRepairHist',
+                            url: '/Facility_RepairBillMain/GetMainList',
+                            method: 'post',
+                            where: { searchParam: [{ field:'FacilityId', conditional:'=', value: row.Id }] },
+                            page: true, limit: 20, even: true,
+                            cols: [[
+                                { field:'BillNo', title:'维修单号', width:140 },
+                                { field:'BillDate', title:'报修时间', width:160, templet: function(d){ return fmtDt(d.BillDate); } },
+                                { field:'FaultCategory', title:'故障类别', width:110 },
+                                { field:'FaultLocation', title:'故障部位', width:130 },
+                                { field:'Status', title:'状态', width:90, templet: function(d){
+                                    var m = {0:'新建',1:'待接单',2:'维修中',3:'已完成',4:'已审核',5:'已关闭'};
+                                    return m[d.Status==null?0:d.Status] || d.Status;
+                                }},
+                                { field:'RepairStaff', title:'维修人员', width:110 },
+                                { field:'Dispatch', title:'派单人', width:110 },
+                                { field:'DispatchDate', title:'派单时间', width:160, templet: function(d){ return fmtDt(d.DispatchDate); } },
+                                { field:'Remark', title:'备注', minWidth: 160 }
+                            ]]
+                        });
+                    }
                 });
             }
 
@@ -333,6 +427,12 @@
             $('#btnAdd').on('click', function () { openDialog('add'); });
             $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
             $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+            $('#fltDept').on('change', function(){ table.reload('GridMain', { where: getWhere() }); });
+            $('#fltStatus').on('change', function(){ table.reload('GridMain', { where: getWhere() }); });
+            // form.render select 后的回调，需用 form.on
+            form.on('select(fltDept)', function(){ table.reload('GridMain', { where: getWhere() }); });
+            form.on('select(fltStatus)', function(){ table.reload('GridMain', { where: getWhere() }); });
+
             $('#btnExport').on('click', function () {
                 var $f = $('<form method="post" action="' + URL_EXPORT + '"></form>');
                 $f.append('<input type="hidden" name="page" value="1">');
@@ -343,6 +443,7 @@
             table.on('tool(GridMain)', function (obj) {
                 if (obj.event === 'view') openDialog('view', obj.data);
                 if (obj.event === 'edit') openDialog('edit', obj.data);
+                if (obj.event === 'repair') openRepairHistory(obj.data);
                 if (obj.event === 'del') {
                     layer.confirm('确认删除该设备台账？', function (idx) {
                         $.post(URL_DELETE, { Id: obj.data.Id }, function (res) {
@@ -354,7 +455,7 @@
                 }
             });
 
-            renderList();
+            loadDepts().always(renderList);
         });
     </script>
 }

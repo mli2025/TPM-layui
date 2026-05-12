@@ -8,9 +8,35 @@
         <a class="m-btn flex-1" :class="s==='1' ? 'primary' : ''" href="/m/maintain?status=1">待接单</a>
         <a class="m-btn flex-1" :class="s==='2' ? 'primary' : ''" href="/m/maintain?status=2">保养中</a>
     </div>
-    <input class="m-input mb-2" id="kw" placeholder="单号 / 备注 搜索" />
+    <div class="flex gap-2 mb-2">
+        <input class="m-input flex-1" id="kw" placeholder="单号 / 备注 搜索" />
+        <button class="m-btn primary px-3" id="btnScan" type="button">
+            <i data-lucide="scan-line" class="w-4 h-4 inline-block align-text-bottom"></i> 扫码
+        </button>
+    </div>
     <div id="list" class="m-list">
         <div class="text-center text-slate-400 text-xs py-6">加载中...</div>
+    </div>
+</div>
+
+<!-- 扫码弹层 -->
+<div id="scanModal" class="fixed inset-0 bg-black/80 z-50 hidden flex flex-col">
+    <div class="flex items-center justify-between p-3 text-white">
+        <span class="text-sm">扫描保养单二维码 / 条码</span>
+        <button id="btnScanClose" class="text-white text-2xl leading-none">×</button>
+    </div>
+    <div class="relative flex-1 flex items-center justify-center">
+        <video id="scanVideo" class="w-full h-full object-cover" playsinline muted></video>
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="w-64 h-64 border-2 border-emerald-400 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
+        </div>
+    </div>
+    <div class="p-3 bg-black/70 text-white text-xs">
+        <div id="scanStatus" class="text-center mb-2 text-slate-300">将单据条码/二维码对准取景框</div>
+        <div class="flex gap-2">
+            <input id="scanManual" class="m-input flex-1 text-slate-700" placeholder="或手动输入单号..." />
+            <button id="btnScanSubmit" class="m-btn primary">前往</button>
+        </div>
     </div>
 </div>
 
@@ -55,6 +81,88 @@
     }
     document.getElementById('kw').addEventListener('keyup', function(e){ if (e.key === 'Enter') load(); });
     load();
+
+    // ---------------- 扫码 ----------------
+    var scanModal = document.getElementById('scanModal');
+    var scanVideo = document.getElementById('scanVideo');
+    var scanStatus = document.getElementById('scanStatus');
+    var scanStream = null;
+    var scanTimer = null;
+    var detector = null;
+
+    function gotoByBillNo(billNo){
+        if (!billNo) return;
+        M.ajax({ url:'/m/api/maintain/by-billno?billNo=' + encodeURIComponent(billNo), method:'GET', contentType:false })
+            .then(function(res){
+                if (M.ok(res) && res.data && res.data.Id){
+                    closeScan();
+                    location.href = '/m/maintain/detail?id=' + res.data.Id;
+                } else {
+                    scanStatus.textContent = '未找到单号: ' + billNo;
+                    scanStatus.classList.add('text-red-300');
+                }
+            });
+    }
+
+    function startScan(){
+        scanModal.classList.remove('hidden');
+        scanStatus.textContent = '正在启动摄像头...';
+        scanStatus.classList.remove('text-red-300');
+
+        if (!window.isSecureContext) {
+            scanStatus.textContent = '⚠ 摄像头需要 HTTPS 环境，可手动输入单号';
+            return;
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            scanStatus.textContent = '当前浏览器不支持摄像头，可手动输入单号';
+            return;
+        }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(function(stream){
+                scanStream = stream;
+                scanVideo.srcObject = stream;
+                scanVideo.play();
+                scanStatus.textContent = '请将二维码 / 条码对准取景框';
+
+                if ('BarcodeDetector' in window) {
+                    try { detector = new window.BarcodeDetector({ formats: ['qr_code','code_128','code_39','ean_13','data_matrix'] }); } catch(e){ detector = null; }
+                }
+                if (!detector) {
+                    scanStatus.textContent = '浏览器不支持自动识别，请手动输入单号';
+                    return;
+                }
+                scanTimer = setInterval(function(){
+                    if (!scanVideo.videoWidth) return;
+                    detector.detect(scanVideo).then(function(codes){
+                        if (codes && codes.length){
+                            var raw = (codes[0].rawValue || '').trim();
+                            if (raw){
+                                scanStatus.textContent = '识别成功: ' + raw;
+                                gotoByBillNo(raw);
+                            }
+                        }
+                    }).catch(function(){});
+                }, 400);
+            })
+            .catch(function(){
+                scanStatus.textContent = '摄像头启动失败 / 用户拒绝，请手动输入单号';
+            });
+    }
+
+    function closeScan(){
+        scanModal.classList.add('hidden');
+        if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+        if (scanStream) { try { scanStream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} scanStream = null; }
+        document.getElementById('scanManual').value = '';
+    }
+
+    document.getElementById('btnScan').addEventListener('click', startScan);
+    document.getElementById('btnScanClose').addEventListener('click', closeScan);
+    document.getElementById('btnScanSubmit').addEventListener('click', function(){
+        var v = (document.getElementById('scanManual').value || '').trim();
+        if (!v){ scanStatus.textContent = '请输入单号'; return; }
+        gotoByBillNo(v);
+    });
 })();
 </script>
 }

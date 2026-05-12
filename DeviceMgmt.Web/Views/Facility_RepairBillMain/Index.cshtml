@@ -22,6 +22,7 @@
                 </div>
                 <div class="layui-col-md3" style="text-align:right;">
                     <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增报修单</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-warm" id="btnBatchDispatch"><i class="layui-icon layui-icon-username"></i> 批量派工</button>
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
                 </div>
             </div>
@@ -251,18 +252,48 @@
 
 <script type="text/html" id="tplDispatch">
     <div style="padding:14px;">
-        <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
-            <div class="layui-col-md8">
+        <div id="dispBatchHint" style="display:none;background:#eef2ff;color:#3730a3;padding:6px 10px;border-radius:4px;margin-bottom:8px;font-size:12px;"></div>
+
+        <div class="layui-row layui-col-space10" style="margin-bottom:8px;">
+            <div class="layui-col-md9">
                 <input type="text" id="dispEmpKw" class="layui-input" placeholder="按姓名 / 工号搜索" />
             </div>
-            <div class="layui-col-md4" style="text-align:right;">
+            <div class="layui-col-md3" style="text-align:right;">
                 <button class="layui-btn layui-btn-sm" type="button" id="btnEmpSearch"><i class="layui-icon layui-icon-search"></i> 搜索</button>
             </div>
         </div>
-        <table class="layui-table" id="GridEmp">
-            <thead><tr><th style="width:60px;"></th><th>工号</th><th>姓名</th></tr></thead>
-            <tbody id="EmpBody"></tbody>
-        </table>
+        <div style="max-height:260px;overflow:auto;border:1px solid #eee;">
+            <table class="layui-table" id="GridEmp" style="margin:0;">
+                <thead><tr>
+                    <th style="width:48px;"></th>
+                    <th style="width:90px;">工号</th>
+                    <th style="width:90px;">姓名</th>
+                    <th>部门</th>
+                    <th style="width:90px;text-align:right;">当前任务</th>
+                </tr></thead>
+                <tbody id="EmpBody"></tbody>
+            </table>
+        </div>
+
+        <div class="layui-form" style="margin-top:14px;">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">派单时间</label>
+                    <div class="layui-input-inline"><input type="text" id="fld_disp_DispatchDate" class="layui-input" placeholder="默认当前时间" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">期望完成</label>
+                    <div class="layui-input-inline"><input type="text" id="fld_disp_ExpectedFinishDate" class="layui-input" placeholder="选填" /></div>
+                </div>
+            </div>
+            <div class="layui-form-item layui-form-text">
+                <label class="layui-form-label">备注</label>
+                <div class="layui-input-block">
+                    <textarea id="fld_disp_Remark" class="layui-textarea" rows="2" placeholder="派工说明 / 注意事项"></textarea>
+                </div>
+            </div>
+        </div>
+
         <div style="text-align:center;margin-top:10px;">
             <button class="layui-btn" type="button" id="btnDoDispatch">确认派工</button>
             <button class="layui-btn layui-btn-primary" type="button" id="btnDispCancel">取消</button>
@@ -278,6 +309,7 @@
     var URLSaveBill = '@Url.Action("SaveBill")';
     var URLDelBill = '@Url.Action("DeleteBill")';
     var URLDispatch = '@Url.Action("Dispatch")';
+    var URLBatchDispatch = '@Url.Action("BatchDispatch")';
     var URLGetEmp = '@Url.Action("GetEmployees")';
     var URLGetDev = '@Url.Action("GetDevices")';
 
@@ -314,6 +346,7 @@
                 response:{ statusCode:0, statusName:'code', countName:'count', dataName:'data', msgName:'msg' },
                 parseData:function(res){ return { code: ok(res) ? 0 : res.code, msg: res.msg, count: res.count, data: res.data || [] }; },
                 cols:[[
+                    { type:'checkbox', fixed:'left' },
                     { field:'BillNo', title:'报修单号', width:160 },
                     { field:'BillDate', title:'报修时间', width:150, templet:function(d){ return d.BillDate ? d.BillDate.substring(0,16).replace('T',' ') : ''; } },
                     { field:'FacilityId', title:'设备', width:140 },
@@ -363,7 +396,7 @@
             var d = obj.data, e = obj.event;
             if (e === 'view') openBillDialog(d.Id, 'view');
             else if (e === 'edit') openBillDialog(d.Id, 'edit');
-            else if (e === 'dispatch') openDispatchDialog(d);
+            else if (e === 'dispatch') openDispatchDialog('single', { id: d.Id, billNo: d.BillNo });
             else if (e === 'del') {
                 layer.confirm('确认删除该报修单?', function(idx){
                     $.post(URLDelBill, { id: d.Id }, function(res){
@@ -532,12 +565,25 @@
             });
         }
 
-        function openDispatchDialog(row){
+        // mode: 'single' | 'batch'
+        // payload: { id, billNo } or { ids: [...], count: n }
+        function openDispatchDialog(mode, payload){
             var selectedEmp = null;
+            var title = mode === 'batch'
+                ? ('批量派工 - 共 ' + (payload && payload.count || 0) + ' 单')
+                : ('派工 - ' + (payload && payload.billNo || ''));
             layer.open({
-                type:1, area:['640px','520px'], title:'派工 - ' + (row.BillNo||''),
+                type:1, area:['760px','680px'], title: title,
                 content: $('#tplDispatch').html(), shadeClose:false,
                 success:function(){
+                    if (mode === 'batch'){
+                        $('#dispBatchHint').show().text('当前为批量派工，将对所选 '+payload.count+' 个新建报修单同时分派同一维修人员。已派工/已审核的单据将被跳过。');
+                    }
+                    try {
+                        laydate.render({ elem:'#fld_disp_DispatchDate', type:'datetime', value: nowStr() });
+                        laydate.render({ elem:'#fld_disp_ExpectedFinishDate', type:'datetime' });
+                    } catch(e){}
+
                     function loadEmp(){
                         var kw = ($('#dispEmpKw').val()||'').trim();
                         $.ajax({ url: URLGetEmp, method:'GET', data:{ kw: kw } }).done(function(res){
@@ -546,9 +592,17 @@
                             var html = '';
                             for (var i=0;i<rows.length;i++){
                                 var e = rows[i];
-                                html += '<tr data-id="'+e.Id+'" data-name="'+(e.Name||'')+'"><td style="text-align:center;"><input type="radio" name="empPick" /></td><td>'+(e.EmployeeNumber||'')+'</td><td>'+(e.Name||'')+'</td></tr>';
+                                var busy = (e.PendingCount||0) > 0;
+                                var loadColor = busy ? '#dc2626' : '#16a34a';
+                                html += '<tr data-id="'+e.Id+'" data-name="'+(e.Name||'')+'" data-emp="'+(e.EmployeeNumber||'')+'">' +
+                                    '<td style="text-align:center;"><input type="radio" name="empPick" /></td>' +
+                                    '<td>'+(e.EmployeeNumber||'')+'</td>' +
+                                    '<td>'+(e.Name||'')+'</td>' +
+                                    '<td>'+(e.DeptName||'')+'</td>' +
+                                    '<td style="text-align:right;color:'+loadColor+';font-weight:600;">'+(e.PendingCount||0)+'</td>' +
+                                    '</tr>';
                             }
-                            $('#EmpBody').html(html || '<tr><td colspan="3" style="text-align:center;color:#999;">无数据</td></tr>');
+                            $('#EmpBody').html(html || '<tr><td colspan="5" style="text-align:center;color:#999;">无数据</td></tr>');
                         });
                     }
                     loadEmp();
@@ -558,19 +612,53 @@
                         $('#EmpBody tr').css('background','');
                         $(this).css('background','#fffbe6');
                         $(this).find('input[name="empPick"]').prop('checked', true);
-                        selectedEmp = { id: $(this).attr('data-id'), name: $(this).attr('data-name') };
+                        selectedEmp = { id: $(this).attr('data-id'), name: $(this).attr('data-name'), emp: $(this).attr('data-emp') };
                     });
                     $('#btnDispCancel').on('click', function(){ layer.closeAll(); });
                     $('#btnDoDispatch').on('click', function(){
                         if (!selectedEmp){ toastWarn('请选择维修人员'); return; }
-                        $.post(URLDispatch, { id: row.Id, repairStaff: selectedEmp.name }, function(res){
-                            if (ok(res)){ toastOk('派工成功'); layer.closeAll(); renderList(); }
-                            else toastErr(res.msg || '派工失败');
-                        });
+                        var common = {
+                            repairStaff: selectedEmp.name,
+                            dispatchDate: $('#fld_disp_DispatchDate').val() || '',
+                            expectedFinishDate: $('#fld_disp_ExpectedFinishDate').val() || '',
+                            dispatchRemark: $('#fld_disp_Remark').val() || ''
+                        };
+                        if (mode === 'batch'){
+                            var data = $.extend({}, common, { ids: (payload.ids||[]).join(',') });
+                            $.post(URLBatchDispatch, data, function(res){
+                                if (res && res.code === 0){
+                                    toastOk(res.msg || '批量派工完成');
+                                    layer.closeAll(); renderList();
+                                } else toastErr(res && res.msg || '派工失败');
+                            });
+                        } else {
+                            var data = $.extend({}, common, { id: payload.id });
+                            $.post(URLDispatch, data, function(res){
+                                if (ok(res)){ toastOk('派工成功'); layer.closeAll(); renderList(); }
+                                else toastErr(res && res.msg || '派工失败');
+                            });
+                        }
                     });
                 }
             });
         }
+
+        function nowStr(){
+            var d = new Date(); var pad = function(n){ return n<10?'0'+n:n; };
+            return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+        }
+
+        $('#btnBatchDispatch').on('click', function(){
+            var chk = table.checkStatus('GridMain');
+            var rows = (chk && chk.data) || [];
+            if (rows.length === 0){ toastWarn('请先勾选要派工的报修单'); return; }
+            var validRows = rows.filter(function(r){ return (r.Status||0) === 0; });
+            if (validRows.length === 0){ toastWarn('所选单据均已派工/审核，无法批量派工'); return; }
+            if (validRows.length < rows.length){
+                toastWarn('已自动跳过 '+(rows.length - validRows.length)+' 个已派工单据');
+            }
+            openDispatchDialog('batch', { ids: validRows.map(function(r){ return r.Id; }), count: validRows.length });
+        });
 
         function fmt(s){
             if (!s) return '';

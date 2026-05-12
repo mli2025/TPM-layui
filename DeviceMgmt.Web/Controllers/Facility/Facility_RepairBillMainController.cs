@@ -15,16 +15,19 @@ public class Facility_RepairBillMainController : BaseController
     private readonly Facility_RepairBillMainApp _app;
     private readonly IRepository<Basic_Employee> _empRepo;
     private readonly IRepository<Facility_ResourceDetail> _deviceRepo;
+    private readonly IRepository<Sys_Dept> _deptRepo;
 
     public Facility_RepairBillMainController(
         IAuth auth,
         Facility_RepairBillMainApp app,
         IRepository<Basic_Employee> empRepo,
-        IRepository<Facility_ResourceDetail> deviceRepo) : base(auth)
+        IRepository<Facility_ResourceDetail> deviceRepo,
+        IRepository<Sys_Dept> deptRepo) : base(auth)
     {
         _app = app;
         _empRepo = empRepo;
         _deviceRepo = deviceRepo;
+        _deptRepo = deptRepo;
     }
 
     public IActionResult Index() => View();
@@ -54,13 +57,35 @@ public class Facility_RepairBillMainController : BaseController
     }
 
     [HttpPost]
-    public IActionResult Dispatch([FromForm] long id, [FromForm] string repairStaff)
+    public IActionResult Dispatch([FromForm] long id, [FromForm] string repairStaff,
+        [FromForm] DateTime? dispatchDate = null,
+        [FromForm] DateTime? expectedFinishDate = null,
+        [FromForm] string? dispatchRemark = null)
     {
         if (string.IsNullOrWhiteSpace(repairStaff)) return Json(new ResponseData { code = 400, msg = "请选择维修人员" });
         var uid = CurrentUser?.User?.Id ?? 0;
         var dispatchName = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account ?? uid.ToString();
-        var (ok, msg) = _app.Dispatch(id, repairStaff, uid, dispatchName);
+        var (ok, msg) = _app.Dispatch(id, repairStaff, uid, dispatchName, dispatchDate, expectedFinishDate, dispatchRemark);
         return Json(new ResponseData { code = ok ? 0 : 400, msg = msg });
+    }
+
+    [HttpPost]
+    public IActionResult BatchDispatch([FromForm] string ids, [FromForm] string repairStaff,
+        [FromForm] DateTime? dispatchDate = null,
+        [FromForm] DateTime? expectedFinishDate = null,
+        [FromForm] string? dispatchRemark = null)
+    {
+        if (string.IsNullOrWhiteSpace(ids)) return Json(new ResponseData { code = 400, msg = "请选择要派工的报修单" });
+        if (string.IsNullOrWhiteSpace(repairStaff)) return Json(new ResponseData { code = 400, msg = "请选择维修人员" });
+        var idArr = ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => long.TryParse(s, out var v) ? v : 0L).Where(v => v > 0).ToArray();
+        if (idArr.Length == 0) return Json(new ResponseData { code = 400, msg = "选择项无效" });
+        var uid = CurrentUser?.User?.Id ?? 0;
+        var dispatchName = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account ?? uid.ToString();
+        var (success, fail, errors) = _app.BatchDispatch(idArr, repairStaff, uid, dispatchName, dispatchDate, expectedFinishDate, dispatchRemark);
+        var msg = $"派工完成：成功 {success} 单，失败 {fail} 单";
+        if (errors.Count > 0) msg += "；详情: " + string.Join(" / ", errors);
+        return Json(new ResponseData { code = 0, msg = msg, data = new { success, fail, errors } });
     }
 
     [HttpPost]
@@ -80,9 +105,18 @@ public class Facility_RepairBillMainController : BaseController
             where += " AND ([Name] LIKE @k OR [EmployeeNumber] LIKE @k)";
             param = new { k = "%" + kw + "%" };
         }
-        var rows = _empRepo.Find(where, param, "[Id] DESC")
-            .Select(e => new { Id = e.Id, Name = e.Name, EmployeeNumber = e.EmployeeNumber, DeptId = e.DeptId })
-            .ToList();
+        var emps = _empRepo.Find(where, param, "[Id] DESC").ToList();
+        var deptMap = _deptRepo.Find(null, null, "[Id] ASC").ToDictionary(d => d.Id, d => d.DeptName);
+        var loadMap = _app.GetPendingCountByStaff();
+        var rows = emps.Select(e => new
+        {
+            Id = e.Id,
+            Name = e.Name,
+            EmployeeNumber = e.EmployeeNumber,
+            DeptId = e.DeptId,
+            DeptName = deptMap.TryGetValue(e.DeptId, out var n) ? n : "",
+            PendingCount = loadMap.TryGetValue(e.EmployeeNumber ?? "", out var c) ? c : 0
+        }).ToList();
         return Json(new TableData { code = 0, count = rows.Count, data = rows });
     }
 

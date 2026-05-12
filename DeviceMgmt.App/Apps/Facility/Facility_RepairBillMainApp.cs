@@ -60,19 +60,66 @@ public class Facility_RepairBillMainApp : BaseApp<Facility_RepairBillMain>
         return main.Id;
     }
 
-    public (bool ok, string msg) Dispatch(long id, string repairStaff, long currentUserId, string? dispatchUser)
+    public (bool ok, string msg) Dispatch(long id, string repairStaff, long currentUserId, string? dispatchUser,
+        DateTime? dispatchDate = null, DateTime? expectedFinishDate = null, string? dispatchRemark = null)
     {
         var main = Repository.FindSingle(id);
         if (main == null) return (false, "报修单不存在");
         if ((main.Status ?? 0) >= 1) return (false, "该报修单已派工，无法重复派工");
+        var now = DateTime.Now;
         main.RepairStaff = repairStaff;
         main.Dispatch = dispatchUser ?? currentUserId.ToString();
-        main.DispatchDate = DateTime.Now;
+        main.DispatchDate = dispatchDate ?? now;
+        // 期望完成时间无独立列，复用 ResponseDate（活字格里语义相近）
+        if (expectedFinishDate.HasValue) main.ResponseDate = expectedFinishDate.Value;
+        // 派工备注追加到 Remark 顶部，保留历史
+        if (!string.IsNullOrWhiteSpace(dispatchRemark))
+        {
+            var stamp = $"[派工@{now:yyyy-MM-dd HH:mm}] {dispatchRemark}";
+            main.Remark = string.IsNullOrWhiteSpace(main.Remark) ? stamp : stamp + "\n" + main.Remark;
+        }
         main.Status = 1;
         main.FGC_LastModifier = currentUserId.ToString();
-        main.FGC_LastModifyDate = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+        main.FGC_LastModifyDate = now.ToString("yyyy/MM/dd HH:mm:ss");
         Repository.Update(main);
         return (true, "ok");
+    }
+
+    public (int success, int fail, List<string> errors) BatchDispatch(long[] ids, string repairStaff, long currentUserId,
+        string? dispatchUser, DateTime? dispatchDate, DateTime? expectedFinishDate, string? dispatchRemark)
+    {
+        int ok = 0, fail = 0;
+        var errors = new List<string>();
+        foreach (var id in ids ?? Array.Empty<long>())
+        {
+            var (success, msg) = Dispatch(id, repairStaff, currentUserId, dispatchUser, dispatchDate, expectedFinishDate, dispatchRemark);
+            if (success) ok++;
+            else { fail++; errors.Add($"#{id}: {msg}"); }
+        }
+        return (ok, fail, errors);
+    }
+
+    /// <summary>
+    /// Pending(未关闭) 维修任务在每个维修人员上的计数（按 RepairStaff 编码分组）
+    /// </summary>
+    public Dictionary<string, int> GetPendingCountByStaff()
+    {
+        var rows = Repository.Query<StaffCountRow>(
+            "SELECT RepairStaff AS Staff, COUNT(*) AS Cnt FROM [Facility_RepairBillMain] " +
+            "WHERE [Status] IN (1,2) AND [RepairStaff] IS NOT NULL AND LTRIM(RTRIM([RepairStaff]))<>'' " +
+            "GROUP BY RepairStaff").ToList();
+        var dict = new Dictionary<string, int>();
+        foreach (var r in rows)
+        {
+            if (!string.IsNullOrWhiteSpace(r.Staff)) dict[r.Staff!] = r.Cnt;
+        }
+        return dict;
+    }
+
+    private class StaffCountRow
+    {
+        public string? Staff { get; set; }
+        public int Cnt { get; set; }
     }
 
     public (bool ok, string msg) DeleteWithGuard(long id)
