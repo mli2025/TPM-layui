@@ -1,59 +1,519 @@
 @{
-    ViewData["Title"] = "淇濆吇宸ュ崟 Facility_BillMain";
+    ViewData["Title"] = "设备保养单列�?;
 }
-<div class="layui-fluid" style="padding:0;margin-top:10px">
-    <div class="layui-row layui-col-space15">
-        <div class="layui-col-md12">
-            <div class="layui-card">
-                <div class="layui-card-header">
-                    <div class="pull-left">淇濆吇宸ュ崟 Facility_BillMain</div>
-                    <div class="demoTable pull-right no-print">
-                        <div class="layui-inline" id="searchPanel"></div>
-                        <div class="layui-btn-group">
-                            <button class="layui-btn layui-btn-sm layui-btn-warm" id="btn_Export">瀵煎嚭</button>
-                        </div>
-                    </div>
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>设备保养单列�?/strong>
+            <span class="layui-btn-group" style="float:right;">
+                <button class="layui-btn layui-btn-sm" id="btnViewList"><i class="layui-icon layui-icon-list"></i> 列表</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewKanban"><i class="layui-icon layui-icon-template-1"></i> 状态看�?/button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewCalendar"><i class="layui-icon layui-icon-date"></i> 日历</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewGantt"><i class="layui-icon layui-icon-chart"></i> 甘特�?/button>
+            </span>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md4">
+                    <input type="text" id="kw" class="layui-input" placeholder="输入单号/设备编码/设备名称查询">
                 </div>
-                <div class="layui-card-body" style="padding:0">
-                    <div class="layui-inline" style="width:100%">
-                        <table class="layui-hide" lay-filter="GridMain" id="GridMain"></table>
-                    </div>
+                <div class="layui-col-md4" id="statusPills">
+                    <button class="layui-btn layui-btn-sm" data-status="">全部</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="0">新建</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="1">已派�?/button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="2">保养�?/button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="3">已保�?/button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="4">已审�?/button>
                 </div>
+                <div class="layui-col-md4" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnPlan"><i class="layui-icon layui-icon-add-1"></i> 建立保养计划</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+
+            <div id="paneList">
+                <table id="GridMain" lay-filter="GridMain"></table>
+            </div>
+            <div id="panePlaceholder" style="display:none;padding:48px;text-align:center;color:#888;font-size:14px;">
+                <i class="layui-icon" style="font-size:48px;color:#ccc;"></i>
+                <div style="margin-top:12px;" id="placeholderText">该视图开发中...</div>
             </div>
         </div>
     </div>
 </div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="view">查看</a>
+    {{# if(d.Status == 0 || d.Status == null){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+    {{# } }}
+</script>
+
+<script type="text/html" id="statusTpl">
+    {{# var map = {0:'新建',1:'已派�?,2:'保养�?,3:'已保�?,4:'已审�?}; }}
+    {{# var color = {0:'#f7b500',1:'#1e88e5',2:'#7c3aed',3:'#16a34a',4:'#475569'}; }}
+    {{# var s = (d.Status == null) ? 0 : d.Status; }}
+    <span class="layui-badge" style="background-color:{{= color[s] || '#999' }};">{{= map[s] || s }}</span>
+</script>
+
+<script type="text/html" id="cycleTpl">
+    {{# var c = (d.MaintainType||'').toUpperCase(); }}
+    {{# var name = {YEAR:'�?,QUARTER:'季度',MONTH:'�?,WEEK:'�?}[c] || c; }}
+    <span>{{= name }}</span>
+</script>
+
+<!-- 主子表（查看/编辑）弹窗模�?-->
+<script type="text/html" id="tplBillDetail">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="billForm">
+            <input type="hidden" name="Id">
+            <input type="hidden" name="MaintainType">
+            <input type="hidden" name="Status">
+            <input type="hidden" name="FacilityID">
+            <input type="hidden" name="TempID">
+            <input type="hidden" name="BillNo">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">保养单号</label>
+                    <div class="layui-input-inline" style="padding-top:8px;"><span id="fld_BillNoText"></span></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">保养类型</label>
+                    <div class="layui-input-inline" style="padding-top:8px;"><span id="fld_MaintainTypeText"></span></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">状�?/label>
+                    <div class="layui-input-inline" style="padding-top:8px;"><span id="fld_StatusText"></span></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">计划日期</label>
+                    <div class="layui-input-inline"><input name="BillDate" class="layui-input" id="fld_BillDate"></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">开始时�?/label>
+                    <div class="layui-input-inline"><input name="BeginDate" class="layui-input" id="fld_BeginDate"></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">结束时间</label>
+                    <div class="layui-input-inline"><input name="EndDate" class="layui-input" id="fld_EndDate"></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">保养�?/label>
+                    <div class="layui-input-inline"><input name="RepairStaff" class="layui-input"></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">金额</label>
+                    <div class="layui-input-inline"><input name="Amount" type="number" step="0.01" class="layui-input"></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">备注</label>
+                <div class="layui-input-block"><input name="Remark" class="layui-input"></div>
+            </div>
+        </form>
+        <div style="margin:8px 0 4px;font-weight:600;">保养项目明细</div>
+        <table id="GridBillSub" lay-filter="GridBillSub"></table>
+    </div>
+</script>
+
+<!-- 建立保养计划 弹窗模板 -->
+<script type="text/html" id="tplPlan">
+    <div style="padding:14px;">
+        <form class="layui-form layui-row layui-col-space10" lay-filter="planForm">
+            <div class="layui-col-md3">
+                <label class="layui-form-label">保养类型</label>
+                <div class="layui-input-block">
+                    <select id="planCycle">
+                        <option value="MONTH">�?/option>
+                        <option value="QUARTER">季度</option>
+                        <option value="WEEK">�?/option>
+                        <option value="YEAR">�?/option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-col-md2">
+                <label class="layui-form-label">生成次数</label>
+                <div class="layui-input-block">
+                    <input id="planCount" type="number" value="1" min="1" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <label class="layui-form-label">开始日�?/label>
+                <div class="layui-input-block"><input id="planStartDate" class="layui-input"></div>
+            </div>
+            <div class="layui-col-md4" style="text-align:right;padding-top:24px;">
+                <button class="layui-btn layui-btn-sm" id="btnPickDevices"><i class="layui-icon layui-icon-add-1"></i> 选择设备</button>
+                <button class="layui-btn layui-btn-sm layui-btn-warm" id="btnRefreshStatus"><i class="layui-icon layui-icon-refresh-3"></i> 刷新状�?/button>
+            </div>
+        </form>
+        <div style="margin:8px 0 4px;font-weight:600;">已选设备（红色=未配置该保养类型模板，不允许生成�?/div>
+        <table id="GridPlanDevices" lay-filter="GridPlanDevices"></table>
+    </div>
+</script>
+
+<!-- 设备选择 弹窗模板 -->
+<script type="text/html" id="tplPickDevices">
+    <div style="padding:14px;">
+        <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+            <div class="layui-col-md6">
+                <input type="text" id="pickKw" class="layui-input" placeholder="输入设备编码 / 名称 / 型号查询">
+            </div>
+            <div class="layui-col-md6" style="text-align:right;">
+                <button class="layui-btn layui-btn-sm" id="btnPickSearch"><i class="layui-icon layui-icon-search"></i> 查询</button>
+            </div>
+        </div>
+        <table id="GridPickDevices" lay-filter="GridPickDevices"></table>
+    </div>
+</script>
+
 @section Script{
-    <script type='text/html' class="no-print" id='barDemo'>
-        <a class='layui-btn layui-btn-xs layui-btn-normal' lay-event='viewModel'>鏌ョ湅</a>
-    </script>
     <script>
-        var URLThisGetList = '@Url.Action("GetMainList")';
-        var URLThisExportList = '@Url.Action("ExportExcel")';
-        var Cols = [
-            { field: 'Id', title: 'Id', width: 80, sort: true },
-            { field: 'BillNo', title: 'BillNo', search: 'input', width: 130 },
-            { field: 'BillDate', title: 'BillDate', search: 'input', width: 130, templet: function(d){ return d.BillDate ? d.BillDate.substring(0, 10) : ''; } },
-            { field: 'BillType', title: 'BillType', search: 'input', width: 130 },
-            { field: 'BeginDate', title: 'BeginDate', search: 'input', width: 130, templet: function(d){ return d.BeginDate ? d.BeginDate.substring(0, 10) : ''; } },
-            { field: 'EndDate', title: 'EndDate', search: 'input', width: 130, templet: function(d){ return d.EndDate ? d.EndDate.substring(0, 10) : ''; } },
-            { field: 'FacilityID', title: 'FacilityID', search: 'input', width: 110 },
-            { field: 'TempID', title: 'TempID', search: 'input', width: 110 },
-            { field: 'MaintainType', title: 'MaintainType', search: 'input', width: 130 },
-            { field: 'Status', title: 'Status', search: 'input', width: 110 },
-            { field: 'Remark', title: 'Remark', search: 'input', width: 170 },
-            { fixed: 'right', title: '鎿嶄綔', width: 90, align: 'center', toolbar: '#barDemo' }
-        ];
-        function viewModel(obj) {
-            var Id = obj.data.Id || obj.data.id;
-            layui.layer.open({
-                title: '淇濆吇宸ュ崟 Facility_BillMain - 鏌ョ湅',
-                content: '@Url.Action("ViewList")?id=' + Id,
-                type: 2,
-                area: ['90%', '90%'],
-                btn: ['鍏抽棴']
+        var URL_MAIN_LIST       = '@Url.Action("GetMainList")';
+        var URL_BILL_DETAIL     = '@Url.Action("GetBillDetail")';
+        var URL_UPDATE_BILL     = '@Url.Action("UpdateBill")';
+        var URL_DELETE_BILL     = '@Url.Action("DeleteBill")';
+        var URL_BATCH_GENERATE  = '@Url.Action("BatchGenerate")';
+        var URL_CHECK_TEMPLATES = '@Url.Action("CheckTemplates")';
+        var URL_PLAN_DEVICES    = '@Url.Action("GetPlanDevices")';
+
+        layui.use(['table', 'form', 'layer', 'laydate'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate;
+            function ok(res) { return res && (res.code === 0 || res.code === 200); }
+            function toast(msg) { layer.msg(msg || ''); }
+            function toastOk(msg) { layer.msg(msg || '操作成功', { icon: 1 }); }
+            function toastErr(msg) { layer.msg(msg || '操作失败', { icon: 2 }); }
+            function toastWarn(msg) { layer.msg(msg || '', { icon: 0 }); }
+            function fmtDate(s) { return s ? (s + '').replace('T', ' ').substring(0, 19) : ''; }
+            function statusText(s) { return ({0:'新建',1:'已派�?,2:'保养�?,3:'已保�?,4:'已审�?})[s] || (s + ''); }
+            function cycleText(c) { c = (c||'').toUpperCase(); return ({YEAR:'�?,QUARTER:'季度',MONTH:'�?,WEEK:'�?})[c] || c; }
+
+            var currentStatus = '';
+            var planState = { cycle: 'MONTH', count: 1, startDate: '', devices: [] };
+
+            function getWhere() {
+                var list = [];
+                var kw = $('#kw').val();
+                if (kw) list.push({ field: 'BillNo', conditional: 'like', value: kw });
+                if (currentStatus !== '') list.push({ field: 'Status', conditional: 'eq', value: currentStatus });
+                return { page: 1, limit: 20, searchParam: list };
+            }
+
+            function renderList() {
+                table.render({
+                    elem: '#GridMain',
+                    id: 'GridMain',
+                    url: URL_MAIN_LIST,
+                    method: 'post',
+                    where: getWhere(),
+                    page: true,
+                    height: 'full-260',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'BillNo', title: '保养单号', width: 160 },
+                        { field: 'FacilityID', title: '设备ID', width: 110 },
+                        { field: 'MaintainType', title: '保养类型', width: 100, templet: '#cycleTpl' },
+                        { field: 'BillDate', title: '计划日期', width: 160, templet: function (d) { return fmtDate(d.BillDate); } },
+                        { field: 'BeginDate', title: '开始时�?, width: 160, templet: function (d) { return fmtDate(d.BeginDate); } },
+                        { field: 'EndDate', title: '结束时间', width: 160, templet: function (d) { return fmtDate(d.EndDate); } },
+                        { field: 'Status', title: '状�?, width: 100, templet: '#statusTpl' },
+                        { field: 'RepairStaff', title: '保养�?, width: 110 },
+                        { field: 'Remark', title: '备注', minWidth: 160 },
+                        { title: '操作', width: 200, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+
+            function openDetail(row, readOnly) {
+                layer.open({
+                    type: 1,
+                    area: ['1000px', '680px'],
+                    title: (readOnly ? '查看' : '编辑') + ' 保养�?' + (row.BillNo || ''),
+                    content: $('#tplBillDetail').html(),
+                    btn: readOnly ? ['关闭'] : ['保存', '关闭'],
+                    success: function () {
+                        form.render();
+                        laydate.render({ elem: '#fld_BillDate', type: 'datetime' });
+                        laydate.render({ elem: '#fld_BeginDate', type: 'datetime' });
+                        laydate.render({ elem: '#fld_EndDate', type: 'datetime' });
+                        $.get(URL_BILL_DETAIL, { id: row.Id }, function (res) {
+                            if (!ok(res) || !res.data) { toastErr(res.msg || '加载失败'); return; }
+                            var m = res.data.Main || {};
+                            var rawCycle = (m.MaintainType || '').toUpperCase();
+                            var rawStatus = m.Status == null ? 0 : m.Status;
+                            m.BillDate = fmtDate(m.BillDate);
+                            m.BeginDate = fmtDate(m.BeginDate);
+                            m.EndDate = fmtDate(m.EndDate);
+                            m.MaintainType = rawCycle;
+                            form.val('billForm', m);
+                            $('#fld_BillNoText').text(m.BillNo || '');
+                            $('#fld_MaintainTypeText').text(cycleText(rawCycle));
+                            $('#fld_StatusText').text(statusText(rawStatus));
+                            if (readOnly) {
+                                $('form[lay-filter=billForm] input').attr('readonly', true).attr('disabled', true);
+                            }
+                            table.render({
+                                elem: '#GridBillSub',
+                                data: res.data.Subs || [],
+                                page: false,
+                                cols: [[
+                                    { type: 'numbers', title: '#' },
+                                    { field: 'Project', title: '保养项目', minWidth: 160 },
+                                    { field: 'UpkeepMethod', title: '保养方法', minWidth: 180 },
+                                    { field: 'CheckMethod', title: '标准描述', minWidth: 160 },
+                                    { field: 'MinValue', title: '最小�?, width: 80 },
+                                    { field: 'MaxValue', title: '最大�?, width: 80 },
+                                    { field: 'Result', title: '保养结果', width: 120 },
+                                    { field: 'Remark', title: '备注', minWidth: 120 }
+                                ]]
+                            });
+                        });
+                    },
+                    yes: function (idx) {
+                        if (readOnly) { layer.close(idx); return; }
+                        var data = form.val('billForm');
+                        $.post(URL_UPDATE_BILL, data, function (res) {
+                            if (ok(res)) {
+                                layer.close(idx);
+                                table.reload('GridMain');
+                                toastOk('保存成功');
+                            } else toastErr(res.msg || '保存失败');
+                        });
+                    }
+                });
+            }
+
+            // ---------------- 建立保养计划 ----------------
+            function openPlanDialog() {
+                planState = { cycle: 'MONTH', count: 1, startDate: formatToday(), devices: [] };
+                layer.open({
+                    type: 1,
+                    area: ['1100px', '680px'],
+                    title: '建立保养计划',
+                    content: $('#tplPlan').html(),
+                    btn: ['确认生成', '关闭'],
+                    success: function () {
+                        form.render();
+                        laydate.render({ elem: '#planStartDate', value: planState.startDate });
+                        $('#planCycle').on('change', function () { planState.cycle = $(this).val(); refreshPlanGrid(); });
+                        $('#planCount').on('change', function () { planState.count = parseInt($(this).val()) || 1; });
+                        $('#planStartDate').on('blur', function () { planState.startDate = $(this).val(); });
+                        $('#btnPickDevices').on('click', openPickDevices);
+                        $('#btnRefreshStatus').on('click', refreshPlanGrid);
+                        renderPlanGrid();
+                    },
+                    yes: function (idx) {
+                        if (planState.devices.length === 0) { toastWarn('请先选择设备'); return; }
+                        var missing = planState.devices.filter(function (d) { return !d.HasTemplate; });
+                        if (missing.length > 0) { toastErr('有未配置模板的设备，不允许生成，请先去模板里配置'); return; }
+                        $.post(URL_BATCH_GENERATE, {
+                            deviceIds: planState.devices.map(function (d) { return d.Id; }),
+                            cycle: planState.cycle,
+                            count: planState.count,
+                            startDate: planState.startDate
+                        }, function (res) {
+                            if (ok(res)) {
+                                layer.close(idx);
+                                table.reload('GridMain');
+                                toastOk(res.msg || '已生�?);
+                            } else toastErr(res.msg || '生成失败');
+                        });
+                    }
+                });
+            }
+
+            function renderPlanGrid() {
+                table.render({
+                    elem: '#GridPlanDevices',
+                    id: 'GridPlanDevices',
+                    data: planState.devices,
+                    page: false,
+                    height: 380,
+                    cols: [[
+                        { field: 'FacilityCode', title: '设备编码', width: 140 },
+                        { field: 'FacilityName', title: '设备名称', minWidth: 160 },
+                        { field: 'Model', title: '设备型号', width: 130 },
+                        { field: 'MonthTempName', title: '月保养模�?, width: 160, templet: tplCellTemplet('MonthTempName') },
+                        { field: 'SeasonTempName', title: '季度保养模版', width: 160, templet: tplCellTemplet('SeasonTempName') },
+                        { field: 'WeekTempName', title: '周保养模�?, width: 160, templet: tplCellTemplet('WeekTempName') },
+                        { field: 'YearTempName', title: '年保养模�?, width: 160, templet: tplCellTemplet('YearTempName') },
+                        { field: 'HasTemplate', title: '当前周期', width: 110, templet: function (d) {
+                            return d.HasTemplate
+                                ? '<span class="layui-badge layui-bg-green">已配�?/span>'
+                                : '<span class="layui-badge">未配�?/span>';
+                        } },
+                        { title: '操作', width: 80, templet: function (d) {
+                            return '<a class="layui-btn layui-btn-xs layui-btn-danger" onclick="window.__removePlanDev(' + d.Id + ')">移除</a>';
+                        } }
+                    ]],
+                    done: function () { highlightMissingRows(); }
+                });
+            }
+
+            function tplCellTemplet(field) {
+                return function (d) {
+                    var current = planState.cycle === 'MONTH' ? 'MonthTempName'
+                                : planState.cycle === 'QUARTER' ? 'SeasonTempName'
+                                : planState.cycle === 'WEEK' ? 'WeekTempName'
+                                : 'YearTempName';
+                    var v = d[field] || '';
+                    if (field === current && !v) return '<span style="color:#e53935;">未配�?/span>';
+                    return v;
+                };
+            }
+
+            function highlightMissingRows() {
+                $('#GridPlanDevices').next('.layui-table-view').find('tbody tr').each(function (i) {
+                    var row = planState.devices[i];
+                    if (row && !row.HasTemplate) $(this).css('background-color', '#fde8e8');
+                    else $(this).css('background-color', '');
+                });
+            }
+
+            window.__removePlanDev = function (id) {
+                planState.devices = planState.devices.filter(function (d) { return d.Id !== id; });
+                renderPlanGrid();
+            };
+
+            function refreshPlanGrid() {
+                if (planState.devices.length === 0) { renderPlanGrid(); return; }
+                var ids = planState.devices.map(function (d) { return d.Id; });
+                $.post(URL_CHECK_TEMPLATES, { 'deviceIds[]': ids, cycle: planState.cycle }, function (res) {
+                    if (ok(res) && res.data) {
+                        var byId = {};
+                        res.data.forEach(function (s) { byId[s.DeviceId] = s; });
+                        planState.devices.forEach(function (d) {
+                            var s = byId[d.Id];
+                            d.HasTemplate = s ? s.HasTemplate : false;
+                            d.TempId = s ? s.TempId : null;
+                        });
+                        renderPlanGrid();
+                    }
+                });
+            }
+
+            // ---------------- 设备选择 ----------------
+            function openPickDevices() {
+                var picked = {};
+                planState.devices.forEach(function (d) { picked[d.Id] = true; });
+                var dlg = layer.open({
+                    type: 1,
+                    area: ['1100px', '600px'],
+                    title: '选择设备',
+                    content: $('#tplPickDevices').html(),
+                    btn: ['确认添加', '关闭'],
+                    success: function () {
+                        renderPickGrid();
+                        $('#btnPickSearch').on('click', function () { table.reload('GridPickDevices', { where: getPickWhere() }); });
+                        $('#pickKw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnPickSearch').click(); });
+                    },
+                    yes: function (idx) {
+                        var check = table.checkStatus('GridPickDevices').data || [];
+                        if (check.length === 0) { toastWarn('请勾选设�?); return; }
+                        check.forEach(function (row) {
+                            if (!picked[row.Id]) {
+                                planState.devices.push({
+                                    Id: row.Id,
+                                    FacilityCode: row.FacilityCode,
+                                    FacilityName: row.FacilityName,
+                                    Model: row.Model,
+                                    MonthTempName: row.MonthTempName,
+                                    SeasonTempName: row.SeasonTempName,
+                                    WeekTempName: row.WeekTempName,
+                                    YearTempName: row.YearTempName,
+                                    HasTemplate: false,
+                                    TempId: null
+                                });
+                                picked[row.Id] = true;
+                            }
+                        });
+                        layer.close(idx);
+                        refreshPlanGrid();
+                    }
+                });
+            }
+
+            function getPickWhere() {
+                var list = [];
+                var kw = $('#pickKw').val();
+                if (kw) list.push({ field: 'FacilityName', conditional: 'like', value: kw });
+                return { page: 1, limit: 20, searchParam: list };
+            }
+
+            function renderPickGrid() {
+                table.render({
+                    elem: '#GridPickDevices',
+                    id: 'GridPickDevices',
+                    url: URL_PLAN_DEVICES,
+                    method: 'post',
+                    where: getPickWhere(),
+                    page: true,
+                    height: 440,
+                    cols: [[
+                        { type: 'checkbox' },
+                        { field: 'FacilityCode', title: '设备编码', width: 140 },
+                        { field: 'FacilityName', title: '设备名称', minWidth: 160 },
+                        { field: 'Model', title: '设备型号', width: 130 },
+                        { field: 'MonthTempName', title: '月保养模�?, width: 140 },
+                        { field: 'SeasonTempName', title: '季度保养模版', width: 140 },
+                        { field: 'WeekTempName', title: '周保养模�?, width: 140 },
+                        { field: 'YearTempName', title: '年保养模�?, width: 140 }
+                    ]]
+                });
+            }
+
+            // ---------------- 状态过�?----------------
+            $('#statusPills button').on('click', function () {
+                $('#statusPills button').removeClass('').addClass('layui-btn layui-btn-sm layui-btn-primary');
+                $(this).removeClass('layui-btn-primary');
+                currentStatus = $(this).data('status');
+                table.reload('GridMain', { where: getWhere() });
             });
-        }
+
+            $('#btnPlan').on('click', openPlanDialog);
+            $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
+            $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+
+            // 视图切换占位（看�?日历/甘特尚未实现�?
+            $('#btnViewList').on('click', function () { showPane('list'); });
+            $('#btnViewKanban').on('click', function () { showPane('kanban'); });
+            $('#btnViewCalendar').on('click', function () { showPane('calendar'); });
+            $('#btnViewGantt').on('click', function () { showPane('gantt'); });
+            function showPane(name) {
+                if (name === 'list') {
+                    $('#paneList').show(); $('#panePlaceholder').hide();
+                } else {
+                    $('#paneList').hide(); $('#panePlaceholder').show();
+                    $('#placeholderText').text(({kanban:'状态看板视图开发中...',calendar:'日历视图开发中...',gantt:'甘特图视图开发中...'})[name]);
+                }
+            }
+
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'view') openDetail(obj.data, true);
+                if (obj.event === 'edit') openDetail(obj.data, false);
+                if (obj.event === 'del') {
+                    layer.confirm('确认删除该保养单（已派工不允许删除）�?, function (idx) {
+                        $.post(URL_DELETE_BILL, { id: obj.data.Id }, function (res) {
+                            layer.close(idx);
+                            if (ok(res)) { obj.del(); toastOk('删除成功'); }
+                            else toastErr(res.msg || '删除失败');
+                        });
+                    });
+                }
+            });
+
+            function formatToday() {
+                var d = new Date();
+                var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+                return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+            }
+
+            renderList();
+            form.render();
+        });
     </script>
-    <script src="~/js/Page/NomalListPage.js"></script>
 }
