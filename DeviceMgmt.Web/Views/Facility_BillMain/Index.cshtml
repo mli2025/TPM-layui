@@ -1,271 +1,518 @@
 @{
-    ViewData["Title"] = "保养工单列表";
+    ViewData["Title"] = "???????";
 }
 <div class="layui-fluid" style="padding:12px;">
     <div class="layui-card">
-        <div class="layui-card-header"><strong>保养工单列表</strong></div>
+        <div class="layui-card-header">
+            <strong>???????</strong>
+            <span class="layui-btn-group" style="float:right;">
+                <button class="layui-btn layui-btn-sm" id="btnViewList"><i class="layui-icon layui-icon-list"></i> ??</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewKanban"><i class="layui-icon layui-icon-template-1"></i> ????</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewCalendar"><i class="layui-icon layui-icon-date"></i> ??</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewGantt"><i class="layui-icon layui-icon-chart"></i> ???</button>
+            </span>
+        </div>
         <div class="layui-card-body">
             <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
-                <div class="layui-col-md5">
-                    <input type="text" id="kwBill" class="layui-input" placeholder="按单据编号模糊查询">
+                <div class="layui-col-md4">
+                    <input type="text" id="kw" class="layui-input" placeholder="????/????/??????">
                 </div>
-                <div class="layui-col-md7" style="text-align:right;">
-                    <button type="button" class="layui-btn layui-btn-sm" id="btnBillAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
-                    <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="btnBillReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
-                    <button type="button" class="layui-btn layui-btn-sm layui-btn-warm" id="btnBillExport">导出</button>
+                <div class="layui-col-md4" id="statusPills">
+                    <button class="layui-btn layui-btn-sm" data-status="">??</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="0">??</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="1">???</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="2">???</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="3">???</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="4">???</button>
+                </div>
+                <div class="layui-col-md4" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnPlan"><i class="layui-icon layui-icon-add-1"></i> ??????</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> ??</button>
                 </div>
             </div>
-            <table id="GridBillMain" lay-filter="GridBillMain"></table>
+
+            <div id="paneList">
+                <table id="GridMain" lay-filter="GridMain"></table>
+            </div>
+            <div id="panePlaceholder" style="display:none;padding:48px;text-align:center;color:#888;font-size:14px;">
+                <i class="layui-icon" style="font-size:48px;color:#ccc;"></i>
+                <div style="margin-top:12px;" id="placeholderText">??????...</div>
+            </div>
         </div>
     </div>
 </div>
 
-<script type="text/html" id="barBill">
-    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="view">查看</a>
-    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
-    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="view">??</a>
+    {{# if(d.Status == 0 || d.Status == null){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">??</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">??</a>
+    {{# } }}
 </script>
 
-<script type="text/html" id="tplBillForm">
-    <form class="layui-form" lay-filter="billForm" style="padding:14px 16px 0 0;">
-        <input type="hidden" name="Id">
-        <div class="layui-form-item">
-            <label class="layui-form-label">单据编号</label>
-            <div class="layui-input-block" style="display:flex;gap:8px;align-items:center;">
-                <input name="BillNo" required lay-verify="required" class="layui-input" placeholder="必填，可点右侧生成" style="flex:1;">
-                <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" id="btnGenBillNo">生成编号</button>
+<script type="text/html" id="statusTpl">
+    {{# var map = {0:'??',1:'???',2:'???',3:'???',4:'???'}; }}
+    {{# var color = {0:'#f7b500',1:'#1e88e5',2:'#7c3aed',3:'#16a34a',4:'#475569'}; }}
+    {{# var s = (d.Status == null) ? 0 : d.Status; }}
+    <span class="layui-badge" style="background-color:{{= color[s] || '#999' }};">{{= map[s] || s }}</span>
+</script>
+
+<script type="text/html" id="cycleTpl">
+    {{# var c = (d.MaintainType||'').toUpperCase(); }}
+    {{# var name = {YEAR:'?',QUARTER:'??',MONTH:'?',WEEK:'?'}[c] || c; }}
+    <span>{{= name }}</span>
+</script>
+
+<!-- ??????/??????? -->
+<script type="text/html" id="tplBillDetail">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="billForm">
+            <input type="hidden" name="Id">
+            <input type="hidden" name="MaintainType">
+            <input type="hidden" name="Status">
+            <input type="hidden" name="FacilityID">
+            <input type="hidden" name="TempID">
+            <input type="hidden" name="BillNo">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">????</label>
+                    <div class="layui-input-inline" style="padding-top:8px;"><span id="fld_BillNoText"></span></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">????</label>
+                    <div class="layui-input-inline" style="padding-top:8px;"><span id="fld_MaintainTypeText"></span></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">??</label>
+                    <div class="layui-input-inline" style="padding-top:8px;"><span id="fld_StatusText"></span></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">????</label>
+                    <div class="layui-input-inline"><input name="BillDate" class="layui-input" id="fld_BillDate"></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">????</label>
+                    <div class="layui-input-inline"><input name="BeginDate" class="layui-input" id="fld_BeginDate"></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">????</label>
+                    <div class="layui-input-inline"><input name="EndDate" class="layui-input" id="fld_EndDate"></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">???</label>
+                    <div class="layui-input-inline"><input name="RepairStaff" class="layui-input"></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">??</label>
+                    <div class="layui-input-inline"><input name="Amount" type="number" step="0.01" class="layui-input"></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">??</label>
+                <div class="layui-input-block"><input name="Remark" class="layui-input"></div>
+            </div>
+        </form>
+        <div style="margin:8px 0 4px;font-weight:600;">??????</div>
+        <table id="GridBillSub" lay-filter="GridBillSub"></table>
+    </div>
+</script>
+
+<!-- ?????? ???? -->
+<script type="text/html" id="tplPlan">
+    <div style="padding:14px;">
+        <form class="layui-form layui-row layui-col-space10" lay-filter="planForm">
+            <div class="layui-col-md3">
+                <label class="layui-form-label">????</label>
+                <div class="layui-input-block">
+                    <select id="planCycle">
+                        <option value="MONTH">?</option>
+                        <option value="QUARTER">??</option>
+                        <option value="WEEK">?</option>
+                        <option value="YEAR">?</option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-col-md2">
+                <label class="layui-form-label">????</label>
+                <div class="layui-input-block">
+                    <input id="planCount" type="number" value="1" min="1" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <label class="layui-form-label">????</label>
+                <div class="layui-input-block"><input id="planStartDate" class="layui-input"></div>
+            </div>
+            <div class="layui-col-md4" style="text-align:right;padding-top:24px;">
+                <button class="layui-btn layui-btn-sm" id="btnPickDevices"><i class="layui-icon layui-icon-add-1"></i> ????</button>
+                <button class="layui-btn layui-btn-sm layui-btn-warm" id="btnRefreshStatus"><i class="layui-icon layui-icon-refresh-3"></i> ????</button>
+            </div>
+        </form>
+        <div style="margin:8px 0 4px;font-weight:600;">???????=?????????????????</div>
+        <table id="GridPlanDevices" lay-filter="GridPlanDevices"></table>
+    </div>
+</script>
+
+<!-- ???? ???? -->
+<script type="text/html" id="tplPickDevices">
+    <div style="padding:14px;">
+        <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+            <div class="layui-col-md6">
+                <input type="text" id="pickKw" class="layui-input" placeholder="?????? / ?? / ????">
+            </div>
+            <div class="layui-col-md6" style="text-align:right;">
+                <button class="layui-btn layui-btn-sm" id="btnPickSearch"><i class="layui-icon layui-icon-search"></i> ??</button>
             </div>
         </div>
-        <div class="layui-form-item">
-            <label class="layui-form-label">单据日期</label>
-            <div class="layui-input-block"><input name="BillDate" id="billDateInput" class="layui-input" lay-verify="required"></div>
-        </div>
-        <div class="layui-form-item">
-            <label class="layui-form-label">单据类型</label>
-            <div class="layui-input-block"><input name="BillType" class="layui-input" placeholder="如 MAINTENANCE"></div>
-        </div>
-        <div class="layui-form-item">
-            <label class="layui-form-label">开始时间</label>
-            <div class="layui-input-block"><input name="BeginDate" id="billBeginInput" class="layui-input"></div>
-        </div>
-        <div class="layui-form-item">
-            <label class="layui-form-label">结束时间</label>
-            <div class="layui-input-block"><input name="EndDate" id="billEndInput" class="layui-input"></div>
-        </div>
-        <div class="layui-form-item">
-            <label class="layui-form-label">设备ID</label>
-            <div class="layui-input-block"><input name="FacilityID" type="number" class="layui-input" placeholder="设备主键"></div>
-        </div>
-        <div class="layui-form-item">
-            <label class="layui-form-label">模板ID</label>
-            <div class="layui-input-block"><input name="TempID" type="number" class="layui-input" placeholder="保养模板主表Id"></div>
-        </div>
-        <div class="layui-form-item">
-            <label class="layui-form-label">保养方式</label>
-            <div class="layui-input-block"><input name="MaintainType" class="layui-input" placeholder="英文或业务编码"></div>
-        </div>
-        <div class="layui-form-item">
-            <label class="layui-form-label">状态</label>
-            <div class="layui-input-block">
-                <select name="Status">
-                    <option value="0">草稿</option>
-                    <option value="1">进行中</option>
-                    <option value="2">已完成</option>
-                    <option value="9">已关闭</option>
-                </select>
-            </div>
-        </div>
-        <div class="layui-form-item">
-            <label class="layui-form-label">备注</label>
-            <div class="layui-input-block"><input name="Remark" class="layui-input"></div>
-        </div>
-    </form>
+        <table id="GridPickDevices" lay-filter="GridPickDevices"></table>
+    </div>
 </script>
 
 @section Script{
     <script>
+        var URL_MAIN_LIST       = '@Url.Action("GetMainList")';
+        var URL_BILL_DETAIL     = '@Url.Action("GetBillDetail")';
+        var URL_UPDATE_BILL     = '@Url.Action("UpdateBill")';
+        var URL_DELETE_BILL     = '@Url.Action("DeleteBill")';
+        var URL_BATCH_GENERATE  = '@Url.Action("BatchGenerate")';
+        var URL_CHECK_TEMPLATES = '@Url.Action("CheckTemplates")';
+        var URL_PLAN_DEVICES    = '@Url.Action("GetPlanDevices")';
+
         layui.use(['table', 'form', 'layer', 'laydate'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate;
             function ok(res) { return res && (res.code === 0 || res.code === 200); }
+            function toast(msg) { layer.msg(msg || ''); }
+            function toastOk(msg) { layer.msg(msg || '????', { icon: 1 }); }
+            function toastErr(msg) { layer.msg(msg || '????', { icon: 2 }); }
+            function toastWarn(msg) { layer.msg(msg || '', { icon: 0 }); }
+            function fmtDate(s) { return s ? (s + '').replace('T', ' ').substring(0, 19) : ''; }
+            function statusText(s) { return ({0:'??',1:'???',2:'???',3:'???',4:'???'})[s] || (s + ''); }
+            function cycleText(c) { c = (c||'').toUpperCase(); return ({YEAR:'?',QUARTER:'??',MONTH:'?',WEEK:'?'})[c] || c; }
 
-            function pick() {
-                for (var i = 0; i < arguments.length; i++) {
-                    var v = arguments[i];
-                    if (v !== undefined && v !== null) return v;
-                }
-                return undefined;
-            }
-            function normalizeBillRow(d) {
-                if (!d || typeof d !== 'object') return d;
-                return {
-                    Id: pick(d.Id, d.id),
-                    BillNo: pick(d.BillNo, d.billNo),
-                    BillDate: pick(d.BillDate, d.billDate),
-                    BillType: pick(d.BillType, d.billType),
-                    BeginDate: pick(d.BeginDate, d.beginDate),
-                    EndDate: pick(d.EndDate, d.endDate),
-                    FacilityID: pick(d.FacilityID, d.facilityID),
-                    TempID: pick(d.TempID, d.tempID),
-                    MaintainType: pick(d.MaintainType, d.maintainType),
-                    Status: pick(d.Status, d.status),
-                    Remark: pick(d.Remark, d.remark)
-                };
-            }
+            var currentStatus = '';
+            var planState = { cycle: 'MONTH', count: 1, startDate: '', devices: [] };
 
-            function billStatusText(s) {
-                var n = parseInt(s, 10);
-                if (n === 0) return '草稿';
-                if (n === 1) return '进行中';
-                if (n === 2) return '已完成';
-                if (n === 9) return '已关闭';
-                return s === undefined || s === null || s === '' ? '' : String(s);
-            }
-
-            function getBillWhere() {
+            function getWhere() {
                 var list = [];
-                var kw = ($('#kwBill').val() || '').trim();
+                var kw = $('#kw').val();
                 if (kw) list.push({ field: 'BillNo', conditional: 'like', value: kw });
-                return { searchParam: list };
+                if (currentStatus !== '') list.push({ field: 'Status', conditional: 'eq', value: currentStatus });
+                return { page: 1, limit: 20, searchParam: list };
             }
 
-            function reloadBillGrid() {
-                table.reload('GridBillMain', { page: { curr: 1 }, where: getBillWhere() });
+            function renderList() {
+                table.render({
+                    elem: '#GridMain',
+                    id: 'GridMain',
+                    url: URL_MAIN_LIST,
+                    method: 'post',
+                    where: getWhere(),
+                    page: true,
+                    height: 'full-260',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'BillNo', title: '????', width: 160 },
+                        { field: 'FacilityID', title: '??ID', width: 110 },
+                        { field: 'MaintainType', title: '????', width: 100, templet: '#cycleTpl' },
+                        { field: 'BillDate', title: '????', width: 160, templet: function (d) { return fmtDate(d.BillDate); } },
+                        { field: 'BeginDate', title: '????', width: 160, templet: function (d) { return fmtDate(d.BeginDate); } },
+                        { field: 'EndDate', title: '????', width: 160, templet: function (d) { return fmtDate(d.EndDate); } },
+                        { field: 'Status', title: '??', width: 100, templet: '#statusTpl' },
+                        { field: 'RepairStaff', title: '???', width: 110 },
+                        { field: 'Remark', title: '??', minWidth: 160 },
+                        { title: '??', width: 200, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
             }
 
-            function bindBillLaydateIn(wrap) {
-                var $w = wrap && wrap.length ? wrap : $(document);
-                var e1 = $w.find('#billDateInput')[0], e2 = $w.find('#billBeginInput')[0], e3 = $w.find('#billEndInput')[0];
-                if (e1) laydate.render({ elem: e1, type: 'datetime' });
-                if (e2) laydate.render({ elem: e2, type: 'datetime' });
-                if (e3) laydate.render({ elem: e3, type: 'datetime' });
-            }
-
-            function formatDt(v) {
-                if (!v) return '';
-                return String(v).substring(0, 16).replace('T', ' ');
-            }
-
-            function openBillForm(data) {
-                var isNew = !data;
-                var payload = data ? normalizeBillRow(data) : {
-                    Id: 0,
-                    BillNo: '',
-                    BillDate: new Date().toISOString().substring(0, 16).replace('T', ' '),
-                    BillType: 'MAINTENANCE',
-                    Status: 0,
-                    Remark: ''
-                };
+            function openDetail(row, readOnly) {
                 layer.open({
                     type: 1,
-                    title: isNew ? '新增保养工单' : '编辑保养工单',
-                    area: ['560px', '620px'],
-                    content: $('#tplBillForm').html(),
-                    btn: ['保存', '关闭'],
-                    success: function (layero, idx) {
-                        var wrap = $(layero);
+                    area: ['1000px', '680px'],
+                    title: (readOnly ? '??' : '??') + ' ??? ' + (row.BillNo || ''),
+                    content: $('#tplBillDetail').html(),
+                    btn: readOnly ? ['??'] : ['??', '??'],
+                    success: function () {
                         form.render();
-                        bindBillLaydateIn(wrap);
-                        form.val('billForm', payload);
-                        wrap.find('#btnGenBillNo').off('click').on('click', function () {
-                            $.get('@Url.Action("NextBillNo")', function (res) {
-                                if (ok(res) && res.data) {
-                                    wrap.find('input[name="BillNo"]').val(res.data);
-                                    App.success('已生成编号');
-                                } else App.error((res && res.msg) || '生成失败');
+                        laydate.render({ elem: '#fld_BillDate', type: 'datetime' });
+                        laydate.render({ elem: '#fld_BeginDate', type: 'datetime' });
+                        laydate.render({ elem: '#fld_EndDate', type: 'datetime' });
+                        $.get(URL_BILL_DETAIL, { id: row.Id }, function (res) {
+                            if (!ok(res) || !res.data) { toastErr(res.msg || '????'); return; }
+                            var m = res.data.Main || {};
+                            var rawCycle = (m.MaintainType || '').toUpperCase();
+                            var rawStatus = m.Status == null ? 0 : m.Status;
+                            m.BillDate = fmtDate(m.BillDate);
+                            m.BeginDate = fmtDate(m.BeginDate);
+                            m.EndDate = fmtDate(m.EndDate);
+                            m.MaintainType = rawCycle;
+                            form.val('billForm', m);
+                            $('#fld_BillNoText').text(m.BillNo || '');
+                            $('#fld_MaintainTypeText').text(cycleText(rawCycle));
+                            $('#fld_StatusText').text(statusText(rawStatus));
+                            if (readOnly) {
+                                $('form[lay-filter=billForm] input').attr('readonly', true).attr('disabled', true);
+                            }
+                            table.render({
+                                elem: '#GridBillSub',
+                                data: res.data.Subs || [],
+                                page: false,
+                                cols: [[
+                                    { type: 'numbers', title: '#' },
+                                    { field: 'Project', title: '????', minWidth: 160 },
+                                    { field: 'UpkeepMethod', title: '????', minWidth: 180 },
+                                    { field: 'CheckMethod', title: '????', minWidth: 160 },
+                                    { field: 'MinValue', title: '???', width: 80 },
+                                    { field: 'MaxValue', title: '???', width: 80 },
+                                    { field: 'Result', title: '????', width: 120 },
+                                    { field: 'Remark', title: '??', minWidth: 120 }
+                                ]]
                             });
                         });
                     },
                     yes: function (idx) {
-                        var row = form.val('billForm');
-                        row.FacilityID = row.FacilityID === '' || row.FacilityID === undefined ? '' : row.FacilityID;
-                        row.TempID = row.TempID === '' || row.TempID === undefined ? '' : row.TempID;
-                        row.Status = row.Status === '' || row.Status === undefined ? '0' : row.Status;
-                        $.post('@Url.Action("SaveMain")', row, function (res) {
+                        if (readOnly) { layer.close(idx); return; }
+                        var data = form.val('billForm');
+                        $.post(URL_UPDATE_BILL, data, function (res) {
                             if (ok(res)) {
                                 layer.close(idx);
-                                reloadBillGrid();
-                                App.success('保存成功');
-                            } else App.error(res.msg || '保存失败');
+                                table.reload('GridMain');
+                                toastOk('????');
+                            } else toastErr(res.msg || '????');
                         });
-                    },
-                    btn2: function (idx) { layer.close(idx); }
+                    }
                 });
             }
 
-            table.render({
-                elem: '#GridBillMain',
-                id: 'GridBillMain',
-                url: '@Url.Action("GetMainList")',
-                method: 'post',
-                where: getBillWhere(),
-                page: true,
-                limit: 20,
-                limits: [10, 20, 50],
-                height: 'full-220',
-                parseData: function (res) {
-                    var raw = res && res.data ? res.data : [];
-                    var data = [];
-                    for (var i = 0; i < raw.length; i++) data.push(normalizeBillRow(raw[i]));
-                    return {
-                        code: res ? (res.code === 200 ? 0 : res.code) : 1,
-                        msg: (res && res.msg) || '',
-                        count: res && res.count != null ? res.count : 0,
-                        data: data
-                    };
-                },
-                cols: [[
-                    { type: 'numbers', title: '#' },
-                    { field: 'BillNo', title: '单据编号', width: 150 },
-                    { field: 'BillDate', title: '单据日期', width: 160, templet: function (d) { return formatDt(d.BillDate); } },
-                    { field: 'BillType', title: '单据类型', width: 120 },
-                    { field: 'BeginDate', title: '开始时间', width: 160, templet: function (d) { return formatDt(d.BeginDate); } },
-                    { field: 'EndDate', title: '结束时间', width: 160, templet: function (d) { return formatDt(d.EndDate); } },
-                    { field: 'FacilityID', title: '设备ID', width: 100 },
-                    { field: 'TempID', title: '模板ID', width: 100 },
-                    { field: 'MaintainType', title: '保养方式', width: 110 },
-                    { field: 'Status', title: '状态', width: 90, templet: function (d) { return billStatusText(d.Status); } },
-                    { field: 'Remark', title: '备注', minWidth: 140 },
-                    { title: '操作', width: 200, toolbar: '#barBill', fixed: 'right' }
-                ]]
-            });
-
-            $('#btnBillAdd').on('click', function () { openBillForm(null); });
-            $('#btnBillReload').on('click', function () { reloadBillGrid(); });
-            $('#kwBill').on('keydown', function (e) { if (e.keyCode === 13) reloadBillGrid(); });
-            $('#btnBillExport').on('click', function () {
-                var f = $('<form>', { method: 'post', action: '@Url.Action("ExportExcel")', target: '_blank' });
-                var p = getBillWhere().searchParam || [];
-                for (var i = 0; i < p.length; i++) {
-                    f.append($('<input>', { type: 'hidden', name: 'searchParam[' + i + '].field', value: p[i].field || '' }));
-                    f.append($('<input>', { type: 'hidden', name: 'searchParam[' + i + '].conditional', value: p[i].conditional || '' }));
-                    f.append($('<input>', { type: 'hidden', name: 'searchParam[' + i + '].value', value: p[i].value || '' }));
-                }
-                f.appendTo(document.body).trigger('submit').remove();
-            });
-
-            table.on('tool(GridBillMain)', function (obj) {
-                if (obj.event === 'view') {
-                    layer.open({
-                        type: 2,
-                        title: '保养工单查看',
-                        area: ['90%', '90%'],
-                        content: '@Url.Action("ViewList")?id=' + obj.data.Id
-                    });
-                }
-                if (obj.event === 'edit') openBillForm(obj.data);
-                if (obj.event === 'del') {
-                    layer.confirm('确认删除该工单？', function (i2) {
-                        $.post('@Url.Action("DeleteMain")', { id: obj.data.Id }, function (res) {
-                            layer.close(i2);
+            // ---------------- ?????? ----------------
+            function openPlanDialog() {
+                planState = { cycle: 'MONTH', count: 1, startDate: formatToday(), devices: [] };
+                layer.open({
+                    type: 1,
+                    area: ['1100px', '680px'],
+                    title: '??????',
+                    content: $('#tplPlan').html(),
+                    btn: ['????', '??'],
+                    success: function () {
+                        form.render();
+                        laydate.render({ elem: '#planStartDate', value: planState.startDate });
+                        $('#planCycle').on('change', function () { planState.cycle = $(this).val(); refreshPlanGrid(); });
+                        $('#planCount').on('change', function () { planState.count = parseInt($(this).val()) || 1; });
+                        $('#planStartDate').on('blur', function () { planState.startDate = $(this).val(); });
+                        $('#btnPickDevices').on('click', openPickDevices);
+                        $('#btnRefreshStatus').on('click', refreshPlanGrid);
+                        renderPlanGrid();
+                    },
+                    yes: function (idx) {
+                        if (planState.devices.length === 0) { toastWarn('??????'); return; }
+                        var missing = planState.devices.filter(function (d) { return !d.HasTemplate; });
+                        if (missing.length > 0) { toastErr('????????????????????????'); return; }
+                        $.post(URL_BATCH_GENERATE, {
+                            deviceIds: planState.devices.map(function (d) { return d.Id; }),
+                            cycle: planState.cycle,
+                            count: planState.count,
+                            startDate: planState.startDate
+                        }, function (res) {
                             if (ok(res)) {
-                                obj.del();
-                                App.success('删除成功');
-                            } else App.error(res.msg || '删除失败');
+                                layer.close(idx);
+                                table.reload('GridMain');
+                                toastOk(res.msg || '???');
+                            } else toastErr(res.msg || '????');
+                        });
+                    }
+                });
+            }
+
+            function renderPlanGrid() {
+                table.render({
+                    elem: '#GridPlanDevices',
+                    id: 'GridPlanDevices',
+                    data: planState.devices,
+                    page: false,
+                    height: 380,
+                    cols: [[
+                        { field: 'FacilityCode', title: '????', width: 140 },
+                        { field: 'FacilityName', title: '????', minWidth: 160 },
+                        { field: 'Model', title: '????', width: 130 },
+                        { field: 'MonthTempName', title: '?????', width: 160, templet: tplCellTemplet('MonthTempName') },
+                        { field: 'SeasonTempName', title: '??????', width: 160, templet: tplCellTemplet('SeasonTempName') },
+                        { field: 'WeekTempName', title: '?????', width: 160, templet: tplCellTemplet('WeekTempName') },
+                        { field: 'YearTempName', title: '?????', width: 160, templet: tplCellTemplet('YearTempName') },
+                        { field: 'HasTemplate', title: '????', width: 110, templet: function (d) {
+                            return d.HasTemplate
+                                ? '<span class="layui-badge layui-bg-green">???</span>'
+                                : '<span class="layui-badge">???</span>';
+                        } },
+                        { title: '??', width: 80, templet: function (d) {
+                            return '<a class="layui-btn layui-btn-xs layui-btn-danger" onclick="window.__removePlanDev(' + d.Id + ')">??</a>';
+                        } }
+                    ]],
+                    done: function () { highlightMissingRows(); }
+                });
+            }
+
+            function tplCellTemplet(field) {
+                return function (d) {
+                    var current = planState.cycle === 'MONTH' ? 'MonthTempName'
+                                : planState.cycle === 'QUARTER' ? 'SeasonTempName'
+                                : planState.cycle === 'WEEK' ? 'WeekTempName'
+                                : 'YearTempName';
+                    var v = d[field] || '';
+                    if (field === current && !v) return '<span style="color:#e53935;">???</span>';
+                    return v;
+                };
+            }
+
+            function highlightMissingRows() {
+                $('#GridPlanDevices').next('.layui-table-view').find('tbody tr').each(function (i) {
+                    var row = planState.devices[i];
+                    if (row && !row.HasTemplate) $(this).css('background-color', '#fde8e8');
+                    else $(this).css('background-color', '');
+                });
+            }
+
+            window.__removePlanDev = function (id) {
+                planState.devices = planState.devices.filter(function (d) { return d.Id !== id; });
+                renderPlanGrid();
+            };
+
+            function refreshPlanGrid() {
+                if (planState.devices.length === 0) { renderPlanGrid(); return; }
+                var ids = planState.devices.map(function (d) { return d.Id; });
+                $.post(URL_CHECK_TEMPLATES, { 'deviceIds[]': ids, cycle: planState.cycle }, function (res) {
+                    if (ok(res) && res.data) {
+                        var byId = {};
+                        res.data.forEach(function (s) { byId[s.DeviceId] = s; });
+                        planState.devices.forEach(function (d) {
+                            var s = byId[d.Id];
+                            d.HasTemplate = s ? s.HasTemplate : false;
+                            d.TempId = s ? s.TempId : null;
+                        });
+                        renderPlanGrid();
+                    }
+                });
+            }
+
+            // ---------------- ???? ----------------
+            function openPickDevices() {
+                var picked = {};
+                planState.devices.forEach(function (d) { picked[d.Id] = true; });
+                layer.open({
+                    type: 1,
+                    area: ['1100px', '600px'],
+                    title: '????',
+                    content: $('#tplPickDevices').html(),
+                    btn: ['????', '??'],
+                    success: function () {
+                        renderPickGrid();
+                        $('#btnPickSearch').on('click', function () { table.reload('GridPickDevices', { where: getPickWhere() }); });
+                        $('#pickKw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnPickSearch').click(); });
+                    },
+                    yes: function (idx) {
+                        var check = table.checkStatus('GridPickDevices').data || [];
+                        if (check.length === 0) { toastWarn('?????'); return; }
+                        check.forEach(function (row) {
+                            if (!picked[row.Id]) {
+                                planState.devices.push({
+                                    Id: row.Id,
+                                    FacilityCode: row.FacilityCode,
+                                    FacilityName: row.FacilityName,
+                                    Model: row.Model,
+                                    MonthTempName: row.MonthTempName,
+                                    SeasonTempName: row.SeasonTempName,
+                                    WeekTempName: row.WeekTempName,
+                                    YearTempName: row.YearTempName,
+                                    HasTemplate: false,
+                                    TempId: null
+                                });
+                                picked[row.Id] = true;
+                            }
+                        });
+                        layer.close(idx);
+                        refreshPlanGrid();
+                    }
+                });
+            }
+
+            function getPickWhere() {
+                var list = [];
+                var kw = $('#pickKw').val();
+                if (kw) list.push({ field: 'FacilityName', conditional: 'like', value: kw });
+                return { page: 1, limit: 20, searchParam: list };
+            }
+
+            function renderPickGrid() {
+                table.render({
+                    elem: '#GridPickDevices',
+                    id: 'GridPickDevices',
+                    url: URL_PLAN_DEVICES,
+                    method: 'post',
+                    where: getPickWhere(),
+                    page: true,
+                    height: 440,
+                    cols: [[
+                        { type: 'checkbox' },
+                        { field: 'FacilityCode', title: '????', width: 140 },
+                        { field: 'FacilityName', title: '????', minWidth: 160 },
+                        { field: 'Model', title: '????', width: 130 },
+                        { field: 'MonthTempName', title: '?????', width: 140 },
+                        { field: 'SeasonTempName', title: '??????', width: 140 },
+                        { field: 'WeekTempName', title: '?????', width: 140 },
+                        { field: 'YearTempName', title: '?????', width: 140 }
+                    ]]
+                });
+            }
+
+            // ---------------- ???? ----------------
+            $('#statusPills button').on('click', function () {
+                $('#statusPills button').removeClass('').addClass('layui-btn layui-btn-sm layui-btn-primary');
+                $(this).removeClass('layui-btn-primary');
+                currentStatus = $(this).data('status');
+                table.reload('GridMain', { where: getWhere() });
+            });
+
+            $('#btnPlan').on('click', openPlanDialog);
+            $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
+            $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+
+            // ?????????/??/???????
+            $('#btnViewList').on('click', function () { showPane('list'); });
+            $('#btnViewKanban').on('click', function () { showPane('kanban'); });
+            $('#btnViewCalendar').on('click', function () { showPane('calendar'); });
+            $('#btnViewGantt').on('click', function () { showPane('gantt'); });
+            function showPane(name) {
+                if (name === 'list') {
+                    $('#paneList').show(); $('#panePlaceholder').hide();
+                } else {
+                    $('#paneList').hide(); $('#panePlaceholder').show();
+                    $('#placeholderText').text(({kanban:'?????????...',calendar:'???????...',gantt:'????????...'})[name]);
+                }
+            }
+
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'view') openDetail(obj.data, true);
+                if (obj.event === 'edit') openDetail(obj.data, false);
+                if (obj.event === 'del') {
+                    layer.confirm('???????????????????', function (idx) {
+                        $.post(URL_DELETE_BILL, { id: obj.data.Id }, function (res) {
+                            layer.close(idx);
+                            if (ok(res)) { obj.del(); toastOk('????'); }
+                            else toastErr(res.msg || '????');
                         });
                     });
                 }
             });
 
+            function formatToday() {
+                var d = new Date();
+                var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+                return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+            }
+
+            renderList();
             form.render();
         });
     </script>

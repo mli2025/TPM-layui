@@ -48,6 +48,7 @@ public class Facility_ResourceDetail : Entity
     public long? MonthTempId { get; set; }
     public long? SeasonTempId { get; set; }
     public long? HalfYearTempId { get; set; }
+    public long? WeekTempId { get; set; }
     public long? YearTempId { get; set; }
     public DateTime? LastMonthMainTainDate { get; set; }
     public DateTime? LastYSeasonMainTainDate { get; set; }
