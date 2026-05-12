@@ -44,18 +44,18 @@
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="calPrev"><i class="layui-icon layui-icon-left"></i></button>
                     <span id="calTitle" style="font-size:16px;font-weight:600;min-width:120px;text-align:center;"></span>
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="calNext"><i class="layui-icon layui-icon-right"></i></button>
-                    <button class="layui-btn layui-btn-sm" id="calToday">今天</button>
+                    <button class="layui-btn layui-btn-sm" id="calToday">@("\u4eca\u65e5")</button>
                 </div>
                 <table id="calGrid" style="width:100%;border-collapse:collapse;table-layout:fixed;">
                     <thead>
                         <tr style="background:#f5f5f5;">
-                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周日</th>
-                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周一</th>
-                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周二</th>
-                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周三</th>
-                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周四</th>
-                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周五</th>
-                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周六</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">@("\u5468\u65e5")</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">@("\u5468\u4e00")</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">@("\u5468\u4e8c")</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">@("\u5468\u4e09")</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">@("\u5468\u56db")</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">@("\u5468\u4e94")</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">@("\u5468\u516d")</th>
                         </tr>
                     </thead>
                     <tbody id="calBody"></tbody>
@@ -64,14 +64,14 @@
 
             <div id="paneGantt" style="display:none;">
                 <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;">
-                    <span>粒度：</span>
-                    <button class="layui-btn layui-btn-sm gantt-scale" data-scale="WEEK">周</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="MONTH">月</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="QUARTER">季度</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="YEAR">年</button>
-                    <span style="margin-left:16px;">分组：</span>
-                    <button class="layui-btn layui-btn-sm gantt-group" data-group="bill">按工单</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-group" data-group="facility">按设备</button>
+                    <span>@("\u65f6\u95f4\u7c92\u5ea6")</span>
+                    <button class="layui-btn layui-btn-sm gantt-scale" data-scale="WEEK">@("\u5468")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="MONTH">@("\u6708")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="QUARTER">@("\u5b63")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="YEAR">@("\u5e74")</button>
+                    <span style="margin-left:16px;">@("\u5206\u7ec4")</span>
+                    <button class="layui-btn layui-btn-sm gantt-group" data-group="bill">@("\u6309\u4fdd\u517b\u5355")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-group" data-group="facility">@("\u6309\u8bbe\u5907")</button>
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="ganttPrev" style="margin-left:16px;"><i class="layui-icon layui-icon-left"></i></button>
                     <span id="ganttRange" style="font-weight:600;min-width:200px;text-align:center;"></span>
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="ganttNext"><i class="layui-icon layui-icon-right"></i></button>
@@ -88,19 +88,6 @@
     <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">&#x7f16;&#x8f91;</a>
     <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">&#x5220;&#x9664;</a>
     {{# } }}
-</script>
-
-<script type="text/html" id="statusTpl">
-    {{# var map = {0:'\u65b0\u5efa',1:'\u5df2\u6d3e\u5de5',2:'\u4fdd\u517b\u4e2d',3:'\u5df2\u4fdd\u517b',4:'\u5df2\u5ba1\u6838'}; }}
-    {{# var color = {0:'#f7b500',1:'#1e88e5',2:'#7c3aed',3:'#16a34a',4:'#475569'}; }}
-    {{# var s = (d.Status == null) ? 0 : d.Status; }}
-    <span class="layui-badge" style="background-color:{{= color[s] || '#999' }};">{{= map[s] || s }}</span>
-</script>
-
-<script type="text/html" id="cycleTpl">
-    {{# var c = (d.MaintainType||'').toUpperCase(); }}
-    {{# var name = {YEAR:'\u5e74',QUARTER:'\u5b63\u5ea6',MONTH:'\u6708',WEEK:'\u5468'}[c] || c; }}
-    <span>{{= name }}</span>
 </script>
 
 <script type="text/html" id="tplBillDetail">
@@ -166,7 +153,7 @@
             <div class="layui-col-md3">
                 <label class="layui-form-label">&#x4fdd;&#x517b;&#x7c7b;&#x578b;</label>
                 <div class="layui-input-block">
-                    <select id="planCycle">
+                    <select id="planCycle" name="planCycle" lay-filter="planCycleSel">
                         <option value="MONTH">&#x6708;</option>
                         <option value="QUARTER">&#x5b63;&#x5ea6;</option>
                         <option value="WEEK">&#x5468;</option>
@@ -229,6 +216,41 @@
             function statusText(s) { return ({0:'\u65b0\u5efa',1:'\u5df2\u6d3e\u5de5',2:'\u4fdd\u517b\u4e2d',3:'\u5df2\u4fdd\u517b',4:'\u5df2\u5ba1\u6838'})[s] || (s + ''); }
             function cycleText(c) { c = (c||'').toUpperCase(); return ({YEAR:'\u5e74',QUARTER:'\u5b63\u5ea6',MONTH:'\u6708',WEEK:'\u5468'})[c] || c; }
 
+            function billMaintainTypeCell(d) {
+                var raw = d.MaintainType != null && d.MaintainType !== '' ? d.MaintainType : (d.maintainType || '');
+                return '<span>' + cycleText(String(raw).toUpperCase()) + '</span>';
+            }
+            function billStatusCell(d) {
+                var s = d.Status != null ? d.Status : d.status;
+                var n = parseInt(s, 10);
+                if (isNaN(n)) n = 0;
+                var colors = { 0: '#f7b500', 1: '#1e88e5', 2: '#7c3aed', 3: '#16a34a', 4: '#475569' };
+                var bg = colors[n] != null ? colors[n] : '#999';
+                return '<span class="layui-badge" style="background-color:' + bg + ';">' + statusText(n) + '</span>';
+            }
+
+            /** Layui/JSON may use camelCase; template columns use PascalCase */
+            function rowField(obj, name) {
+                if (!obj || typeof obj !== 'object') return '';
+                var v = obj[name];
+                if (v !== undefined && v !== null && String(v) !== '') return v;
+                var camel = name.charAt(0).toLowerCase() + name.slice(1);
+                v = obj[camel];
+                if (v !== undefined && v !== null && String(v) !== '') return v;
+                return '';
+            }
+            function rowId(obj) {
+                if (!obj) return 0;
+                if (obj.Id !== undefined && obj.Id !== null) return obj.Id;
+                if (obj.id !== undefined && obj.id !== null) return obj.id;
+                return 0;
+            }
+            function syncPlanCycleFromDom() {
+                var v = ($('#planCycle').val() || planState.cycle || 'MONTH').toString().trim().toUpperCase();
+                if (v !== 'MONTH' && v !== 'QUARTER' && v !== 'WEEK' && v !== 'YEAR') v = 'MONTH';
+                planState.cycle = v;
+            }
+
             var currentStatus = '';
             var planState = { cycle: 'MONTH', count: 1, startDate: '', devices: [] };
 
@@ -253,11 +275,11 @@
                         { type: 'numbers', title: '#' },
                         { field: 'BillNo', title: '\u4fdd\u517b\u5355\u53f7', width: 160 },
                         { field: 'FacilityID', title: '\u8bbe\u5907ID', width: 110 },
-                        { field: 'MaintainType', title: '\u4fdd\u517b\u7c7b\u578b', width: 100, templet: '#cycleTpl' },
+                        { field: 'MaintainType', title: '\u4fdd\u517b\u7c7b\u578b', width: 100, templet: billMaintainTypeCell },
                         { field: 'BillDate', title: '\u8ba1\u5212\u65e5\u671f', width: 160, templet: function (d) { return fmtDate(d.BillDate); } },
                         { field: 'BeginDate', title: '\u5f00\u59cb\u65f6\u95f4', width: 160, templet: function (d) { return fmtDate(d.BeginDate); } },
                         { field: 'EndDate', title: '\u7ed3\u675f\u65f6\u95f4', width: 160, templet: function (d) { return fmtDate(d.EndDate); } },
-                        { field: 'Status', title: '\u72b6\u6001', width: 100, templet: '#statusTpl' },
+                        { field: 'Status', title: '\u72b6\u6001', width: 100, templet: billStatusCell },
                         { field: 'RepairStaff', title: '\u4fdd\u517b\u4eba', width: 110 },
                         { field: 'Remark', title: '\u5907\u6ce8', minWidth: 160 },
                         { title: '\u64cd\u4f5c', width: 200, toolbar: '#barRow', fixed: 'right' }
@@ -335,8 +357,8 @@
                     success: function () {
                         form.render();
                         laydate.render({ elem: '#planStartDate', value: planState.startDate });
-                        $('#planCycle').on('change', function () { planState.cycle = $(this).val(); refreshPlanGrid(); });
-                        $('#planCount').on('change', function () { planState.count = parseInt($(this).val()) || 1; });
+                        syncPlanCycleFromDom();
+                        $('#planCount').on('change', function () { planState.count = parseInt($(this).val(), 10) || 1; });
                         $('#planStartDate').on('blur', function () { planState.startDate = $(this).val(); });
                         $('#btnPickDevices').on('click', openPickDevices);
                         $('#btnRefreshStatus').on('click', refreshPlanGrid);
@@ -363,6 +385,7 @@
             }
 
             function renderPlanGrid() {
+                syncPlanCycleFromDom();
                 table.render({
                     elem: '#GridPlanDevices',
                     id: 'GridPlanDevices',
@@ -376,7 +399,7 @@
                         { field: 'WeekTempName', title: '\u5468\u4fdd\u517b\u6a21\u677f', width: 150, templet: tplCellTemplet('WeekTempName') },
                         { field: 'MonthTempName', title: '\u6708\u4fdd\u517b\u6a21\u677f', width: 150, templet: tplCellTemplet('MonthTempName') },
                         { field: 'SeasonTempName', title: '\u5b63\u5ea6\u4fdd\u517b\u6a21\u677f', width: 150, templet: tplCellTemplet('SeasonTempName') },
-                        { field: 'HalfYearTempName', title: '\u534a\u5e74\u4fdd\u517b\u6a21\u677f', width: 150 },
+                        { field: 'HalfYearTempName', title: '\u534a\u5e74\u4fdd\u517b\u6a21\u677f', width: 150, templet: function (d) { return rowField(d, 'HalfYearTempName'); } },
                         { field: 'YearTempName', title: '\u5e74\u4fdd\u517b\u6a21\u677f', width: 150, templet: tplCellTemplet('YearTempName') },
                         { field: 'HasTemplate', title: '\u5f53\u524d\u5468\u671f', width: 110, templet: function (d) {
                             return d.HasTemplate
@@ -397,7 +420,7 @@
                                 : planState.cycle === 'QUARTER' ? 'SeasonTempName'
                                 : planState.cycle === 'WEEK' ? 'WeekTempName'
                                 : 'YearTempName';
-                    var v = d[field] || '';
+                    var v = rowField(d, field);
                     if (field === current && !v) return '<span style="color:#e53935;">\u672a\u914d\u7f6e</span>';
                     return v;
                 };
@@ -422,11 +445,15 @@
                 $.post(URL_CHECK_TEMPLATES, { 'deviceIds[]': ids, cycle: planState.cycle }, function (res) {
                     if (ok(res) && res.data) {
                         var byId = {};
-                        res.data.forEach(function (s) { byId[s.DeviceId] = s; });
+                        res.data.forEach(function (s) {
+                            var did = s.DeviceId != null ? s.DeviceId : s.deviceId;
+                            if (did != null) byId[did] = s;
+                        });
                         planState.devices.forEach(function (d) {
-                            var s = byId[d.Id];
-                            d.HasTemplate = s ? s.HasTemplate : false;
-                            d.TempId = s ? s.TempId : null;
+                            var did = rowId(d);
+                            var s = byId[did];
+                            d.HasTemplate = s ? (s.HasTemplate === true || s.HasTemplate === 1 || s.hasTemplate === true) : false;
+                            d.TempId = s ? (s.TempId != null ? s.TempId : s.tempId) : null;
                         });
                         renderPlanGrid();
                     }
@@ -435,7 +462,7 @@
 
             function openPickDevices() {
                 var picked = {};
-                planState.devices.forEach(function (d) { picked[d.Id] = true; });
+                planState.devices.forEach(function (d) { picked[rowId(d)] = true; });
                 layer.open({
                     type: 1,
                     area: ['1100px', '600px'],
@@ -451,21 +478,22 @@
                         var check = table.checkStatus('GridPickDevices').data || [];
                         if (check.length === 0) { toastWarn('\u8bf7\u52fe\u9009\u8bbe\u5907'); return; }
                         check.forEach(function (row) {
-                            if (!picked[row.Id]) {
+                            var rid = rowId(row);
+                            if (!picked[rid]) {
                                 planState.devices.push({
-                                    Id: row.Id,
-                                    FacilityCode: row.FacilityCode,
-                                    FacilityName: row.FacilityName,
-                                    Model: row.Model,
-                                    WeekTempName: row.WeekTempName,
-                                    MonthTempName: row.MonthTempName,
-                                    SeasonTempName: row.SeasonTempName,
-                                    HalfYearTempName: row.HalfYearTempName,
-                                    YearTempName: row.YearTempName,
+                                    Id: rid,
+                                    FacilityCode: rowField(row, 'FacilityCode'),
+                                    FacilityName: rowField(row, 'FacilityName'),
+                                    Model: rowField(row, 'Model'),
+                                    WeekTempName: rowField(row, 'WeekTempName'),
+                                    MonthTempName: rowField(row, 'MonthTempName'),
+                                    SeasonTempName: rowField(row, 'SeasonTempName'),
+                                    HalfYearTempName: rowField(row, 'HalfYearTempName'),
+                                    YearTempName: rowField(row, 'YearTempName'),
                                     HasTemplate: false,
                                     TempId: null
                                 });
-                                picked[row.Id] = true;
+                                picked[rid] = true;
                             }
                         });
                         layer.close(idx);
@@ -498,7 +526,7 @@
                         { field: 'WeekTempName', title: '\u5468\u4fdd\u517b\u6a21\u677f', width: 120 },
                         { field: 'MonthTempName', title: '\u6708\u4fdd\u517b\u6a21\u677f', width: 120 },
                         { field: 'SeasonTempName', title: '\u5b63\u5ea6\u4fdd\u517b\u6a21\u677f', width: 120 },
-                        { field: 'HalfYearTempName', title: '\u534a\u5e74\u4fdd\u517b\u6a21\u677f', width: 120 },
+                        { field: 'HalfYearTempName', title: '\u534a\u5e74\u4fdd\u517b\u6a21\u677f', width: 120, templet: function (d) { return rowField(d, 'HalfYearTempName'); } },
                         { field: 'YearTempName', title: '\u5e74\u4fdd\u517b\u6a21\u677f', width: 120 }
                     ]]
                 });
@@ -517,17 +545,22 @@
             }
 
             $('#statusPills button').on('click', function () {
-                $('#statusPills button').removeClass('').addClass('layui-btn layui-btn-sm layui-btn-primary');
+                $('#statusPills button').addClass('layui-btn-primary');
                 $(this).removeClass('layui-btn-primary');
                 currentStatus = $(this).data('status');
                 refreshCurrentView();
+            });
+
+            form.on('select(planCycleSel)', function (data) {
+                planState.cycle = (data.value || 'MONTH').toString().trim().toUpperCase();
+                refreshPlanGrid();
             });
 
             $('#btnPlan').on('click', openPlanDialog);
             $('#btnReload').on('click', refreshCurrentView);
             $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
 
-            // ---------------- 视图切换 ----------------
+            // list / kanban / calendar / gantt
             var currentView = 'list';
             var allBills = [];
             var calCursor = new Date();
@@ -551,10 +584,20 @@
             $('#btnViewCalendar').on('click', function () { showPane('calendar'); });
             $('#btnViewGantt').on('click', function () { showPane('gantt'); });
 
+            function syncViewButtons(active) {
+                $('#btnViewList,#btnViewKanban,#btnViewCalendar,#btnViewGantt').addClass('layui-btn-primary');
+                if (active === 'list') $('#btnViewList').removeClass('layui-btn-primary');
+                if (active === 'kanban') $('#btnViewKanban').removeClass('layui-btn-primary');
+                if (active === 'calendar') $('#btnViewCalendar').removeClass('layui-btn-primary');
+                if (active === 'gantt') $('#btnViewGantt').removeClass('layui-btn-primary');
+            }
+
             function showPane(name) {
                 currentView = name;
+                syncViewButtons(name);
                 $('#paneList,#paneKanban,#paneCalendar,#paneGantt').hide();
                 $('#paneList').toggle(name === 'list');
+                if (name === 'list') { table.reload('GridMain', { where: getWhere() }); }
                 if (name === 'kanban')  { $('#paneKanban').show();  loadAllBills(renderKanban); }
                 if (name === 'calendar'){ $('#paneCalendar').show();loadAllBills(renderCalendar); }
                 if (name === 'gantt')   { $('#paneGantt').show();   loadAllBills(renderGantt); }
@@ -563,16 +606,18 @@
             // ---------------- Kanban ----------------
             function renderKanban() {
                 var cols = [
-                    { status: 0, name: '新建',   color: '#f7b500' },
-                    { status: 1, name: '已派工', color: '#1e88e5' },
-                    { status: 2, name: '保养中', color: '#7c3aed' },
-                    { status: 3, name: '已保养', color: '#16a34a' },
-                    { status: 4, name: '已审核', color: '#475569' }
+                    { status: 0, name: '\u65b0\u5efa', color: '#f7b500' },
+                    { status: 1, name: '\u5df2\u6d3e\u5de5', color: '#1e88e5' },
+                    { status: 2, name: '\u4fdd\u517b\u4e2d', color: '#7c3aed' },
+                    { status: 3, name: '\u5df2\u4fdd\u517b', color: '#16a34a' },
+                    { status: 4, name: '\u5df2\u5ba1\u6838', color: '#475569' }
                 ];
                 var grouped = {};
                 cols.forEach(function (c) { grouped[c.status] = []; });
                 allBills.forEach(function (b) {
-                    var s = (b.Status == null) ? 0 : b.Status;
+                    var sid = b.Status != null ? b.Status : b.status;
+                    var s = parseInt(sid, 10);
+                    if (isNaN(s)) s = 0;
                     if (grouped[s]) grouped[s].push(b);
                 });
                 var html = '';
@@ -582,23 +627,25 @@
                     html += '<div style="font-weight:600;padding:4px 6px;border-bottom:2px solid ' + c.color + ';margin-bottom:8px;color:' + c.color + ';">'
                         + c.name + ' <span style="color:#888;font-weight:normal;">(' + arr.length + ')</span></div>';
                     arr.forEach(function (b) {
-                        var cycle = cycleText(b.MaintainType);
-                        html += '<div class="kanban-card" data-id="' + b.Id + '" '
+                        var mt = b.MaintainType != null && b.MaintainType !== '' ? b.MaintainType : (b.maintainType || '');
+                        var cycle = cycleText(String(mt).toUpperCase());
+                        var fid = b.FacilityID != null && b.FacilityID !== '' ? b.FacilityID : (b.facilityID || '');
+                        html += '<div class="kanban-card" data-id="' + rowId(b) + '" '
                             + 'style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid ' + c.color + ';'
                             + 'border-radius:4px;padding:8px;margin-bottom:8px;cursor:pointer;font-size:12px;">'
                             + '<div style="font-weight:600;color:#1f4d3b;">' + (b.BillNo || '') + '</div>'
-                            + '<div style="margin-top:4px;color:#555;">设备：' + (b.FacilityID || '') + '</div>'
-                            + '<div style="color:#555;">类型：' + cycle + '</div>'
-                            + '<div style="color:#888;">日期：' + fmtDate(b.BillDate) + '</div>'
+                            + '<div style="margin-top:4px;color:#555;">\u8bbe\u5907\uff1a' + fid + '</div>'
+                            + '<div style="color:#555;">\u7c7b\u578b\uff1a' + cycle + '</div>'
+                            + '<div style="color:#888;">\u8ba1\u5212\uff1a' + fmtDate(b.BillDate) + '</div>'
                             + '</div>';
                     });
-                    if (arr.length === 0) html += '<div style="color:#bbb;font-size:12px;text-align:center;padding:20px 0;">暂无</div>';
+                    if (arr.length === 0) html += '<div style="color:#bbb;font-size:12px;text-align:center;padding:20px 0;">\u6682\u65e0</div>';
                     html += '</div>';
                 });
                 $('#kanbanBoard').html(html);
                 $('#kanbanBoard .kanban-card').on('click', function () {
                     var id = $(this).data('id');
-                    var row = allBills.find(function (b) { return b.Id === id; });
+                    var row = allBills.find(function (b) { return rowId(b) === id; });
                     if (row) openDetail(row, true);
                 });
             }
@@ -612,8 +659,9 @@
                 var daysInMonth = new Date(year, month + 1, 0).getDate();
                 var byDate = {};
                 allBills.forEach(function (b) {
-                    if (!b.BillDate) return;
-                    var key = (b.BillDate + '').substring(0, 10);
+                    var bd = b.BillDate || b.billDate;
+                    if (!bd) return;
+                    var key = (bd + '').substring(0, 10);
                     if (!byDate[key]) byDate[key] = [];
                     byDate[key].push(b);
                 });
@@ -631,8 +679,11 @@
                             html += '<td style="border:1px solid #e2e8f0;height:110px;vertical-align:top;padding:4px;">';
                             html += '<div style="font-size:12px;color:#888;">' + day + '</div>';
                             items.slice(0, 4).forEach(function (b) {
-                                var c = statusColor((b.Status == null) ? 0 : b.Status);
-                                html += '<div class="cal-item" data-id="' + b.Id + '" '
+                                var sid = b.Status != null ? b.Status : b.status;
+                                var sn = parseInt(sid, 10);
+                                if (isNaN(sn)) sn = 0;
+                                var c = statusColor(sn);
+                                html += '<div class="cal-item" data-id="' + rowId(b) + '" '
                                     + 'style="font-size:11px;background:' + c + '22;border-left:3px solid ' + c + ';'
                                     + 'padding:2px 4px;margin-top:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
                                     + (b.BillNo || '') + '</div>';
@@ -648,7 +699,7 @@
                 $('#calBody').html(html);
                 $('#calBody .cal-item').on('click', function () {
                     var id = $(this).data('id');
-                    var row = allBills.find(function (b) { return b.Id === id; });
+                    var row = allBills.find(function (b) { return rowId(b) === id; });
                     if (row) openDetail(row, true);
                 });
             }
@@ -698,22 +749,23 @@
                 var totalDays = Math.round((endMs - startMs) / 86400000) + 1;
                 $('#ganttRange').text(fmtDate(range.start) + ' ~ ' + fmtDate(range.end));
 
-                // 在范围内的工单
                 var bills = allBills.filter(function (b) {
-                    var bs = b.BillDate ? new Date(b.BillDate).getTime() : 0;
+                    var bd = b.BillDate || b.billDate;
+                    var bs = bd ? new Date(bd).getTime() : 0;
                     return bs >= startMs && bs <= endMs;
                 });
 
-                // 分组
                 var groups = {};
                 var groupOrder = [];
                 bills.forEach(function (b) {
-                    var key = ganttGroup === 'facility' ? ('设备 ' + (b.FacilityID || '-')) : (b.BillNo || '工单');
+                    var fid = b.FacilityID != null && b.FacilityID !== '' ? b.FacilityID : (b.facilityID || '-');
+                    var key = ganttGroup === 'facility'
+                        ? ('\u8bbe\u5907 ' + fid)
+                        : (b.BillNo || '\u65e0\u5355\u53f7');
                     if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
                     groups[key].push(b);
                 });
 
-                // 列头：按粒度生成时间格
                 var cells = [];
                 if (ganttScale === 'WEEK' || ganttScale === 'MONTH') {
                     for (var i = 0; i < totalDays; i++) {
@@ -725,11 +777,11 @@
                         var ws = new Date(w), we = new Date(w); we.setDate(we.getDate() + 6);
                         cells.push({ label: pad2(ws.getMonth() + 1) + '/' + pad2(ws.getDate()), start: ws.getTime(), end: we.getTime() });
                     }
-                } else { // YEAR -> 月
+                } else {
                     for (var m = 0; m < 12; m++) {
                         var ms = new Date(range.start.getFullYear(), m, 1);
                         var me = new Date(range.start.getFullYear(), m + 1, 0);
-                        cells.push({ label: (m + 1) + '月', start: ms.getTime(), end: me.getTime() + 86399999 });
+                        cells.push({ label: (m + 1) + '\u6708', start: ms.getTime(), end: me.getTime() + 86399999 });
                     }
                 }
 
@@ -737,26 +789,30 @@
                 var totalW = labelW + cells.length * cellW;
 
                 var html = '<table style="border-collapse:collapse;width:' + totalW + 'px;font-size:12px;">';
-                html += '<thead><tr><th style="position:sticky;left:0;background:#f5f5f5;border:1px solid #e2e8f0;padding:6px;width:' + labelW + 'px;text-align:left;">' + (ganttGroup === 'facility' ? '设备' : '工单') + '</th>';
+                html += '<thead><tr><th style="position:sticky;left:0;background:#f5f5f5;border:1px solid #e2e8f0;padding:6px;width:' + labelW + 'px;text-align:left;">' + (ganttGroup === 'facility' ? '\u8bbe\u5907' : '\u4fdd\u517b\u5355') + '</th>';
                 cells.forEach(function (c) {
                     html += '<th style="border:1px solid #e2e8f0;padding:4px 2px;width:' + cellW + 'px;background:#f5f5f5;font-weight:normal;">' + c.label + '</th>';
                 });
                 html += '</tr></thead><tbody>';
 
                 if (groupOrder.length === 0) {
-                    html += '<tr><td colspan="' + (cells.length + 1) + '" style="padding:24px;text-align:center;color:#888;">范围内无工单</td></tr>';
+                    html += '<tr><td colspan="' + (cells.length + 1) + '" style="padding:24px;text-align:center;color:#888;">\u6682\u65e0\u6570\u636e</td></tr>';
                 } else {
                     groupOrder.forEach(function (key) {
                         html += '<tr><td style="position:sticky;left:0;background:#fff;border:1px solid #e2e8f0;padding:6px;">' + key + '</td>';
                         cells.forEach(function (c) {
                             var items = groups[key].filter(function (b) {
-                                var bs = b.BillDate ? new Date(b.BillDate).getTime() : 0;
+                                var bd = b.BillDate || b.billDate;
+                                var bs = bd ? new Date(bd).getTime() : 0;
                                 return bs >= c.start && bs <= c.end;
                             });
                             html += '<td style="border:1px solid #e2e8f0;padding:1px;position:relative;">';
                             items.forEach(function (b) {
-                                var color = statusColor((b.Status == null) ? 0 : b.Status);
-                                html += '<div class="gantt-bar" data-id="' + b.Id + '" title="' + (b.BillNo || '') + '" '
+                                var sid = b.Status != null ? b.Status : b.status;
+                                var sn = parseInt(sid, 10);
+                                if (isNaN(sn)) sn = 0;
+                                var color = statusColor(sn);
+                                html += '<div class="gantt-bar" data-id="' + rowId(b) + '" title="' + (b.BillNo || '') + '" '
                                     + 'style="background:' + color + ';color:#fff;font-size:10px;border-radius:3px;'
                                     + 'padding:2px 4px;margin-bottom:1px;cursor:pointer;white-space:nowrap;overflow:hidden;'
                                     + 'text-overflow:ellipsis;">' + (b.BillNo || '').replace(/^TPM0*/, 'TPM') + '</div>';
@@ -770,7 +826,7 @@
                 $('#ganttContainer').html(html);
                 $('#ganttContainer .gantt-bar').on('click', function () {
                     var id = $(this).data('id');
-                    var row = allBills.find(function (b) { return b.Id === id; });
+                    var row = allBills.find(function (b) { return rowId(b) === id; });
                     if (row) openDetail(row, true);
                 });
             }

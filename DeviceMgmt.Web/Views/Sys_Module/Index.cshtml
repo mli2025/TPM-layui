@@ -131,14 +131,14 @@
                 var indent = (depth*20) + 'px';
                 var active = currentMod && currentMod.Id === m.Id ? 'background:#dcfce7;' : '';
                 var html = '<div class="tree-node" data-id="' + m.Id + '" style="padding:6px 8px;padding-left:' + indent + ';border-bottom:1px dashed #e2e8f0;display:flex;align-items:center;cursor:pointer;' + active + '">'
-                    + '<span style="flex:1;"><strong>' + (m.Name||'') + '</strong> <span style="color:#94a3b8;font-size:12px;margin-left:4px;">' + (m.Code||'') + '</span>'
+                    + '<span style="flex:1;"><span style="color:#64748b;font-size:12px;font-family:Consolas,monospace;margin-right:6px;">[' + m.Id + ']</span><strong>' + (m.Name||'') + '</strong> <span style="color:#94a3b8;font-size:12px;margin-left:4px;">' + (m.Code||'') + '</span>'
                     + (m.Url ? ' <span style="color:#475569;font-size:12px;margin-left:6px;">[' + m.Url + ']</span>' : '')
                     + (m.Status===1?'':' <span class="layui-badge layui-bg-gray">停用</span>')
                     + '</span>'
-                    + '<span onclick="event.stopPropagation();">'
-                    + '<a class="layui-btn layui-btn-xs" data-act="addChild" data-id="' + m.Id + '">+ 子菜单</a>'
-                    + '<a class="layui-btn layui-btn-xs layui-btn-normal" data-act="edit" data-id="' + m.Id + '">编辑</a>'
-                    + '<a class="layui-btn layui-btn-xs layui-btn-danger" data-act="del" data-id="' + m.Id + '">删除</a>'
+                    + '<span>'
+                    + '<a href="javascript:;" class="layui-btn layui-btn-xs" data-act="addChild" data-id="' + m.Id + '">+ 子菜单</a>'
+                    + '<a href="javascript:;" class="layui-btn layui-btn-xs layui-btn-normal" data-act="edit" data-id="' + m.Id + '">编辑</a>'
+                    + '<a href="javascript:;" class="layui-btn layui-btn-xs layui-btn-danger" data-act="del" data-id="' + m.Id + '">删除</a>'
                     + '</span></div>';
                 children.forEach(function(c){ html += nodeHtml(c, depth+1); });
                 return html;
@@ -149,15 +149,17 @@
         $('#btnReload').on('click', load);
         $('#btnAdd').on('click', function(){ openModForm({ parentId:0 }); });
 
-        $('#modTree').on('click', '.tree-node', function(){
+        $('#modTree').on('click', '.tree-node', function (e) {
+            if ($(e.target).closest('[data-act]').length) return;
             var id = parseInt($(this).data('id'), 10);
             currentMod = findById(id);
-            $('#modCurrent').text(currentMod ? '当前: ' + currentMod.Name : '');
+            $('#modCurrent').text(currentMod ? ('当前: [' + currentMod.Id + '] ' + currentMod.Name) : '');
             $('#btnAddBtn').prop('disabled', !currentMod);
             loadButtons();
             renderTree();
         });
-        $('#modTree').on('click', '[data-act]', function(e){
+        $('#modTree').on('click', '[data-act]', function (e) {
+            e.preventDefault();
             var id = parseInt($(this).data('id'), 10);
             var act = $(this).data('act');
             if (act==='addChild') openModForm({ parentId: id });
