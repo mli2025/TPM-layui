@@ -28,6 +28,31 @@ public class Facility_ItemController : BaseController
     public IActionResult GetMainInfo([FromQuery] long Id) => Json(new ResponseData { code = 200, data = _app.Get(Id) });
 
     [HttpPost]
+    public IActionResult SaveItem([FromForm] Facility_Item model)
+    {
+        if (string.IsNullOrWhiteSpace(model.Project))
+            return Json(new ResponseData { code = 400, msg = "项目名称不能为空" });
+        if (string.IsNullOrWhiteSpace(model.CheckMethod))
+            model.CheckMethod = string.Empty;
+        if (string.IsNullOrWhiteSpace(model.UpkeepMethod))
+            model.UpkeepMethod = string.Empty;
+        if (string.IsNullOrWhiteSpace(model.FacilityType))
+            model.FacilityType = string.Empty;
+
+        if (model.Id == 0) _app.Add(model);
+        else _app.Update(model);
+        return Json(new ResponseData { code = 200, msg = "ok", data = model.Id });
+    }
+
+    [HttpPost]
+    public IActionResult DeleteItem([FromForm] long id)
+    {
+        if (id <= 0) return Json(new ResponseData { code = 400, msg = "参数错误" });
+        _app.Delete(id);
+        return Json(new ResponseData { code = 200, msg = "ok" });
+    }
+
+    [HttpPost]
     public IActionResult ExportExcel([FromForm] PageReq req)
     {
         req.page = 1;
