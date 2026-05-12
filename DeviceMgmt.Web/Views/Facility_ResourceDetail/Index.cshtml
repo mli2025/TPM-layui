@@ -1,111 +1,315 @@
 @{
-    ViewData["Title"] = "设备资源台账";
+    ViewData["Title"] = "设备台账";
 }
 @section Style{
     <style>
-        .borderRed { background: NavajoWhite; }
         .ms-edit .layui-form-label{ width:130px; }
         .ms-edit .layui-input-block { margin-left: 130px; }
     </style>
 }
-<div class="layui-fluid" style="padding:0;margin-top:10px">
-    <div class="layui-row layui-col-space15">
-        <div class="layui-col-md12">
-            <div class="layui-card">
-                <div class="layui-card-header">
-                    <div class="pull-left">设备资源台账（Facility_ResourceDetail）</div>
-                    <div class="demoTable pull-right no-print">
-                        <div class="layui-inline" id="searchPanel"></div>
-                        <div class="layui-btn-group">
-                            <button class="layui-btn layui-btn-sm" id="btn_Add">新增</button>
-                            <button class="layui-btn layui-btn-sm layui-btn-warm" id="btn_Export">导出</button>
-                        </div>
-                    </div>
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>设备台账</strong>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md4">
+                    <input type="text" id="kw" class="layui-input" placeholder="输入设备编码/名称/型号查询">
                 </div>
-                <div class="layui-card-body" style="padding:0">
-                    <div class="layui-inline" style="width:100%">
-                        <table class="layui-hide" lay-filter="GridMain" id="GridMain"></table>
-                    </div>
+                <div class="layui-col-md8" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-warm" id="btnExport"><i class="layui-icon layui-icon-download-circle"></i> 导出</button>
                 </div>
             </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
         </div>
     </div>
 </div>
 
-<div style="width:0;height:0;overflow:hidden">
-    <div id="pnl_edit">
-        <form action="#" id="ItemDetail" class="layui-form layui-form-pane ms-edit" lay-filter="ItemDetail" style="padding:10px;">
-            <input type="hidden" name="Id" value="0" />
-            <div class="layui-tab layui-tab-brief" lay-filter="resTabs">
-                <ul class="layui-tab-title">
-                    <li class="layui-this">基础信息</li>
-                    <li>采购/资产</li>
-                    <li>保养/状态</li>
-                    <li>计量器具</li>
-                    <li>备注</li>
-                </ul>
-                <div class="layui-tab-content" style="padding:14px 0;">
-                    <div class="layui-tab-item layui-show">
-                        @await Html.PartialAsync("_FacilityFormBasic")
-                    </div>
-                    <div class="layui-tab-item">
-                        @await Html.PartialAsync("_FacilityFormPurchase")
-                    </div>
-                    <div class="layui-tab-item">
-                        @await Html.PartialAsync("_FacilityFormMaintain")
-                    </div>
-                    <div class="layui-tab-item">
-                        @await Html.PartialAsync("_FacilityFormMeasure")
-                    </div>
-                    <div class="layui-tab-item">
-                        <div class="layui-form-item layui-form-text">
-                            <label class="layui-form-label">备注</label>
-                            <div class="layui-input-block" style="margin-left:130px;">
-                                <textarea name="Remark" placeholder="请输入备注" class="layui-textarea"></textarea>
-                            </div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="view">查看</a>
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<!-- 设备台账明细 弹窗模板 -->
+<script type="text/html" id="tplFacilityForm">
+    <form action="#" id="facilityForm" class="layui-form layui-form-pane ms-edit" lay-filter="facilityForm" style="padding:10px;">
+        <input type="hidden" name="Id" value="0" />
+        <div class="layui-tab layui-tab-brief" lay-filter="resTabs" id="resTabs">
+            <ul class="layui-tab-title">
+                <li class="layui-this" lay-id="basic">基础信息</li>
+                <li lay-id="purchase">采购/资产</li>
+                <li lay-id="maintain">保养/状态</li>
+                <li lay-id="measure">计量器具</li>
+                <li lay-id="remark">备注</li>
+                <li lay-id="history">保养/点检记录</li>
+            </ul>
+            <div class="layui-tab-content" style="padding:14px 0;">
+                <div class="layui-tab-item layui-show">
+                    @await Html.PartialAsync("_FacilityFormBasic")
+                </div>
+                <div class="layui-tab-item">
+                    @await Html.PartialAsync("_FacilityFormPurchase")
+                </div>
+                <div class="layui-tab-item">
+                    @await Html.PartialAsync("_FacilityFormMaintain")
+                </div>
+                <div class="layui-tab-item">
+                    @await Html.PartialAsync("_FacilityFormMeasure")
+                </div>
+                <div class="layui-tab-item">
+                    <div class="layui-form-item layui-form-text">
+                        <label class="layui-form-label">备注</label>
+                        <div class="layui-input-block" style="margin-left:130px;">
+                            <textarea name="Remark" placeholder="请输入备注" class="layui-textarea"></textarea>
                         </div>
-                        <div class="layui-form-item layui-form-text">
-                            <label class="layui-form-label">说明</label>
-                            <div class="layui-input-block" style="margin-left:130px;">
-                                <textarea name="UseCondition" placeholder="使用条件" class="layui-textarea"></textarea>
+                    </div>
+                    <div class="layui-form-item layui-form-text">
+                        <label class="layui-form-label">使用条件</label>
+                        <div class="layui-input-block" style="margin-left:130px;">
+                            <textarea name="UseCondition" placeholder="使用条件" class="layui-textarea"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="layui-tab-item">
+                    <div class="layui-tab layui-tab-brief">
+                        <ul class="layui-tab-title">
+                            <li class="layui-this">保养记录</li>
+                            <li>点检记录</li>
+                        </ul>
+                        <div class="layui-tab-content" style="padding:8px 0;">
+                            <div class="layui-tab-item layui-show">
+                                <table id="GridMaintHist" lay-filter="GridMaintHist"></table>
+                            </div>
+                            <div class="layui-tab-item">
+                                <table id="GridCheckHist" lay-filter="GridCheckHist"></table>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <button class="layui-btn layui-hide" lay-submit lay-filter="saveItem" id="saveItem">保存</button>
-        </form>
-    </div>
-</div>
+        </div>
+    </form>
+</script>
 
 @section Script{
-    <script type='text/html' class="no-print" id='barDemo'>
-        <a class='layui-btn layui-btn-xs layui-btn-normal' lay-event='edit'>编辑</a>
-        <a class='layui-btn layui-btn-xs layui-btn-warm' lay-event='detail'>查看</a>
-        <a class='layui-btn layui-btn-xs layui-btn-danger' lay-event='del'>删除</a>
-    </script>
     <script>
-        var URLThisGetList = '@Url.Action("GetMainList")';
-        var URLThisSaveItem = '@Url.Action("SaveFacility")';
-        var URLThisDeleteItem = '@Url.Action("DeleteFacility")';
-        var URLThisEditItem = '@Url.Action("GetMainInfo")';
-        var URLThisExportList = '@Url.Action("ExportExcel")';
-        var Cols = [
-            { field: 'Id', title: 'Id', width: 80, sort: true },
-            { field: 'FacilityCode', title: '设备编码', search: 'input', sort: true, width: 130 },
-            { field: 'FacilityName', title: '设备名称', search: 'input', sort: true, minWidth: 160 },
-            { field: 'FacilityType', title: '设备类型', search: 'input', width: 110 },
-            { field: 'Manufacturer', title: '制造商', search: 'input', width: 130 },
-            { field: 'Model', title: '型号', search: 'input', width: 110 },
-            { field: 'Location', title: '安装位置', search: 'input', width: 130 },
-            { field: 'SerialNumber', title: '出厂编号', width: 130 },
-            { field: 'ResourceId', title: '资源Id', width: 90, sort: true },
-            { field: 'DeptId', title: '部门Id', width: 90 },
-            { field: 'PurchaseDate', title: '购置日期', search: 'date', width: 110, templet: function (d) { return d.PurchaseDate ? d.PurchaseDate.substring(0,10) : ''; } },
-            { field: 'AssetNumber', title: '资产编码', width: 130 },
-            { field: 'Status', title: '状态', width: 80 },
-            { fixed: 'right', title: '操作', width: 180, align: 'center', toolbar: '#barDemo' }
-        ];
+        var URL_LIST           = '@Url.Action("GetMainList")';
+        var URL_GET            = '@Url.Action("GetMainInfo")';
+        var URL_SAVE           = '@Url.Action("SaveFacility")';
+        var URL_DELETE         = '@Url.Action("DeleteFacility")';
+        var URL_EXPORT         = '@Url.Action("ExportExcel")';
+        var URL_TPL_OPTS       = '@Url.Action("GetTemplateOptions")';
+        var URL_HISTORY        = '@Url.Action("GetFacilityHistory")';
+
+        layui.use(['table', 'form', 'layer', 'laydate', 'element'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, element = layui.element;
+            function ok(res) { return res && (res.code === 0 || res.code === 200); }
+            function toast(msg) { layer.msg(msg || ''); }
+            function toastOk(msg) { layer.msg(msg || '操作成功', { icon: 1 }); }
+            function toastErr(msg) { layer.msg(msg || '操作失败', { icon: 2 }); }
+            function fmtDate(s) { return s ? (s + '').replace('T',' ').substring(0,10) : ''; }
+            function fmtDt(s) { return s ? (s + '').replace('T',' ').substring(0,19) : ''; }
+
+            function getWhere() {
+                var list = [];
+                var kw = $('#kw').val();
+                if (kw) list.push({ field: 'FacilityName', conditional: 'like', value: kw });
+                return { page: 1, limit: 20, searchParam: list };
+            }
+
+            function renderList() {
+                table.render({
+                    elem: '#GridMain',
+                    id: 'GridMain',
+                    url: URL_LIST,
+                    method: 'post',
+                    where: getWhere(),
+                    page: true,
+                    height: 'full-200',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'FacilityCode', title: '设备编码', width: 140 },
+                        { field: 'FacilityName', title: '设备名称', minWidth: 160 },
+                        { field: 'Model', title: '设备型号', width: 130 },
+                        { field: 'FacilityType', title: '设备类型', width: 120 },
+                        { field: 'Manufacturer', title: '制造商', width: 130 },
+                        { field: 'Location', title: '安装位置', width: 140 },
+                        { field: 'PurchaseDate', title: '购置日期', width: 110, templet: function(d){ return fmtDate(d.PurchaseDate); } },
+                        { field: 'AssetNumber', title: '资产编号', width: 130 },
+                        { field: 'Status', title: '状态', width: 80 },
+                        { title: '操作', width: 200, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+
+            // -------------- 弹窗 --------------
+            var TPL_CYCLES = [
+                { tag: 'tplCheck',   type: 1, mt: null,      field: 'TheTemplateMainId' },
+                { tag: 'tplWeek',    type: 2, mt: 'WEEK',    field: 'WeekTempId' },
+                { tag: 'tplMonth',   type: 2, mt: 'MONTH',   field: 'MonthTempId' },
+                { tag: 'tplQuarter', type: 2, mt: 'QUARTER', field: 'SeasonTempId' },
+                { tag: 'tplYear',    type: 2, mt: 'YEAR',    field: 'YearTempId' },
+                { tag: 'tpl5S',      type: 2, mt: '5S',      field: 'The5STemplateMainId' }
+            ];
+
+            function loadTemplateOptions(callback) {
+                var pending = TPL_CYCLES.length;
+                var done = function () { pending--; if (pending === 0 && callback) callback(); };
+                TPL_CYCLES.forEach(function (c) {
+                    var params = { type: c.type };
+                    if (c.mt) params.maintenanceType = c.mt;
+                    $.get(URL_TPL_OPTS, params, function (res) {
+                        var $sel = $('#facilityForm select[name="' + c.field + '"]');
+                        $sel.empty().append('<option value="">-- 请选择 --</option>');
+                        if (ok(res) && Array.isArray(res.data)) {
+                            res.data.forEach(function (it) {
+                                $sel.append('<option value="' + it.Id + '">' + (it.HNumber || '') + ' / ' + (it.HName || '') + '</option>');
+                            });
+                        }
+                        done();
+                    }).fail(done);
+                });
+            }
+
+            function bindDates() {
+                $('#facilityForm input[lay-verify*=date]').each(function () { laydate.render({ type: 'date', elem: this }); });
+                $('#facilityForm input[lay-verify*=datetime]').each(function () { laydate.render({ type: 'datetime', elem: this }); });
+            }
+
+            function openDialog(mode, row) {
+                var isView = mode === 'view';
+                var isEdit = mode === 'edit';
+                var title = isView ? '设备台账查看' : (isEdit ? '设备台账编辑' : '设备台账新增');
+                layer.open({
+                    type: 1,
+                    title: title,
+                    area: ['92%', '88%'],
+                    content: $('#tplFacilityForm').html(),
+                    btn: isView ? ['关闭'] : ['保存', '取消'],
+                    success: function () {
+                        element.render('tab');
+                        bindDates();
+                        form.render();
+
+                        loadTemplateOptions(function () {
+                            if (isEdit || isView) {
+                                $.get(URL_GET, { Id: row.Id }, function (res) {
+                                    if (!ok(res) || !res.data) { toastErr(res && res.msg || '加载失败'); return; }
+                                    fillForm(res.data);
+                                    if (isView) lockForm();
+                                });
+                            } else {
+                                fillForm({ Id: 0, Status: 0, EntityId: 1 });
+                            }
+                        });
+
+                        bindHistoryTab(row && row.Id);
+                    },
+                    yes: function (idx) {
+                        if (isView) { layer.close(idx); return; }
+                        var data = collectForm();
+                        $.post(URL_SAVE, data, function (res) {
+                            if (ok(res)) {
+                                layer.close(idx);
+                                toastOk('保存成功');
+                                table.reload('GridMain');
+                            } else toastErr(res && res.msg || '保存失败');
+                        });
+                    }
+                });
+            }
+
+            function fillForm(d) {
+                Object.keys(d).forEach(function (k) {
+                    var v = d[k];
+                    var $el = $('#facilityForm *[name="' + k + '"]');
+                    if (!$el.length) return;
+                    if ($el.is('select')) {
+                        $el.val(v == null ? '' : v);
+                    } else if ($el.is('input') && $el.attr('lay-verify') && $el.attr('lay-verify').indexOf('date') >= 0) {
+                        $el.val(v ? (v + '').replace('T', ' ').substring(0, 19) : '');
+                    } else {
+                        $el.val(v == null ? '' : v);
+                    }
+                });
+                form.render();
+            }
+
+            function lockForm() {
+                $('#facilityForm input, #facilityForm select, #facilityForm textarea').attr('readonly', true).attr('disabled', true);
+                form.render();
+            }
+
+            function collectForm() {
+                var data = {};
+                $('#facilityForm *[name]').each(function () {
+                    var $el = $(this);
+                    var name = $el.attr('name');
+                    if (!name) return;
+                    var v = $el.val();
+                    if ($el.is('select') && v === '') v = null;
+                    data[name] = v;
+                });
+                return data;
+            }
+
+            function bindHistoryTab(facilityId) {
+                if (!facilityId) {
+                    table.render({ elem: '#GridMaintHist', data: [], page: false, cols: [[{ field: 'Id', title: '--' }]] });
+                    table.render({ elem: '#GridCheckHist', data: [], page: false, cols: [[{ field: 'Id', title: '--' }]] });
+                    return;
+                }
+                var statusMap = { 0:'新建', 1:'已派工', 2:'保养中', 3:'已保养', 4:'已审核' };
+                var historyCols = [[
+                    { field: 'BillNo', title: '单号', width: 160 },
+                    { field: 'BillDate', title: '日期', width: 110, templet: function(d){ return fmtDate(d.BillDate); } },
+                    { field: 'BeginDate', title: '开始时间', width: 160, templet: function(d){ return fmtDt(d.BeginDate); } },
+                    { field: 'EndDate', title: '结束时间', width: 160, templet: function(d){ return fmtDt(d.EndDate); } },
+                    { field: 'MaintainType', title: '保养类型', width: 100 },
+                    { field: 'Status', title: '状态', width: 90, templet: function(d){ return statusMap[d.Status] || (d.Status||''); } },
+                    { field: 'RepairStaff', title: '保养人', width: 110 },
+                    { field: 'Checker', title: '审核人', width: 110 },
+                    { field: 'CheckDate', title: '审核日期', width: 160, templet: function(d){ return fmtDt(d.CheckDate); } },
+                    { field: 'Remark', title: '备注', minWidth: 160 }
+                ]];
+                $.get(URL_HISTORY, { facilityId: facilityId, billType: 'MAINTENANCE' }, function (res) {
+                    table.render({ elem: '#GridMaintHist', data: ok(res) ? (res.data || []) : [], page: false, height: 360, cols: historyCols });
+                });
+                $.get(URL_HISTORY, { facilityId: facilityId, billType: 'INSPECTION' }, function (res) {
+                    table.render({ elem: '#GridCheckHist', data: ok(res) ? (res.data || []) : [], page: false, height: 360, cols: historyCols });
+                });
+            }
+
+            // -------------- 事件 --------------
+            $('#btnAdd').on('click', function () { openDialog('add'); });
+            $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
+            $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+            $('#btnExport').on('click', function () {
+                var $f = $('<form method="post" action="' + URL_EXPORT + '"></form>');
+                $f.append('<input type="hidden" name="page" value="1">');
+                $f.append('<input type="hidden" name="limit" value="999999">');
+                $('body').append($f); $f.submit(); $f.remove();
+            });
+
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'view') openDialog('view', obj.data);
+                if (obj.event === 'edit') openDialog('edit', obj.data);
+                if (obj.event === 'del') {
+                    layer.confirm('确认删除该设备台账？', function (idx) {
+                        $.post(URL_DELETE, { Id: obj.data.Id }, function (res) {
+                            layer.close(idx);
+                            if (ok(res)) { obj.del(); toastOk('删除成功'); }
+                            else toastErr(res && res.msg || '删除失败');
+                        });
+                    });
+                }
+            });
+
+            renderList();
+        });
     </script>
-    <script src="~/js/Page/NomalListPage.js"></script>
 }

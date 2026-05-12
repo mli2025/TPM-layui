@@ -5,6 +5,7 @@ using DeviceMgmt.App.Interface;
 using DeviceMgmt.App.Request;
 using DeviceMgmt.App.Response;
 using DeviceMgmt.Repository.Domain;
+using DeviceMgmt.Repository.Interface;
 using DeviceMgmt.Web.Common;
 using DeviceMgmt.Web.Controllers.Base;
 using Microsoft.AspNetCore.Mvc;
@@ -15,11 +16,20 @@ public class Facility_ResourceDetailController : BaseController
 {
     private readonly Facility_ResourceDetailApp _app;
     private readonly EmployeeApp _empApp;
+    private readonly IRepository<Facility_TheTemplateMain> _tplRepo;
+    private readonly IRepository<Facility_BillMain> _billRepo;
 
-    public Facility_ResourceDetailController(IAuth auth, Facility_ResourceDetailApp app, EmployeeApp empApp) : base(auth)
+    public Facility_ResourceDetailController(
+        IAuth auth,
+        Facility_ResourceDetailApp app,
+        EmployeeApp empApp,
+        IRepository<Facility_TheTemplateMain> tplRepo,
+        IRepository<Facility_BillMain> billRepo) : base(auth)
     {
         _app = app;
         _empApp = empApp;
+        _tplRepo = tplRepo;
+        _billRepo = billRepo;
     }
 
     public IActionResult Index() => View();
@@ -45,6 +55,44 @@ public class Facility_ResourceDetailController : BaseController
     {
         var data = _app.Get(Id);
         return Json(new ResponseData { code = 0, data = data });
+    }
+
+    [HttpGet]
+    public IActionResult GetTemplateOptions([FromQuery] int type, [FromQuery] string? maintenanceType = null)
+    {
+        var where = "[Type]=@t";
+        object param;
+        if (!string.IsNullOrEmpty(maintenanceType))
+        {
+            where += " AND [MaintenanceType]=@mt";
+            param = new { t = type, mt = maintenanceType };
+        }
+        else
+        {
+            param = new { t = type };
+        }
+        var rows = _tplRepo.Find(where, param, "[Id] DESC")
+            .Select(x => new { Id = x.Id, HNumber = x.HNumber, HName = x.HName, MaintenanceType = x.MaintenanceType })
+            .ToList();
+        return Json(new ResponseData { code = 0, data = rows });
+    }
+
+    [HttpGet]
+    public IActionResult GetFacilityHistory([FromQuery] long facilityId, [FromQuery] string? billType = null)
+    {
+        var where = "[FacilityID]=@fid";
+        object param;
+        if (!string.IsNullOrEmpty(billType))
+        {
+            where += " AND [BillType]=@bt";
+            param = new { fid = facilityId, bt = billType };
+        }
+        else
+        {
+            param = new { fid = facilityId };
+        }
+        var rows = _billRepo.Find(where, param, "[Id] DESC").ToList();
+        return Json(new TableData { code = 0, count = rows.Count, data = rows });
     }
 
     [HttpPost]
