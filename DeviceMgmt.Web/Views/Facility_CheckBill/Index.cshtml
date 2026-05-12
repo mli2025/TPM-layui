@@ -1,0 +1,145 @@
+@{
+    ViewData["Title"] = "设备点检单列表";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>设备点检单列表</strong>
+            <span style="color:#888;font-size:12px;margin-left:8px;">仅查看</span>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md4">
+                    <input type="text" id="kw" class="layui-input" placeholder="输入单号/设备ID">
+                </div>
+                <div class="layui-col-md8" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="view">查看</a>
+</script>
+
+<script type="text/html" id="statusTpl">
+    {{# var map = {0:'新建',1:'已派工',2:'点检中',3:'已点检',4:'已审核'}; }}
+    {{# var color = {0:'#f7b500',1:'#1e88e5',2:'#7c3aed',3:'#16a34a',4:'#475569'}; }}
+    {{# var s = (d.Status == null) ? 0 : d.Status; }}
+    <span class="layui-badge" style="background-color:{{= color[s] || '#999' }};">{{= map[s] || s }}</span>
+</script>
+
+<script type="text/html" id="tplBillDetail">
+    <div style="padding:14px;">
+        <div class="layui-row layui-col-space10" style="margin-bottom:8px;">
+            <div class="layui-col-md4"><b>单号：</b><span id="dtBillNo"></span></div>
+            <div class="layui-col-md4"><b>设备ID：</b><span id="dtFacilityID"></span></div>
+            <div class="layui-col-md4"><b>状态：</b><span id="dtStatus"></span></div>
+            <div class="layui-col-md4"><b>计划日期：</b><span id="dtBillDate"></span></div>
+            <div class="layui-col-md4"><b>开始时间：</b><span id="dtBeginDate"></span></div>
+            <div class="layui-col-md4"><b>结束时间：</b><span id="dtEndDate"></span></div>
+            <div class="layui-col-md4"><b>点检人：</b><span id="dtRepairStaff"></span></div>
+            <div class="layui-col-md4"><b>审核人：</b><span id="dtChecker"></span></div>
+            <div class="layui-col-md4"><b>审核日期：</b><span id="dtCheckDate"></span></div>
+        </div>
+        <div style="margin:8px 0 4px;font-weight:600;">点检项目明细</div>
+        <table id="GridSub" lay-filter="GridSub"></table>
+    </div>
+</script>
+
+@section Script{
+    <script>
+        layui.use(['table', 'form', 'layer'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer;
+            function ok(res) { return res && (res.code === 0 || res.code === 200); }
+            function fmtDate(s) { return s ? (s + '').substring(0, 10) : ''; }
+            function fmtDt(s) { return s ? (s + '').replace('T', ' ').substring(0, 19) : ''; }
+            function statusText(s) { return ({0:'新建',1:'已派工',2:'点检中',3:'已点检',4:'已审核'})[s] || (s + ''); }
+
+            function getSearchParam() {
+                var list = [{ field: 'BillType', conditional: 'eq', value: 'INSPECTION' }];
+                var kw = $('#kw').val();
+                if (kw) list.push({ field: 'BillNo', conditional: 'like', value: kw });
+                return list;
+            }
+
+            function renderTable() {
+                table.render({
+                    elem: '#GridMain',
+                    id: 'GridMain',
+                    url: '/Facility_BillMain/GetMainList',
+                    method: 'post',
+                    where: { page: 1, limit: 20, searchParam: getSearchParam() },
+                    page: true,
+                    height: 'full-200',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'BillNo', title: '单号', width: 160 },
+                        { field: 'FacilityID', title: '设备ID', width: 110 },
+                        { field: 'BillDate', title: '计划日期', width: 110, templet: function (d) { return fmtDate(d.BillDate); } },
+                        { field: 'BeginDate', title: '开始时间', width: 160, templet: function (d) { return fmtDt(d.BeginDate); } },
+                        { field: 'EndDate', title: '结束时间', width: 160, templet: function (d) { return fmtDt(d.EndDate); } },
+                        { field: 'Status', title: '状态', width: 100, templet: '#statusTpl' },
+                        { field: 'RepairStaff', title: '点检人', width: 110 },
+                        { field: 'Checker', title: '审核人', width: 110 },
+                        { field: 'CheckDate', title: '审核日期', width: 160, templet: function (d) { return fmtDt(d.CheckDate); } },
+                        { field: 'Remark', title: '备注', minWidth: 160 },
+                        { title: '操作', width: 110, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+
+            function openView(row) {
+                layer.open({
+                    type: 1,
+                    title: '点检单查看',
+                    area: ['1000px', '660px'],
+                    content: $('#tplBillDetail').html(),
+                    btn: ['关闭'],
+                    success: function () {
+                        $.get('/Facility_BillMain/GetBillDetail', { id: row.Id }, function (res) {
+                            if (!ok(res) || !res.data) { layer.msg(res && res.msg || '加载失败'); return; }
+                            var m = res.data.Main || {};
+                            $('#dtBillNo').text(m.BillNo || '');
+                            $('#dtFacilityID').text(m.FacilityID || '');
+                            $('#dtStatus').text(statusText(m.Status == null ? 0 : m.Status));
+                            $('#dtBillDate').text(fmtDate(m.BillDate));
+                            $('#dtBeginDate').text(fmtDt(m.BeginDate));
+                            $('#dtEndDate').text(fmtDt(m.EndDate));
+                            $('#dtRepairStaff').text(m.RepairStaff || '');
+                            $('#dtChecker').text(m.Checker || '');
+                            $('#dtCheckDate').text(fmtDt(m.CheckDate));
+                            table.render({
+                                elem: '#GridSub',
+                                data: res.data.Subs || [],
+                                page: false,
+                                height: 380,
+                                cols: [[
+                                    { type: 'numbers', title: '#' },
+                                    { field: 'Project', title: '点检项目', minWidth: 160 },
+                                    { field: 'UpkeepMethod', title: '方法', minWidth: 180 },
+                                    { field: 'CheckMethod', title: '标准描述', minWidth: 160 },
+                                    { field: 'MinValue', title: '最小值', width: 80 },
+                                    { field: 'MaxValue', title: '最大值', width: 80 },
+                                    { field: 'Result', title: '点检结果', width: 120 },
+                                    { field: 'Remark', title: '备注', minWidth: 120 }
+                                ]]
+                            });
+                        });
+                    }
+                });
+            }
+
+            $('#btnReload').on('click', function () { table.reload('GridMain', { where: { page: 1, limit: 20, searchParam: getSearchParam() } }); });
+            $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'view') openView(obj.data);
+            });
+
+            renderTable();
+        });
+    </script>
+}

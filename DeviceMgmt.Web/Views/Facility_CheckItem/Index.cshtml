@@ -1,0 +1,66 @@
+@{
+    ViewData["Title"] = "设备点检项目列表";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>设备点检项目列表</strong>
+            <span style="color:#888;font-size:12px;margin-left:8px;">仅查看</span>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md4">
+                    <input type="text" id="kw" class="layui-input" placeholder="输入项目关键字">
+                </div>
+                <div class="layui-col-md8" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+@section Script{
+    <script>
+        layui.use(['table', 'form', 'layer'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer;
+            function ok(res) { return res && (res.code === 0 || res.code === 200); }
+            function ctlType(v) { return Number(v) === 1 ? '数值型' : '是否型'; }
+
+            function getSearchParam() {
+                var list = [{ field: 'Type', conditional: 'eq', value: '1' }];
+                var kw = $('#kw').val();
+                if (kw) list.push({ field: 'Project', conditional: 'like', value: kw });
+                return list;
+            }
+
+            function renderTable() {
+                table.render({
+                    elem: '#GridMain',
+                    id: 'GridMain',
+                    url: '/Facility_Item/GetMainList',
+                    method: 'post',
+                    where: { page: 1, limit: 20, searchParam: getSearchParam() },
+                    page: true,
+                    height: 'full-200',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'Project', title: '项目', minWidth: 180 },
+                        { field: 'UpkeepMethod', title: '方法', minWidth: 200 },
+                        { field: 'CheckMethod', title: '标准描述', minWidth: 180 },
+                        { field: 'ControlType', title: '控件类型', width: 100, templet: function (d) { return ctlType(d.ControlType); } },
+                        { field: 'MinValue', title: '最小值', width: 90 },
+                        { field: 'MaxValue', title: '最大值', width: 90 },
+                        { field: 'Status', title: '状态', width: 90, templet: function (d) { return (d.Status == 1) ? '启用' : '禁用'; } }
+                    ]]
+                });
+            }
+
+            $('#btnReload').on('click', function () { table.reload('GridMain', { where: { page: 1, limit: 20, searchParam: getSearchParam() } }); });
+            $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+
+            renderTable();
+        });
+    </script>
+}

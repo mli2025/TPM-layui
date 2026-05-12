@@ -1,0 +1,116 @@
+@{
+    ViewData["Title"] = "设备点检模板列表";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>设备点检模板列表</strong>
+            <span style="color:#888;font-size:12px;margin-left:8px;">仅查看</span>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md4">
+                    <input type="text" id="kw" class="layui-input" placeholder="输入模板名/编号">
+                </div>
+                <div class="layui-col-md8" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="detail">查看明细</a>
+</script>
+
+<script type="text/html" id="tplDetail">
+    <div style="padding:14px;">
+        <div class="layui-form-item" style="margin-bottom:6px;">
+            <span style="font-weight:600;">模板编号：</span><span id="dtHNumber"></span>
+            <span style="margin:0 16px;font-weight:600;">模板名称：</span><span id="dtHName"></span>
+        </div>
+        <div style="margin:8px 0 4px;font-weight:600;">项目明细</div>
+        <table id="GridSub" lay-filter="GridSub"></table>
+    </div>
+</script>
+
+@section Script{
+    <script>
+        layui.use(['table', 'form', 'layer'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer;
+            function ok(res) { return res && (res.code === 0 || res.code === 200); }
+            function ctlType(v) { return Number(v) === 1 ? '数值型' : '是否型'; }
+            function statusText(s) { return ({0:'未审核',1:'已审核'})[s] || (s + ''); }
+
+            function getSearchParam() {
+                var list = [{ field: 'Type', conditional: 'eq', value: '1' }];
+                var kw = $('#kw').val();
+                if (kw) list.push({ field: 'HName', conditional: 'like', value: kw });
+                return list;
+            }
+
+            function renderTable() {
+                table.render({
+                    elem: '#GridMain',
+                    id: 'GridMain',
+                    url: '/Facility_TheTemplateMain/GetMainList',
+                    method: 'post',
+                    where: { page: 1, limit: 20, searchParam: getSearchParam() },
+                    page: true,
+                    height: 'full-200',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'HNumber', title: '模板编号', width: 160 },
+                        { field: 'HName', title: '模板名称', minWidth: 180 },
+                        { field: 'MaintenanceType', title: '保养类型', width: 120 },
+                        { field: 'Hdate', title: '创建日期', width: 130, templet: function (d) { return d.Hdate ? (d.Hdate + '').substring(0, 10) : ''; } },
+                        { field: 'Status', title: '状态', width: 100, templet: function (d) { return statusText(d.Status == null ? 0 : d.Status); } },
+                        { title: '操作', width: 120, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+
+            function openDetail(row) {
+                layer.open({
+                    type: 1,
+                    title: '点检模板明细',
+                    area: ['900px', '600px'],
+                    content: $('#tplDetail').html(),
+                    btn: ['关闭'],
+                    success: function () {
+                        $('#dtHNumber').text(row.HNumber || '');
+                        $('#dtHName').text(row.HName || '');
+                        $.get('/Facility_TheTemplateMain/GetTemplateSubs', { mainId: row.Id }, function (res) {
+                            var data = ok(res) ? (res.data || []) : [];
+                            table.render({
+                                elem: '#GridSub',
+                                data: data,
+                                page: false,
+                                height: 440,
+                                cols: [[
+                                    { type: 'numbers', title: '#' },
+                                    { field: 'HContent', title: '项目', minWidth: 180 },
+                                    { field: 'HMethods', title: '方法', minWidth: 200 },
+                                    { field: 'HStandard', title: '标准描述', minWidth: 180 },
+                                    { field: 'ControlType', title: '控件类型', width: 100, templet: function (d) { return ctlType(d.ControlType); } },
+                                    { field: 'MinValue', title: '最小值', width: 90 },
+                                    { field: 'MaxValue', title: '最大值', width: 90 }
+                                ]]
+                            });
+                        });
+                    }
+                });
+            }
+
+            $('#btnReload').on('click', function () { table.reload('GridMain', { where: { page: 1, limit: 20, searchParam: getSearchParam() } }); });
+            $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'detail') openDetail(obj.data);
+            });
+
+            renderTable();
+        });
+    </script>
+}

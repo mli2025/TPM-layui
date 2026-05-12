@@ -34,9 +34,49 @@
             <div id="paneList">
                 <table id="GridMain" lay-filter="GridMain"></table>
             </div>
-            <div id="panePlaceholder" style="display:none;padding:48px;text-align:center;color:#888;font-size:14px;">
-                <i class="layui-icon" style="font-size:48px;color:#ccc;"></i>
-                <div style="margin-top:12px;" id="placeholderText">@("\u8be5\u89c6\u56fe\u5f00\u53d1\u4e2d...")</div>
+
+            <div id="paneKanban" style="display:none;">
+                <div id="kanbanBoard" style="display:flex;gap:10px;overflow-x:auto;align-items:flex-start;min-height:520px;"></div>
+            </div>
+
+            <div id="paneCalendar" style="display:none;">
+                <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="calPrev"><i class="layui-icon layui-icon-left"></i></button>
+                    <span id="calTitle" style="font-size:16px;font-weight:600;min-width:120px;text-align:center;"></span>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="calNext"><i class="layui-icon layui-icon-right"></i></button>
+                    <button class="layui-btn layui-btn-sm" id="calToday">今天</button>
+                </div>
+                <table id="calGrid" style="width:100%;border-collapse:collapse;table-layout:fixed;">
+                    <thead>
+                        <tr style="background:#f5f5f5;">
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周日</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周一</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周二</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周三</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周四</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周五</th>
+                            <th style="padding:6px;border:1px solid #e2e8f0;width:14.28%;">周六</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calBody"></tbody>
+                </table>
+            </div>
+
+            <div id="paneGantt" style="display:none;">
+                <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+                    <span>粒度：</span>
+                    <button class="layui-btn layui-btn-sm gantt-scale" data-scale="WEEK">周</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="MONTH">月</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="QUARTER">季度</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="YEAR">年</button>
+                    <span style="margin-left:16px;">分组：</span>
+                    <button class="layui-btn layui-btn-sm gantt-group" data-group="bill">按工单</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-group" data-group="facility">按设备</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="ganttPrev" style="margin-left:16px;"><i class="layui-icon layui-icon-left"></i></button>
+                    <span id="ganttRange" style="font-weight:600;min-width:200px;text-align:center;"></span>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="ganttNext"><i class="layui-icon layui-icon-right"></i></button>
+                </div>
+                <div id="ganttContainer" style="overflow:auto;max-height:560px;border:1px solid #e2e8f0;"></div>
             </div>
         </div>
     </div>
@@ -464,28 +504,275 @@
                 });
             }
 
+            function refreshCurrentView() {
+                if (currentView === 'list') {
+                    table.reload('GridMain', { where: getWhere() });
+                } else if (currentView === 'kanban') {
+                    loadAllBills(renderKanban);
+                } else if (currentView === 'calendar') {
+                    loadAllBills(renderCalendar);
+                } else if (currentView === 'gantt') {
+                    loadAllBills(renderGantt);
+                }
+            }
+
             $('#statusPills button').on('click', function () {
                 $('#statusPills button').removeClass('').addClass('layui-btn layui-btn-sm layui-btn-primary');
                 $(this).removeClass('layui-btn-primary');
                 currentStatus = $(this).data('status');
-                table.reload('GridMain', { where: getWhere() });
+                refreshCurrentView();
             });
 
             $('#btnPlan').on('click', openPlanDialog);
-            $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
+            $('#btnReload').on('click', refreshCurrentView);
             $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+
+            // ---------------- 视图切换 ----------------
+            var currentView = 'list';
+            var allBills = [];
+            var calCursor = new Date();
+            var ganttCursor = new Date();
+            var ganttScale = 'MONTH';
+            var ganttGroup = 'facility';
+
+            function loadAllBills(cb) {
+                var sp = [];
+                var kw = $('#kw').val();
+                if (kw) sp.push({ field: 'BillNo', conditional: 'like', value: kw });
+                if (currentStatus !== '') sp.push({ field: 'Status', conditional: 'eq', value: currentStatus });
+                $.post(URL_MAIN_LIST, { page: 1, limit: 9999, searchParam: sp }, function (res) {
+                    allBills = (res && res.data) ? res.data : [];
+                    if (cb) cb();
+                });
+            }
 
             $('#btnViewList').on('click', function () { showPane('list'); });
             $('#btnViewKanban').on('click', function () { showPane('kanban'); });
             $('#btnViewCalendar').on('click', function () { showPane('calendar'); });
             $('#btnViewGantt').on('click', function () { showPane('gantt'); });
+
             function showPane(name) {
-                if (name === 'list') {
-                    $('#paneList').show(); $('#panePlaceholder').hide();
-                } else {
-                    $('#paneList').hide(); $('#panePlaceholder').show();
-                    $('#placeholderText').text(({kanban:'\u72b6\u6001\u770b\u677f\u89c6\u56fe\u5f00\u53d1\u4e2d...',calendar:'\u65e5\u5386\u89c6\u56fe\u5f00\u53d1\u4e2d...',gantt:'\u7518\u7279\u56fe\u89c6\u56fe\u5f00\u53d1\u4e2d...'})[name]);
+                currentView = name;
+                $('#paneList,#paneKanban,#paneCalendar,#paneGantt').hide();
+                $('#paneList').toggle(name === 'list');
+                if (name === 'kanban')  { $('#paneKanban').show();  loadAllBills(renderKanban); }
+                if (name === 'calendar'){ $('#paneCalendar').show();loadAllBills(renderCalendar); }
+                if (name === 'gantt')   { $('#paneGantt').show();   loadAllBills(renderGantt); }
+            }
+
+            // ---------------- Kanban ----------------
+            function renderKanban() {
+                var cols = [
+                    { status: 0, name: '新建',   color: '#f7b500' },
+                    { status: 1, name: '已派工', color: '#1e88e5' },
+                    { status: 2, name: '保养中', color: '#7c3aed' },
+                    { status: 3, name: '已保养', color: '#16a34a' },
+                    { status: 4, name: '已审核', color: '#475569' }
+                ];
+                var grouped = {};
+                cols.forEach(function (c) { grouped[c.status] = []; });
+                allBills.forEach(function (b) {
+                    var s = (b.Status == null) ? 0 : b.Status;
+                    if (grouped[s]) grouped[s].push(b);
+                });
+                var html = '';
+                cols.forEach(function (c) {
+                    var arr = grouped[c.status];
+                    html += '<div class="kanban-col" style="flex:0 0 260px;background:#f7f8fa;border-radius:6px;padding:8px;">';
+                    html += '<div style="font-weight:600;padding:4px 6px;border-bottom:2px solid ' + c.color + ';margin-bottom:8px;color:' + c.color + ';">'
+                        + c.name + ' <span style="color:#888;font-weight:normal;">(' + arr.length + ')</span></div>';
+                    arr.forEach(function (b) {
+                        var cycle = cycleText(b.MaintainType);
+                        html += '<div class="kanban-card" data-id="' + b.Id + '" '
+                            + 'style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid ' + c.color + ';'
+                            + 'border-radius:4px;padding:8px;margin-bottom:8px;cursor:pointer;font-size:12px;">'
+                            + '<div style="font-weight:600;color:#1f4d3b;">' + (b.BillNo || '') + '</div>'
+                            + '<div style="margin-top:4px;color:#555;">设备：' + (b.FacilityID || '') + '</div>'
+                            + '<div style="color:#555;">类型：' + cycle + '</div>'
+                            + '<div style="color:#888;">日期：' + fmtDate(b.BillDate) + '</div>'
+                            + '</div>';
+                    });
+                    if (arr.length === 0) html += '<div style="color:#bbb;font-size:12px;text-align:center;padding:20px 0;">暂无</div>';
+                    html += '</div>';
+                });
+                $('#kanbanBoard').html(html);
+                $('#kanbanBoard .kanban-card').on('click', function () {
+                    var id = $(this).data('id');
+                    var row = allBills.find(function (b) { return b.Id === id; });
+                    if (row) openDetail(row, true);
+                });
+            }
+
+            // ---------------- Calendar ----------------
+            function renderCalendar() {
+                var year = calCursor.getFullYear(), month = calCursor.getMonth();
+                $('#calTitle').text(year + '-' + pad2(month + 1));
+                var first = new Date(year, month, 1);
+                var startWeekday = first.getDay();
+                var daysInMonth = new Date(year, month + 1, 0).getDate();
+                var byDate = {};
+                allBills.forEach(function (b) {
+                    if (!b.BillDate) return;
+                    var key = (b.BillDate + '').substring(0, 10);
+                    if (!byDate[key]) byDate[key] = [];
+                    byDate[key].push(b);
+                });
+                var html = '';
+                var day = 1;
+                for (var w = 0; w < 6; w++) {
+                    html += '<tr>';
+                    for (var d = 0; d < 7; d++) {
+                        var idx = w * 7 + d;
+                        if (idx < startWeekday || day > daysInMonth) {
+                            html += '<td style="border:1px solid #e2e8f0;height:110px;vertical-align:top;background:#fafafa;"></td>';
+                        } else {
+                            var dateStr = year + '-' + pad2(month + 1) + '-' + pad2(day);
+                            var items = byDate[dateStr] || [];
+                            html += '<td style="border:1px solid #e2e8f0;height:110px;vertical-align:top;padding:4px;">';
+                            html += '<div style="font-size:12px;color:#888;">' + day + '</div>';
+                            items.slice(0, 4).forEach(function (b) {
+                                var c = statusColor((b.Status == null) ? 0 : b.Status);
+                                html += '<div class="cal-item" data-id="' + b.Id + '" '
+                                    + 'style="font-size:11px;background:' + c + '22;border-left:3px solid ' + c + ';'
+                                    + 'padding:2px 4px;margin-top:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
+                                    + (b.BillNo || '') + '</div>';
+                            });
+                            if (items.length > 4) html += '<div style="font-size:11px;color:#888;">+' + (items.length - 4) + '</div>';
+                            html += '</td>';
+                            day++;
+                        }
+                    }
+                    html += '</tr>';
+                    if (day > daysInMonth) break;
                 }
+                $('#calBody').html(html);
+                $('#calBody .cal-item').on('click', function () {
+                    var id = $(this).data('id');
+                    var row = allBills.find(function (b) { return b.Id === id; });
+                    if (row) openDetail(row, true);
+                });
+            }
+            $('#calPrev').on('click', function () { calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() - 1, 1); renderCalendar(); });
+            $('#calNext').on('click', function () { calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() + 1, 1); renderCalendar(); });
+            $('#calToday').on('click', function () { calCursor = new Date(); renderCalendar(); });
+
+            function statusColor(s) { return ({0:'#f7b500',1:'#1e88e5',2:'#7c3aed',3:'#16a34a',4:'#475569'})[s] || '#999'; }
+            function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+            // ---------------- Gantt ----------------
+            $('.gantt-scale').on('click', function () {
+                $('.gantt-scale').addClass('layui-btn-primary');
+                $(this).removeClass('layui-btn-primary');
+                ganttScale = $(this).data('scale');
+                renderGantt();
+            });
+            $('.gantt-group').on('click', function () {
+                $('.gantt-group').addClass('layui-btn-primary');
+                $(this).removeClass('layui-btn-primary');
+                ganttGroup = $(this).data('group');
+                renderGantt();
+            });
+            $('#ganttPrev').on('click', function () { shiftGantt(-1); });
+            $('#ganttNext').on('click', function () { shiftGantt(1); });
+            function shiftGantt(dir) {
+                if (ganttScale === 'WEEK')    ganttCursor.setDate(ganttCursor.getDate() + dir * 7);
+                if (ganttScale === 'MONTH')   ganttCursor.setMonth(ganttCursor.getMonth() + dir);
+                if (ganttScale === 'QUARTER') ganttCursor.setMonth(ganttCursor.getMonth() + dir * 3);
+                if (ganttScale === 'YEAR')    ganttCursor.setFullYear(ganttCursor.getFullYear() + dir);
+                renderGantt();
+            }
+
+            function getGanttRange() {
+                var s = new Date(ganttCursor), e = new Date(ganttCursor);
+                if (ganttScale === 'WEEK')    { s.setDate(s.getDate() - s.getDay()); e = new Date(s); e.setDate(s.getDate() + 6); }
+                if (ganttScale === 'MONTH')   { s = new Date(s.getFullYear(), s.getMonth(), 1); e = new Date(s.getFullYear(), s.getMonth() + 1, 0); }
+                if (ganttScale === 'QUARTER') { var q = Math.floor(s.getMonth() / 3); s = new Date(s.getFullYear(), q * 3, 1); e = new Date(s.getFullYear(), q * 3 + 3, 0); }
+                if (ganttScale === 'YEAR')    { s = new Date(s.getFullYear(), 0, 1); e = new Date(s.getFullYear(), 11, 31); }
+                s.setHours(0, 0, 0, 0); e.setHours(23, 59, 59, 999);
+                return { start: s, end: e };
+            }
+
+            function renderGantt() {
+                var range = getGanttRange();
+                var startMs = range.start.getTime(), endMs = range.end.getTime();
+                var totalDays = Math.round((endMs - startMs) / 86400000) + 1;
+                $('#ganttRange').text(fmtDate(range.start) + ' ~ ' + fmtDate(range.end));
+
+                // 在范围内的工单
+                var bills = allBills.filter(function (b) {
+                    var bs = b.BillDate ? new Date(b.BillDate).getTime() : 0;
+                    return bs >= startMs && bs <= endMs;
+                });
+
+                // 分组
+                var groups = {};
+                var groupOrder = [];
+                bills.forEach(function (b) {
+                    var key = ganttGroup === 'facility' ? ('设备 ' + (b.FacilityID || '-')) : (b.BillNo || '工单');
+                    if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+                    groups[key].push(b);
+                });
+
+                // 列头：按粒度生成时间格
+                var cells = [];
+                if (ganttScale === 'WEEK' || ganttScale === 'MONTH') {
+                    for (var i = 0; i < totalDays; i++) {
+                        var d = new Date(startMs + i * 86400000);
+                        cells.push({ label: pad2(d.getMonth() + 1) + '/' + pad2(d.getDate()), start: d.getTime(), end: d.getTime() + 86400000 - 1 });
+                    }
+                } else if (ganttScale === 'QUARTER') {
+                    for (var w = new Date(range.start); w <= range.end; w.setDate(w.getDate() + 7)) {
+                        var ws = new Date(w), we = new Date(w); we.setDate(we.getDate() + 6);
+                        cells.push({ label: pad2(ws.getMonth() + 1) + '/' + pad2(ws.getDate()), start: ws.getTime(), end: we.getTime() });
+                    }
+                } else { // YEAR -> 月
+                    for (var m = 0; m < 12; m++) {
+                        var ms = new Date(range.start.getFullYear(), m, 1);
+                        var me = new Date(range.start.getFullYear(), m + 1, 0);
+                        cells.push({ label: (m + 1) + '月', start: ms.getTime(), end: me.getTime() + 86399999 });
+                    }
+                }
+
+                var labelW = 160, cellW = ganttScale === 'YEAR' ? 80 : (ganttScale === 'QUARTER' ? 60 : 36);
+                var totalW = labelW + cells.length * cellW;
+
+                var html = '<table style="border-collapse:collapse;width:' + totalW + 'px;font-size:12px;">';
+                html += '<thead><tr><th style="position:sticky;left:0;background:#f5f5f5;border:1px solid #e2e8f0;padding:6px;width:' + labelW + 'px;text-align:left;">' + (ganttGroup === 'facility' ? '设备' : '工单') + '</th>';
+                cells.forEach(function (c) {
+                    html += '<th style="border:1px solid #e2e8f0;padding:4px 2px;width:' + cellW + 'px;background:#f5f5f5;font-weight:normal;">' + c.label + '</th>';
+                });
+                html += '</tr></thead><tbody>';
+
+                if (groupOrder.length === 0) {
+                    html += '<tr><td colspan="' + (cells.length + 1) + '" style="padding:24px;text-align:center;color:#888;">范围内无工单</td></tr>';
+                } else {
+                    groupOrder.forEach(function (key) {
+                        html += '<tr><td style="position:sticky;left:0;background:#fff;border:1px solid #e2e8f0;padding:6px;">' + key + '</td>';
+                        cells.forEach(function (c) {
+                            var items = groups[key].filter(function (b) {
+                                var bs = b.BillDate ? new Date(b.BillDate).getTime() : 0;
+                                return bs >= c.start && bs <= c.end;
+                            });
+                            html += '<td style="border:1px solid #e2e8f0;padding:1px;position:relative;">';
+                            items.forEach(function (b) {
+                                var color = statusColor((b.Status == null) ? 0 : b.Status);
+                                html += '<div class="gantt-bar" data-id="' + b.Id + '" title="' + (b.BillNo || '') + '" '
+                                    + 'style="background:' + color + ';color:#fff;font-size:10px;border-radius:3px;'
+                                    + 'padding:2px 4px;margin-bottom:1px;cursor:pointer;white-space:nowrap;overflow:hidden;'
+                                    + 'text-overflow:ellipsis;">' + (b.BillNo || '').replace(/^TPM0*/, 'TPM') + '</div>';
+                            });
+                            html += '</td>';
+                        });
+                        html += '</tr>';
+                    });
+                }
+                html += '</tbody></table>';
+                $('#ganttContainer').html(html);
+                $('#ganttContainer .gantt-bar').on('click', function () {
+                    var id = $(this).data('id');
+                    var row = allBills.find(function (b) { return b.Id === id; });
+                    if (row) openDetail(row, true);
+                });
             }
 
             table.on('tool(GridMain)', function (obj) {
