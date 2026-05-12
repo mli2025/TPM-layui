@@ -44,7 +44,7 @@ public class Facility_ResourceDetailController : BaseController
     public IActionResult GetMainInfo([FromQuery] long Id)
     {
         var data = _app.Get(Id);
-        return Json(new ResponseData { code = 200, data = data });
+        return Json(new ResponseData { code = 0, data = data });
     }
 
     [HttpPost]

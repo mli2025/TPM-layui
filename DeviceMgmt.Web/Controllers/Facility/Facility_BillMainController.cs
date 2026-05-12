@@ -86,7 +86,7 @@ public class Facility_BillMainController : BaseController
     {
         var (list, total) = QueryDevices(req);
 
-        var tplIds = list.SelectMany(d => new[] { d.MonthTempId, d.SeasonTempId, d.WeekTempId, d.YearTempId })
+        var tplIds = list.SelectMany(d => new[] { d.MonthTempId, d.SeasonTempId, d.HalfYearTempId, d.WeekTempId, d.YearTempId })
                          .Where(x => x.HasValue && x.Value > 0)
                          .Select(x => x!.Value)
                          .Distinct()
@@ -108,6 +108,8 @@ public class Facility_BillMainController : BaseController
             SeasonTempName = d.SeasonTempId.HasValue && tplDict.TryGetValue(d.SeasonTempId.Value, out var q) ? q.HName : null,
             WeekTempId = d.WeekTempId,
             WeekTempName = d.WeekTempId.HasValue && tplDict.TryGetValue(d.WeekTempId.Value, out var w) ? w.HName : null,
+            HalfYearTempId = d.HalfYearTempId,
+            HalfYearTempName = d.HalfYearTempId.HasValue && tplDict.TryGetValue(d.HalfYearTempId.Value, out var h) ? h.HName : null,
             YearTempId = d.YearTempId,
             YearTempName = d.YearTempId.HasValue && tplDict.TryGetValue(d.YearTempId.Value, out var y) ? y.HName : null,
             LastMonthMainTainDate = d.LastMonthMainTainDate,
@@ -166,8 +168,28 @@ public class Facility_BillMainController : BaseController
 
     private (List<Facility_ResourceDetail> data, int total) QueryDevices(PageReq req)
     {
-        var filters = (req.searchParam ?? new List<searchParam>())
+        var raw = (req.searchParam ?? new List<searchParam>())
             .Where(x => !string.IsNullOrWhiteSpace(x?.value))
+            .ToList();
+
+        // 与台账列表一致：单关键词对 设备编码/名称/型号/内外校编码 做 OR 模糊查询（原仅 FacilityName 易搜不到）
+        if (raw.Count == 1 && string.Equals(raw[0].field, "FacilityName", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(raw[0].conditional ?? "like", "like", StringComparison.OrdinalIgnoreCase))
+        {
+            var kw = "%" + raw[0].value!.Trim() + "%";
+            const string where =
+                "([FacilityCode] LIKE @kw OR [FacilityName] LIKE @kw OR [Model] LIKE @kw OR ISNULL([NWXCode],'') LIKE @kw)";
+            var total = _deviceRepo.Count(where, new { kw });
+            var page = Math.Max(1, req.page);
+            var limit = Math.Max(1, req.limit);
+            var skip = (page - 1) * limit;
+            var rows = _deviceRepo.Query<Facility_ResourceDetail>(
+                "SELECT * FROM [Facility_ResourceDetail] WHERE " + where + " ORDER BY [Id] DESC OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY",
+                new { kw, skip, take = limit });
+            return (rows.ToList(), total);
+        }
+
+        var filters = raw
             .Select(x => new Infrastructure.Filter
             {
                 field = x.field,
@@ -175,7 +197,7 @@ public class Facility_BillMainController : BaseController
                 conditional = string.IsNullOrEmpty(x.conditional) ? "like" : x.conditional
             })
             .ToArray();
-        var (rows, total) = _deviceRepo.FindPaged(filters, req.page, req.limit, "[Id] DESC");
-        return (rows.ToList(), total);
+        var (rows2, total2) = _deviceRepo.FindPaged(filters, req.page, req.limit, "[Id] DESC");
+        return (rows2.ToList(), total2);
     }
 }

@@ -1,33 +1,33 @@
 @{
-    ViewData["Title"] = "???????";
+    ViewData["Title"] = "\u8bbe\u5907\u4fdd\u517b\u5355\u5217\u8868";
 }
 <div class="layui-fluid" style="padding:12px;">
     <div class="layui-card">
         <div class="layui-card-header">
-            <strong>???????</strong>
+            <strong>@("\u8bbe\u5907\u4fdd\u517b\u5355\u5217\u8868")</strong>
             <span class="layui-btn-group" style="float:right;">
-                <button class="layui-btn layui-btn-sm" id="btnViewList"><i class="layui-icon layui-icon-list"></i> ??</button>
-                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewKanban"><i class="layui-icon layui-icon-template-1"></i> ????</button>
-                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewCalendar"><i class="layui-icon layui-icon-date"></i> ??</button>
-                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewGantt"><i class="layui-icon layui-icon-chart"></i> ???</button>
+                <button class="layui-btn layui-btn-sm" id="btnViewList"><i class="layui-icon layui-icon-list"></i> @("\u5217\u8868")</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewKanban"><i class="layui-icon layui-icon-template-1"></i> @("\u72b6\u6001\u770b\u677f")</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewCalendar"><i class="layui-icon layui-icon-date"></i> @("\u65e5\u5386")</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnViewGantt"><i class="layui-icon layui-icon-chart"></i> @("\u7518\u7279\u56fe")</button>
             </span>
         </div>
         <div class="layui-card-body">
             <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
                 <div class="layui-col-md4">
-                    <input type="text" id="kw" class="layui-input" placeholder="????/????/??????">
+                    <input type="text" id="kw" class="layui-input" placeholder="@("\u8f93\u5165\u5355\u53f7/\u8bbe\u5907\u7f16\u7801/\u8bbe\u5907\u540d\u79f0\u67e5\u8be2")">
                 </div>
                 <div class="layui-col-md4" id="statusPills">
-                    <button class="layui-btn layui-btn-sm" data-status="">??</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="0">??</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="1">???</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="2">???</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="3">???</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="4">???</button>
+                    <button class="layui-btn layui-btn-sm" data-status="">@("\u5168\u90e8")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="0">@("\u65b0\u5efa")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="1">@("\u5df2\u6d3e\u5de5")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="2">@("\u4fdd\u517b\u4e2d")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="3">@("\u5df2\u4fdd\u517b")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="4">@("\u5df2\u5ba1\u6838")</button>
                 </div>
                 <div class="layui-col-md4" style="text-align:right;">
-                    <button class="layui-btn layui-btn-sm" id="btnPlan"><i class="layui-icon layui-icon-add-1"></i> ??????</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> ??</button>
+                    <button class="layui-btn layui-btn-sm" id="btnPlan"><i class="layui-icon layui-icon-add-1"></i> @("\u5efa\u7acb\u4fdd\u517b\u8ba1\u5212")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> @("\u5237\u65b0")</button>
                 </div>
             </div>
 
@@ -36,22 +36,22 @@
             </div>
             <div id="panePlaceholder" style="display:none;padding:48px;text-align:center;color:#888;font-size:14px;">
                 <i class="layui-icon" style="font-size:48px;color:#ccc;"></i>
-                <div style="margin-top:12px;" id="placeholderText">??????...</div>
+                <div style="margin-top:12px;" id="placeholderText">@("\u8be5\u89c6\u56fe\u5f00\u53d1\u4e2d...")</div>
             </div>
         </div>
     </div>
 </div>
 
 <script type="text/html" id="barRow">
-    <a class="layui-btn layui-btn-xs" lay-event="view">??</a>
+    <a class="layui-btn layui-btn-xs" lay-event="view">&#x67e5;&#x770b;</a>
     {{# if(d.Status == 0 || d.Status == null){ }}
-    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">??</a>
-    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">??</a>
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">&#x7f16;&#x8f91;</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">&#x5220;&#x9664;</a>
     {{# } }}
 </script>
 
 <script type="text/html" id="statusTpl">
-    {{# var map = {0:'??',1:'???',2:'???',3:'???',4:'???'}; }}
+    {{# var map = {0:'\u65b0\u5efa',1:'\u5df2\u6d3e\u5de5',2:'\u4fdd\u517b\u4e2d',3:'\u5df2\u4fdd\u517b',4:'\u5df2\u5ba1\u6838'}; }}
     {{# var color = {0:'#f7b500',1:'#1e88e5',2:'#7c3aed',3:'#16a34a',4:'#475569'}; }}
     {{# var s = (d.Status == null) ? 0 : d.Status; }}
     <span class="layui-badge" style="background-color:{{= color[s] || '#999' }};">{{= map[s] || s }}</span>
@@ -59,11 +59,10 @@
 
 <script type="text/html" id="cycleTpl">
     {{# var c = (d.MaintainType||'').toUpperCase(); }}
-    {{# var name = {YEAR:'?',QUARTER:'??',MONTH:'?',WEEK:'?'}[c] || c; }}
+    {{# var name = {YEAR:'\u5e74',QUARTER:'\u5b63\u5ea6',MONTH:'\u6708',WEEK:'\u5468'}[c] || c; }}
     <span>{{= name }}</span>
 </script>
 
-<!-- ??????/??????? -->
 <script type="text/html" id="tplBillDetail">
     <div style="padding:14px;">
         <form class="layui-form" lay-filter="billForm">
@@ -75,96 +74,94 @@
             <input type="hidden" name="BillNo">
             <div class="layui-form-item">
                 <div class="layui-inline">
-                    <label class="layui-form-label">????</label>
+                    <label class="layui-form-label">&#x4fdd;&#x517b;&#x5355;&#x53f7;</label>
                     <div class="layui-input-inline" style="padding-top:8px;"><span id="fld_BillNoText"></span></div>
                 </div>
                 <div class="layui-inline">
-                    <label class="layui-form-label">????</label>
+                    <label class="layui-form-label">&#x4fdd;&#x517b;&#x7c7b;&#x578b;</label>
                     <div class="layui-input-inline" style="padding-top:8px;"><span id="fld_MaintainTypeText"></span></div>
                 </div>
                 <div class="layui-inline">
-                    <label class="layui-form-label">??</label>
+                    <label class="layui-form-label">&#x72b6;&#x6001;</label>
                     <div class="layui-input-inline" style="padding-top:8px;"><span id="fld_StatusText"></span></div>
                 </div>
             </div>
             <div class="layui-form-item">
                 <div class="layui-inline">
-                    <label class="layui-form-label">????</label>
+                    <label class="layui-form-label">&#x8ba1;&#x5212;&#x65e5;&#x671f;</label>
                     <div class="layui-input-inline"><input name="BillDate" class="layui-input" id="fld_BillDate"></div>
                 </div>
                 <div class="layui-inline">
-                    <label class="layui-form-label">????</label>
+                    <label class="layui-form-label">&#x5f00;&#x59cb;&#x65f6;&#x95f4;</label>
                     <div class="layui-input-inline"><input name="BeginDate" class="layui-input" id="fld_BeginDate"></div>
                 </div>
                 <div class="layui-inline">
-                    <label class="layui-form-label">????</label>
+                    <label class="layui-form-label">&#x7ed3;&#x675f;&#x65f6;&#x95f4;</label>
                     <div class="layui-input-inline"><input name="EndDate" class="layui-input" id="fld_EndDate"></div>
                 </div>
             </div>
             <div class="layui-form-item">
                 <div class="layui-inline">
-                    <label class="layui-form-label">???</label>
+                    <label class="layui-form-label">&#x4fdd;&#x517b;&#x4eba;</label>
                     <div class="layui-input-inline"><input name="RepairStaff" class="layui-input"></div>
                 </div>
                 <div class="layui-inline">
-                    <label class="layui-form-label">??</label>
+                    <label class="layui-form-label">&#x91d1;&#x989d;</label>
                     <div class="layui-input-inline"><input name="Amount" type="number" step="0.01" class="layui-input"></div>
                 </div>
             </div>
             <div class="layui-form-item">
-                <label class="layui-form-label">??</label>
+                <label class="layui-form-label">&#x5907;&#x6ce8;</label>
                 <div class="layui-input-block"><input name="Remark" class="layui-input"></div>
             </div>
         </form>
-        <div style="margin:8px 0 4px;font-weight:600;">??????</div>
+        <div style="margin:8px 0 4px;font-weight:600;">&#x4fdd;&#x517b;&#x9879;&#x76ee;&#x660e;&#x7ec6;</div>
         <table id="GridBillSub" lay-filter="GridBillSub"></table>
     </div>
 </script>
 
-<!-- ?????? ???? -->
 <script type="text/html" id="tplPlan">
     <div style="padding:14px;">
         <form class="layui-form layui-row layui-col-space10" lay-filter="planForm">
             <div class="layui-col-md3">
-                <label class="layui-form-label">????</label>
+                <label class="layui-form-label">&#x4fdd;&#x517b;&#x7c7b;&#x578b;</label>
                 <div class="layui-input-block">
                     <select id="planCycle">
-                        <option value="MONTH">?</option>
-                        <option value="QUARTER">??</option>
-                        <option value="WEEK">?</option>
-                        <option value="YEAR">?</option>
+                        <option value="MONTH">&#x6708;</option>
+                        <option value="QUARTER">&#x5b63;&#x5ea6;</option>
+                        <option value="WEEK">&#x5468;</option>
+                        <option value="YEAR">&#x5e74;</option>
                     </select>
                 </div>
             </div>
             <div class="layui-col-md2">
-                <label class="layui-form-label">????</label>
+                <label class="layui-form-label">&#x751f;&#x6210;&#x6b21;&#x6570;</label>
                 <div class="layui-input-block">
                     <input id="planCount" type="number" value="1" min="1" class="layui-input">
                 </div>
             </div>
             <div class="layui-col-md3">
-                <label class="layui-form-label">????</label>
+                <label class="layui-form-label">&#x5f00;&#x59cb;&#x65e5;&#x671f;</label>
                 <div class="layui-input-block"><input id="planStartDate" class="layui-input"></div>
             </div>
             <div class="layui-col-md4" style="text-align:right;padding-top:24px;">
-                <button class="layui-btn layui-btn-sm" id="btnPickDevices"><i class="layui-icon layui-icon-add-1"></i> ????</button>
-                <button class="layui-btn layui-btn-sm layui-btn-warm" id="btnRefreshStatus"><i class="layui-icon layui-icon-refresh-3"></i> ????</button>
+                <button type="button" class="layui-btn layui-btn-sm" id="btnPickDevices"><i class="layui-icon layui-icon-add-1"></i> &#x9009;&#x62e9;&#x8bbe;&#x5907;</button>
+                <button type="button" class="layui-btn layui-btn-sm layui-btn-warm" id="btnRefreshStatus"><i class="layui-icon layui-icon-refresh-3"></i> &#x5237;&#x65b0;&#x72b6;&#x6001;</button>
             </div>
         </form>
-        <div style="margin:8px 0 4px;font-weight:600;">???????=?????????????????</div>
+        <div style="margin:8px 0 4px;font-weight:600;">&#x5df2;&#x9009;&#x8bbe;&#x5907;&#xff08;&#x7ea2;&#x8272;&#x3d;&#x672a;&#x914d;&#x7f6e;&#x8be5;&#x4fdd;&#x517b;&#x7c7b;&#x578b;&#x6a21;&#x677f;&#xff0c;&#x4e0d;&#x5141;&#x8bb8;&#x751f;&#x6210;&#xff09;</div>
         <table id="GridPlanDevices" lay-filter="GridPlanDevices"></table>
     </div>
 </script>
 
-<!-- ???? ???? -->
 <script type="text/html" id="tplPickDevices">
     <div style="padding:14px;">
         <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
             <div class="layui-col-md6">
-                <input type="text" id="pickKw" class="layui-input" placeholder="?????? / ?? / ????">
+                <input type="text" id="pickKw" class="layui-input" placeholder="&#x8f93;&#x5165;&#x8bbe;&#x5907;&#x7f16;&#x7801; / &#x540d;&#x79f0; / &#x578b;&#x53f7;&#x67e5;&#x8be2;">
             </div>
             <div class="layui-col-md6" style="text-align:right;">
-                <button class="layui-btn layui-btn-sm" id="btnPickSearch"><i class="layui-icon layui-icon-search"></i> ??</button>
+                <button type="button" class="layui-btn layui-btn-sm" id="btnPickSearch"><i class="layui-icon layui-icon-search"></i> &#x67e5;&#x8be2;</button>
             </div>
         </div>
         <table id="GridPickDevices" lay-filter="GridPickDevices"></table>
@@ -185,12 +182,12 @@
             var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate;
             function ok(res) { return res && (res.code === 0 || res.code === 200); }
             function toast(msg) { layer.msg(msg || ''); }
-            function toastOk(msg) { layer.msg(msg || '????', { icon: 1 }); }
-            function toastErr(msg) { layer.msg(msg || '????', { icon: 2 }); }
+            function toastOk(msg) { layer.msg(msg || '\u64cd\u4f5c\u6210\u529f', { icon: 1 }); }
+            function toastErr(msg) { layer.msg(msg || '\u64cd\u4f5c\u5931\u8d25', { icon: 2 }); }
             function toastWarn(msg) { layer.msg(msg || '', { icon: 0 }); }
             function fmtDate(s) { return s ? (s + '').replace('T', ' ').substring(0, 19) : ''; }
-            function statusText(s) { return ({0:'??',1:'???',2:'???',3:'???',4:'???'})[s] || (s + ''); }
-            function cycleText(c) { c = (c||'').toUpperCase(); return ({YEAR:'?',QUARTER:'??',MONTH:'?',WEEK:'?'})[c] || c; }
+            function statusText(s) { return ({0:'\u65b0\u5efa',1:'\u5df2\u6d3e\u5de5',2:'\u4fdd\u517b\u4e2d',3:'\u5df2\u4fdd\u517b',4:'\u5df2\u5ba1\u6838'})[s] || (s + ''); }
+            function cycleText(c) { c = (c||'').toUpperCase(); return ({YEAR:'\u5e74',QUARTER:'\u5b63\u5ea6',MONTH:'\u6708',WEEK:'\u5468'})[c] || c; }
 
             var currentStatus = '';
             var planState = { cycle: 'MONTH', count: 1, startDate: '', devices: [] };
@@ -214,16 +211,16 @@
                     height: 'full-260',
                     cols: [[
                         { type: 'numbers', title: '#' },
-                        { field: 'BillNo', title: '????', width: 160 },
-                        { field: 'FacilityID', title: '??ID', width: 110 },
-                        { field: 'MaintainType', title: '????', width: 100, templet: '#cycleTpl' },
-                        { field: 'BillDate', title: '????', width: 160, templet: function (d) { return fmtDate(d.BillDate); } },
-                        { field: 'BeginDate', title: '????', width: 160, templet: function (d) { return fmtDate(d.BeginDate); } },
-                        { field: 'EndDate', title: '????', width: 160, templet: function (d) { return fmtDate(d.EndDate); } },
-                        { field: 'Status', title: '??', width: 100, templet: '#statusTpl' },
-                        { field: 'RepairStaff', title: '???', width: 110 },
-                        { field: 'Remark', title: '??', minWidth: 160 },
-                        { title: '??', width: 200, toolbar: '#barRow', fixed: 'right' }
+                        { field: 'BillNo', title: '\u4fdd\u517b\u5355\u53f7', width: 160 },
+                        { field: 'FacilityID', title: '\u8bbe\u5907ID', width: 110 },
+                        { field: 'MaintainType', title: '\u4fdd\u517b\u7c7b\u578b', width: 100, templet: '#cycleTpl' },
+                        { field: 'BillDate', title: '\u8ba1\u5212\u65e5\u671f', width: 160, templet: function (d) { return fmtDate(d.BillDate); } },
+                        { field: 'BeginDate', title: '\u5f00\u59cb\u65f6\u95f4', width: 160, templet: function (d) { return fmtDate(d.BeginDate); } },
+                        { field: 'EndDate', title: '\u7ed3\u675f\u65f6\u95f4', width: 160, templet: function (d) { return fmtDate(d.EndDate); } },
+                        { field: 'Status', title: '\u72b6\u6001', width: 100, templet: '#statusTpl' },
+                        { field: 'RepairStaff', title: '\u4fdd\u517b\u4eba', width: 110 },
+                        { field: 'Remark', title: '\u5907\u6ce8', minWidth: 160 },
+                        { title: '\u64cd\u4f5c', width: 200, toolbar: '#barRow', fixed: 'right' }
                     ]]
                 });
             }
@@ -232,16 +229,16 @@
                 layer.open({
                     type: 1,
                     area: ['1000px', '680px'],
-                    title: (readOnly ? '??' : '??') + ' ??? ' + (row.BillNo || ''),
+                    title: (readOnly ? '\u67e5\u770b' : '\u7f16\u8f91') + ' \u4fdd\u517b\u5355 ' + (row.BillNo || ''),
                     content: $('#tplBillDetail').html(),
-                    btn: readOnly ? ['??'] : ['??', '??'],
+                    btn: readOnly ? ['\u5173\u95ed'] : ['\u4fdd\u5b58', '\u5173\u95ed'],
                     success: function () {
                         form.render();
                         laydate.render({ elem: '#fld_BillDate', type: 'datetime' });
                         laydate.render({ elem: '#fld_BeginDate', type: 'datetime' });
                         laydate.render({ elem: '#fld_EndDate', type: 'datetime' });
                         $.get(URL_BILL_DETAIL, { id: row.Id }, function (res) {
-                            if (!ok(res) || !res.data) { toastErr(res.msg || '????'); return; }
+                            if (!ok(res) || !res.data) { toastErr(res.msg || '\u52a0\u8f7d\u5931\u8d25'); return; }
                             var m = res.data.Main || {};
                             var rawCycle = (m.MaintainType || '').toUpperCase();
                             var rawStatus = m.Status == null ? 0 : m.Status;
@@ -262,13 +259,13 @@
                                 page: false,
                                 cols: [[
                                     { type: 'numbers', title: '#' },
-                                    { field: 'Project', title: '????', minWidth: 160 },
-                                    { field: 'UpkeepMethod', title: '????', minWidth: 180 },
-                                    { field: 'CheckMethod', title: '????', minWidth: 160 },
-                                    { field: 'MinValue', title: '???', width: 80 },
-                                    { field: 'MaxValue', title: '???', width: 80 },
-                                    { field: 'Result', title: '????', width: 120 },
-                                    { field: 'Remark', title: '??', minWidth: 120 }
+                                    { field: 'Project', title: '\u4fdd\u517b\u9879\u76ee', minWidth: 160 },
+                                    { field: 'UpkeepMethod', title: '\u4fdd\u517b\u65b9\u6cd5', minWidth: 180 },
+                                    { field: 'CheckMethod', title: '\u6807\u51c6\u63cf\u8ff0', minWidth: 160 },
+                                    { field: 'MinValue', title: '\u6700\u5c0f\u503c', width: 80 },
+                                    { field: 'MaxValue', title: '\u6700\u5927\u503c', width: 80 },
+                                    { field: 'Result', title: '\u4fdd\u517b\u7ed3\u679c', width: 120 },
+                                    { field: 'Remark', title: '\u5907\u6ce8', minWidth: 120 }
                                 ]]
                             });
                         });
@@ -280,22 +277,21 @@
                             if (ok(res)) {
                                 layer.close(idx);
                                 table.reload('GridMain');
-                                toastOk('????');
-                            } else toastErr(res.msg || '????');
+                                toastOk('\u4fdd\u5b58\u6210\u529f');
+                            } else toastErr(res.msg || '\u4fdd\u5b58\u5931\u8d25');
                         });
                     }
                 });
             }
 
-            // ---------------- ?????? ----------------
             function openPlanDialog() {
                 planState = { cycle: 'MONTH', count: 1, startDate: formatToday(), devices: [] };
                 layer.open({
                     type: 1,
                     area: ['1100px', '680px'],
-                    title: '??????',
+                    title: '\u5efa\u7acb\u4fdd\u517b\u8ba1\u5212',
                     content: $('#tplPlan').html(),
-                    btn: ['????', '??'],
+                    btn: ['\u786e\u8ba4\u751f\u6210', '\u5173\u95ed'],
                     success: function () {
                         form.render();
                         laydate.render({ elem: '#planStartDate', value: planState.startDate });
@@ -307,9 +303,9 @@
                         renderPlanGrid();
                     },
                     yes: function (idx) {
-                        if (planState.devices.length === 0) { toastWarn('??????'); return; }
+                        if (planState.devices.length === 0) { toastWarn('\u8bf7\u5148\u9009\u62e9\u8bbe\u5907'); return; }
                         var missing = planState.devices.filter(function (d) { return !d.HasTemplate; });
-                        if (missing.length > 0) { toastErr('????????????????????????'); return; }
+                        if (missing.length > 0) { toastErr('\u6709\u672a\u914d\u7f6e\u6a21\u677f\u7684\u8bbe\u5907\uff0c\u4e0d\u5141\u8bb8\u751f\u6210\uff0c\u8bf7\u5148\u53bb\u6a21\u677f\u91cc\u914d\u7f6e'); return; }
                         $.post(URL_BATCH_GENERATE, {
                             deviceIds: planState.devices.map(function (d) { return d.Id; }),
                             cycle: planState.cycle,
@@ -319,8 +315,8 @@
                             if (ok(res)) {
                                 layer.close(idx);
                                 table.reload('GridMain');
-                                toastOk(res.msg || '???');
-                            } else toastErr(res.msg || '????');
+                                toastOk(res.msg || '\u5df2\u751f\u6210');
+                            } else toastErr(res.msg || '\u751f\u6210\u5931\u8d25');
                         });
                     }
                 });
@@ -334,20 +330,21 @@
                     page: false,
                     height: 380,
                     cols: [[
-                        { field: 'FacilityCode', title: '????', width: 140 },
-                        { field: 'FacilityName', title: '????', minWidth: 160 },
-                        { field: 'Model', title: '????', width: 130 },
-                        { field: 'MonthTempName', title: '?????', width: 160, templet: tplCellTemplet('MonthTempName') },
-                        { field: 'SeasonTempName', title: '??????', width: 160, templet: tplCellTemplet('SeasonTempName') },
-                        { field: 'WeekTempName', title: '?????', width: 160, templet: tplCellTemplet('WeekTempName') },
-                        { field: 'YearTempName', title: '?????', width: 160, templet: tplCellTemplet('YearTempName') },
-                        { field: 'HasTemplate', title: '????', width: 110, templet: function (d) {
+                        { field: 'FacilityCode', title: '\u8bbe\u5907\u7f16\u7801', width: 140 },
+                        { field: 'FacilityName', title: '\u8bbe\u5907\u540d\u79f0', minWidth: 160 },
+                        { field: 'Model', title: '\u8bbe\u5907\u578b\u53f7', width: 130 },
+                        { field: 'WeekTempName', title: '\u5468\u4fdd\u517b\u6a21\u677f', width: 150, templet: tplCellTemplet('WeekTempName') },
+                        { field: 'MonthTempName', title: '\u6708\u4fdd\u517b\u6a21\u677f', width: 150, templet: tplCellTemplet('MonthTempName') },
+                        { field: 'SeasonTempName', title: '\u5b63\u5ea6\u4fdd\u517b\u6a21\u677f', width: 150, templet: tplCellTemplet('SeasonTempName') },
+                        { field: 'HalfYearTempName', title: '\u534a\u5e74\u4fdd\u517b\u6a21\u677f', width: 150 },
+                        { field: 'YearTempName', title: '\u5e74\u4fdd\u517b\u6a21\u677f', width: 150, templet: tplCellTemplet('YearTempName') },
+                        { field: 'HasTemplate', title: '\u5f53\u524d\u5468\u671f', width: 110, templet: function (d) {
                             return d.HasTemplate
-                                ? '<span class="layui-badge layui-bg-green">???</span>'
-                                : '<span class="layui-badge">???</span>';
+                                ? '<span class="layui-badge layui-bg-green">\u5df2\u914d\u7f6e</span>'
+                                : '<span class="layui-badge">\u672a\u914d\u7f6e</span>';
                         } },
-                        { title: '??', width: 80, templet: function (d) {
-                            return '<a class="layui-btn layui-btn-xs layui-btn-danger" onclick="window.__removePlanDev(' + d.Id + ')">??</a>';
+                        { title: '\u64cd\u4f5c', width: 80, templet: function (d) {
+                            return '<a class="layui-btn layui-btn-xs layui-btn-danger" onclick="window.__removePlanDev(' + d.Id + ')">\u79fb\u9664</a>';
                         } }
                     ]],
                     done: function () { highlightMissingRows(); }
@@ -361,7 +358,7 @@
                                 : planState.cycle === 'WEEK' ? 'WeekTempName'
                                 : 'YearTempName';
                     var v = d[field] || '';
-                    if (field === current && !v) return '<span style="color:#e53935;">???</span>';
+                    if (field === current && !v) return '<span style="color:#e53935;">\u672a\u914d\u7f6e</span>';
                     return v;
                 };
             }
@@ -396,16 +393,15 @@
                 });
             }
 
-            // ---------------- ???? ----------------
             function openPickDevices() {
                 var picked = {};
                 planState.devices.forEach(function (d) { picked[d.Id] = true; });
                 layer.open({
                     type: 1,
                     area: ['1100px', '600px'],
-                    title: '????',
+                    title: '\u9009\u62e9\u8bbe\u5907',
                     content: $('#tplPickDevices').html(),
-                    btn: ['????', '??'],
+                    btn: ['\u786e\u8ba4\u6dfb\u52a0', '\u5173\u95ed'],
                     success: function () {
                         renderPickGrid();
                         $('#btnPickSearch').on('click', function () { table.reload('GridPickDevices', { where: getPickWhere() }); });
@@ -413,7 +409,7 @@
                     },
                     yes: function (idx) {
                         var check = table.checkStatus('GridPickDevices').data || [];
-                        if (check.length === 0) { toastWarn('?????'); return; }
+                        if (check.length === 0) { toastWarn('\u8bf7\u52fe\u9009\u8bbe\u5907'); return; }
                         check.forEach(function (row) {
                             if (!picked[row.Id]) {
                                 planState.devices.push({
@@ -421,9 +417,10 @@
                                     FacilityCode: row.FacilityCode,
                                     FacilityName: row.FacilityName,
                                     Model: row.Model,
+                                    WeekTempName: row.WeekTempName,
                                     MonthTempName: row.MonthTempName,
                                     SeasonTempName: row.SeasonTempName,
-                                    WeekTempName: row.WeekTempName,
+                                    HalfYearTempName: row.HalfYearTempName,
                                     YearTempName: row.YearTempName,
                                     HasTemplate: false,
                                     TempId: null
@@ -455,18 +452,18 @@
                     height: 440,
                     cols: [[
                         { type: 'checkbox' },
-                        { field: 'FacilityCode', title: '????', width: 140 },
-                        { field: 'FacilityName', title: '????', minWidth: 160 },
-                        { field: 'Model', title: '????', width: 130 },
-                        { field: 'MonthTempName', title: '?????', width: 140 },
-                        { field: 'SeasonTempName', title: '??????', width: 140 },
-                        { field: 'WeekTempName', title: '?????', width: 140 },
-                        { field: 'YearTempName', title: '?????', width: 140 }
+                        { field: 'FacilityCode', title: '\u8bbe\u5907\u7f16\u7801', width: 140 },
+                        { field: 'FacilityName', title: '\u8bbe\u5907\u540d\u79f0', minWidth: 160 },
+                        { field: 'Model', title: '\u8bbe\u5907\u578b\u53f7', width: 130 },
+                        { field: 'WeekTempName', title: '\u5468\u4fdd\u517b\u6a21\u677f', width: 120 },
+                        { field: 'MonthTempName', title: '\u6708\u4fdd\u517b\u6a21\u677f', width: 120 },
+                        { field: 'SeasonTempName', title: '\u5b63\u5ea6\u4fdd\u517b\u6a21\u677f', width: 120 },
+                        { field: 'HalfYearTempName', title: '\u534a\u5e74\u4fdd\u517b\u6a21\u677f', width: 120 },
+                        { field: 'YearTempName', title: '\u5e74\u4fdd\u517b\u6a21\u677f', width: 120 }
                     ]]
                 });
             }
 
-            // ---------------- ???? ----------------
             $('#statusPills button').on('click', function () {
                 $('#statusPills button').removeClass('').addClass('layui-btn layui-btn-sm layui-btn-primary');
                 $(this).removeClass('layui-btn-primary');
@@ -478,7 +475,6 @@
             $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
             $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
 
-            // ?????????/??/???????
             $('#btnViewList').on('click', function () { showPane('list'); });
             $('#btnViewKanban').on('click', function () { showPane('kanban'); });
             $('#btnViewCalendar').on('click', function () { showPane('calendar'); });
@@ -488,7 +484,7 @@
                     $('#paneList').show(); $('#panePlaceholder').hide();
                 } else {
                     $('#paneList').hide(); $('#panePlaceholder').show();
-                    $('#placeholderText').text(({kanban:'?????????...',calendar:'???????...',gantt:'????????...'})[name]);
+                    $('#placeholderText').text(({kanban:'\u72b6\u6001\u770b\u677f\u89c6\u56fe\u5f00\u53d1\u4e2d...',calendar:'\u65e5\u5386\u89c6\u56fe\u5f00\u53d1\u4e2d...',gantt:'\u7518\u7279\u56fe\u89c6\u56fe\u5f00\u53d1\u4e2d...'})[name]);
                 }
             }
 
@@ -496,11 +492,11 @@
                 if (obj.event === 'view') openDetail(obj.data, true);
                 if (obj.event === 'edit') openDetail(obj.data, false);
                 if (obj.event === 'del') {
-                    layer.confirm('???????????????????', function (idx) {
+                    layer.confirm('\u786e\u8ba4\u5220\u9664\u8be5\u4fdd\u517b\u5355\uff08\u5df2\u6d3e\u5de5\u4e0d\u5141\u8bb8\u5220\u9664\uff09\uff1f', function (idx) {
                         $.post(URL_DELETE_BILL, { id: obj.data.Id }, function (res) {
                             layer.close(idx);
-                            if (ok(res)) { obj.del(); toastOk('????'); }
-                            else toastErr(res.msg || '????');
+                            if (ok(res)) { obj.del(); toastOk('\u5220\u9664\u6210\u529f'); }
+                            else toastErr(res.msg || '\u5220\u9664\u5931\u8d25');
                         });
                     });
                 }
