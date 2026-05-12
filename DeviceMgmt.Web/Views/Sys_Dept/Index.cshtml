@@ -1,0 +1,150 @@
+@{
+    ViewData["Title"] = "部门管理";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>部门管理</strong>
+            <span style="float:right;">
+                <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增根部门</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+            </span>
+        </div>
+        <div class="layui-card-body">
+            <div id="deptTree" style="min-height:300px;border:1px solid #e2e8f0;border-radius:4px;padding:10px;background:#fff;"></div>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="deptForm">
+            <input type="hidden" name="Id" />
+            <input type="hidden" name="ParentId" />
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">部门编号</label>
+                    <div class="layui-input-inline"><input type="text" name="DeptNumber" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">部门名称</label>
+                    <div class="layui-input-inline"><input type="text" name="DeptName" class="layui-input" required /></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">状态</label>
+                <div class="layui-input-block">
+                    <input type="radio" name="Status" value="1" title="启用" checked />
+                    <input type="radio" name="Status" value="0" title="停用" />
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">上级部门</label>
+                <div class="layui-input-block" id="parentText" style="padding-top:8px;color:#475569;"></div>
+            </div>
+            <div style="text-align:center;margin-top:14px;">
+                <button class="layui-btn" lay-submit lay-filter="submitDept">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+@section Script {
+<script>
+(function(){
+    layui.use(['layer','form'], function(){
+        var layer = layui.layer, form = layui.form, $ = layui.$;
+        var allDepts = [];
+        function ok(r){ return r && (r.code === 0 || r.code === 200); }
+        function load(){
+            $.get('@Url.Action("List")', function(res){
+                if (!ok(res)){ layer.msg(res.msg||'加载失败',{icon:2}); return; }
+                allDepts = res.data || [];
+                renderTree();
+            });
+        }
+        function findById(id){ for (var i=0;i<allDepts.length;i++){ if (allDepts[i].Id === id) return allDepts[i]; } return null; }
+        function renderTree(){
+            var byParent = {};
+            allDepts.forEach(function(d){ var p = d.ParentId||0; (byParent[p] = byParent[p] || []).push(d); });
+            function nodeHtml(d, depth){
+                var children = byParent[d.Id] || [];
+                var indent = (depth*20) + 'px';
+                var html = '<div class="tree-node" style="padding:6px 0;padding-left:' + indent + ';border-bottom:1px dashed #e2e8f0;display:flex;align-items:center;">'
+                    + '<span style="flex:1;"><strong>' + (d.DeptName||'') + '</strong> <span style="color:#94a3b8;font-size:12px;margin-left:6px;">' + (d.DeptNumber||'') + '</span>'
+                    + (d.Status===1?'':' <span class="layui-badge layui-bg-gray">停用</span>')
+                    + '</span>'
+                    + '<span>'
+                    + '<a class="layui-btn layui-btn-xs" data-act="addChild" data-id="' + d.Id + '">+ 子部门</a>'
+                    + '<a class="layui-btn layui-btn-xs layui-btn-normal" data-act="edit" data-id="' + d.Id + '">编辑</a>'
+                    + '<a class="layui-btn layui-btn-xs layui-btn-danger" data-act="del" data-id="' + d.Id + '">删除</a>'
+                    + '</span></div>';
+                children.forEach(function(c){ html += nodeHtml(c, depth+1); });
+                return html;
+            }
+            var top = byParent[0] || [];
+            $('#deptTree').html(top.map(function(n){ return nodeHtml(n,0); }).join('') || '<div style="color:#999;text-align:center;padding:30px;">暂无数据</div>');
+        }
+
+        $('#btnReload').on('click', load);
+        $('#btnAdd').on('click', function(){ openForm({ parentId: 0 }); });
+
+        $('#deptTree').on('click', '[data-act]', function(){
+            var id = parseInt($(this).data('id'),10);
+            var act = $(this).data('act');
+            if (act==='addChild') openForm({ parentId: id });
+            else if (act==='edit') openForm({ id: id });
+            else if (act==='del') {
+                layer.confirm('删除部门?', function(idx){
+                    $.post('@Url.Action("Delete")', { id: id }, function(res){
+                        layer.close(idx);
+                        if (ok(res)){ layer.msg('删除成功'); load(); } else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                });
+            }
+        });
+
+        function openForm(opts){
+            layer.open({
+                type:1, area:['560px','auto'], title: opts.id?'编辑部门':'新增部门',
+                content: $('#tplForm').html(), shadeClose:false,
+                success: function(){
+                    $('#btnCancel').on('click', function(){ layer.closeAll(); });
+                    if (opts.id){
+                        var d = findById(opts.id) || {};
+                        try { form.val('deptForm', { Id: d.Id, ParentId: d.ParentId||0, DeptNumber: d.DeptNumber||'', DeptName: d.DeptName||'', Status: String(d.Status==null?1:d.Status) }); } catch(e){}
+                        var p = findById(d.ParentId||0);
+                        $('#parentText').text(p?p.DeptName:'根部门');
+                    } else {
+                        try { form.val('deptForm', { Id:0, ParentId: opts.parentId||0, Status:'1' }); } catch(e){}
+                        var pp = findById(opts.parentId||0);
+                        $('#parentText').text(pp?pp.DeptName:'根部门');
+                    }
+                    try { form.render(); } catch(e){}
+                }
+            });
+
+            form.off('submit(submitDept)').on('submit(submitDept)', function(data){
+                var f = data.field;
+                var payload = {
+                    Id: parseInt(f.Id||0,10),
+                    ParentId: parseInt(f.ParentId||0,10),
+                    DeptNumber: f.DeptNumber||'',
+                    DeptName: f.DeptName||'',
+                    Status: parseInt(f.Status||1,10)
+                };
+                $.ajax({ url:'@Url.Action("Save")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
+                    .done(function(res){
+                        if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
+                        else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                return false;
+            });
+        }
+
+        load();
+    });
+})();
+</script>
+}

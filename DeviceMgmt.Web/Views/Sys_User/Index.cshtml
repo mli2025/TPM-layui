@@ -1,0 +1,214 @@
+@{
+    ViewData["Title"] = "用户管理";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>用户管理</strong>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md4">
+                    <input type="text" id="kw" class="layui-input" placeholder="账号 / 姓名 搜索" />
+                </div>
+                <div class="layui-col-md8" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="reset">重置密码</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="userForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">账号</label>
+                    <div class="layui-input-inline"><input type="text" name="Account" class="layui-input" required /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">姓名</label>
+                    <div class="layui-input-inline"><input type="text" name="Name" class="layui-input" /></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">部门</label>
+                    <div class="layui-input-inline">
+                        <select name="DeptId" lay-search><option value="0">-- 无 --</option></select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">员工号</label>
+                    <div class="layui-input-inline"><input type="number" name="EmployeeId" class="layui-input" /></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">初始密码</label>
+                    <div class="layui-input-inline"><input type="text" name="RawPassword" class="layui-input" placeholder="留空则使用 123456" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-inline">
+                        <input type="radio" name="Status" value="1" title="启用" checked />
+                        <input type="radio" name="Status" value="0" title="停用" />
+                    </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">角色</label>
+                <div class="layui-input-block" id="roleBox" style="border:1px solid #e2e8f0;border-radius:4px;padding:6px;min-height:40px;"></div>
+            </div>
+            <div style="text-align:center;margin-top:14px;">
+                <button class="layui-btn" lay-submit lay-filter="submitUser">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+@section Script {
+<script>
+(function(){
+    layui.use(['table','layer','form'], function(){
+        var table = layui.table, layer = layui.layer, form = layui.form, $ = layui.$;
+        var allRoles = [], allDepts = [];
+
+        function ok(r){ return r && (r.code === 0 || r.code === 200); }
+        function load(){
+            table.render({
+                elem:'#GridMain', url:'@Url.Action("GetMainList")', method:'post',
+                where:{ searchParam: JSON.stringify(buildFilter()) },
+                contentType:'application/x-www-form-urlencoded',
+                page:true, limit:20, even:true,
+                response:{ statusCode:0, statusName:'code', countName:'count', dataName:'data', msgName:'msg' },
+                cols:[[
+                    { field:'Account', title:'账号', width:160 },
+                    { field:'Name', title:'姓名', width:160 },
+                    { field:'EmployeeId', title:'员工号', width:120 },
+                    { field:'DeptId', title:'部门Id', width:120 },
+                    { field:'Status', title:'状态', width:100, templet:function(d){ return d.Status===1?'<span class="layui-badge layui-bg-green">启用</span>':'<span class="layui-badge layui-bg-gray">停用</span>'; } },
+                    { field:'CreateDate', title:'创建时间', width:160, templet:function(d){ return d.CreateDate ? String(d.CreateDate).substring(0,16).replace('T',' ') : ''; } },
+                    { fixed:'right', title:'操作', width:240, align:'center', toolbar:'#barRow' }
+                ]]
+            });
+        }
+        function buildFilter(){
+            var arr = [];
+            var kw = ($('#kw').val()||'').trim();
+            if (kw) arr.push({ field:'Account', value: kw, conditional:'like' });
+            return arr;
+        }
+
+        $('#btnReload').on('click', load);
+        $('#kw').on('keyup', function(e){ if (e.keyCode===13) load(); });
+        $('#btnAdd').on('click', function(){ openForm(0); });
+
+        table.on('tool(GridMain)', function(obj){
+            var d = obj.data, e = obj.event;
+            if (e==='edit') openForm(d.Id);
+            else if (e==='del') {
+                layer.confirm('确认删除该用户?', function(idx){
+                    $.post('@Url.Action("DeleteUser")', { id: d.Id }, function(res){
+                        layer.close(idx);
+                        if (ok(res)){ layer.msg('删除成功'); load(); } else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                });
+            } else if (e==='reset') {
+                layer.prompt({ title:'重置密码（默认 123456）' }, function(val, idx){
+                    $.post('@Url.Action("ResetPassword")', { id: d.Id, newPassword: val || '123456' }, function(res){
+                        layer.close(idx);
+                        layer.msg(res.msg || (ok(res)?'已重置':'失败'), { icon: ok(res)?1:2 });
+                    });
+                });
+            }
+        });
+
+        function fillRoles(selected){
+            var html = allRoles.map(function(r){
+                var sel = selected && selected.indexOf(r.Id) >= 0 ? 'checked' : '';
+                return '<label style="margin-right:14px;display:inline-block;"><input type="checkbox" class="role-cb" value="'+r.Id+'" '+sel+' /> '+(r.Name||'')+'</label>';
+            }).join('');
+            $('#roleBox').html(html || '<span style="color:#999;font-size:12px;">无可用角色</span>');
+        }
+        function fillDepts(currentId){
+            var $sel = $('select[name="DeptId"]').empty().append('<option value="0">-- 无 --</option>');
+            allDepts.forEach(function(d){
+                var sel = String(d.Id) === String(currentId||'') ? ' selected' : '';
+                $sel.append('<option value="'+d.Id+'"'+sel+'>'+(d.DeptName||'')+'</option>');
+            });
+            try { form.render('select','userForm'); } catch(e){}
+        }
+
+        function openForm(id){
+            layer.open({
+                type:1, area:['640px','auto'], title: id?'编辑用户':'新增用户',
+                content: $('#tplForm').html(), shadeClose:false,
+                success: function(){
+                    $('#btnCancel').on('click', function(){ layer.closeAll(); });
+                    $.when(
+                        $.get('@Url.Action("GetRoles")'),
+                        $.get('@Url.Action("GetDepts")')
+                    ).done(function(r1, r2){
+                        if (ok(r1[0])) allRoles = r1[0].data || [];
+                        if (ok(r2[0])) allDepts = r2[0].data || [];
+                        if (id){
+                            $.get('@Url.Action("GetUser")', { id: id }, function(res){
+                                if (!ok(res)){ layer.msg(res.msg||'加载失败',{icon:2}); return; }
+                                var u = res.data.user || {}, roles = res.data.roles || [];
+                                try { form.val('userForm', { Id: u.Id, Account: u.Account||'', Name: u.Name||'', EmployeeId: u.EmployeeId||'', DeptId: u.DeptId||0, Status: String(u.Status==null?1:u.Status), RawPassword:'' }); } catch(e){}
+                                fillDepts(u.DeptId);
+                                fillRoles(roles);
+                                try { form.render(); } catch(e){}
+                            });
+                        } else {
+                            try { form.val('userForm', { Id:0, Status:'1' }); } catch(e){}
+                            fillDepts(0);
+                            fillRoles([]);
+                            try { form.render(); } catch(e){}
+                        }
+                    });
+                }
+            });
+
+            form.off('submit(submitUser)').on('submit(submitUser)', function(data){
+                var f = data.field;
+                var roleIds = $('#roleBox .role-cb:checked').map(function(){ return parseInt(this.value,10); }).get();
+                var payload = {
+                    User: {
+                        Id: parseInt(f.Id||0,10),
+                        Account: f.Account,
+                        Name: f.Name,
+                        EmployeeId: f.EmployeeId ? parseInt(f.EmployeeId,10) : 0,
+                        DeptId: f.DeptId ? parseInt(f.DeptId,10) : 0,
+                        Status: parseInt(f.Status||1,10),
+                        Password: ''
+                    },
+                    RawPassword: f.RawPassword,
+                    RoleIds: roleIds
+                };
+                $.ajax({ url:'@Url.Action("SaveUser")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
+                    .done(function(res){
+                        if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
+                        else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                return false;
+            });
+        }
+
+        load();
+    });
+})();
+</script>
+}

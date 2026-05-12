@@ -1,59 +1,389 @@
 @{
-    ViewData["Title"] = "澶囦欢鍗曟嵁涓昏〃 Spare_InvoiceMain";
+    ViewData["Title"] = (ViewBag.TypeName as string) ?? "备件出入库单";
+    var billType = (ViewBag.BillType as int?) ?? 0; // 0=all, 1=in, 2=out
+    var typeName = ViewBag.TypeName as string ?? "出入库单";
 }
-<div class="layui-fluid" style="padding:0;margin-top:10px">
-    <div class="layui-row layui-col-space15">
-        <div class="layui-col-md12">
-            <div class="layui-card">
-                <div class="layui-card-header">
-                    <div class="pull-left">澶囦欢鍗曟嵁涓昏〃 Spare_InvoiceMain</div>
-                    <div class="demoTable pull-right no-print">
-                        <div class="layui-inline" id="searchPanel"></div>
-                        <div class="layui-btn-group">
-                            <button class="layui-btn layui-btn-sm layui-btn-warm" id="btn_Export">瀵煎嚭</button>
-                        </div>
-                    </div>
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>@typeName</strong>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md4">
+                    <input type="text" id="kw" class="layui-input" placeholder="单号 / 备注 搜索" />
                 </div>
-                <div class="layui-card-body" style="padding:0">
-                    <div class="layui-inline" style="width:100%">
-                        <table class="layui-hide" lay-filter="GridMain" id="GridMain"></table>
-                    </div>
+                <div class="layui-col-md5" id="statusPills">
+                    <button class="layui-btn layui-btn-sm" data-status="">全部</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="0">未审核</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" data-status="1">已审核</button>
+                </div>
+                <div class="layui-col-md3" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
                 </div>
             </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
         </div>
     </div>
 </div>
-@section Script{
-    <script type='text/html' class="no-print" id='barDemo'>
-        <a class='layui-btn layui-btn-xs layui-btn-normal' lay-event='viewModel'>鏌ョ湅</a>
-    </script>
-    <script>
-        var URLThisGetList = '@Url.Action("GetMainList")';
-        var URLThisExportList = '@Url.Action("ExportExcel")';
-        var Cols = [
-            { field: 'Id', title: 'Id', width: 80, sort: true },
-            { field: 'BillNo', title: 'BillNo', search: 'input', width: 130 },
-            { field: 'BillDate', title: 'BillDate', search: 'input', width: 130, templet: function(d){ return d.BillDate ? d.BillDate.substring(0, 10) : ''; } },
-            { field: 'BillType', title: 'BillType', search: 'input', width: 110 },
-            { field: 'WHID', title: 'WHID', search: 'input', width: 110 },
-            { field: 'DeptId', title: 'DeptId', search: 'input', width: 110 },
-            { field: 'toWHID', title: 'toWHID', search: 'input', width: 110 },
-            { field: 'Remark', title: 'Remark', search: 'input', width: 170 },
-            { field: 'Status', title: 'Status', search: 'input', width: 110 },
-            { field: 'Checker', title: 'Checker', search: 'input', width: 130 },
-            { field: 'CheckDate', title: 'CheckDate', search: 'input', width: 130, templet: function(d){ return d.CheckDate ? d.CheckDate.substring(0, 10) : ''; } },
-            { fixed: 'right', title: '鎿嶄綔', width: 90, align: 'center', toolbar: '#barDemo' }
-        ];
-        function viewModel(obj) {
-            var Id = obj.data.Id || obj.data.id;
-            layui.layer.open({
-                title: '澶囦欢鍗曟嵁涓昏〃 Spare_InvoiceMain - 鏌ョ湅',
-                content: '@Url.Action("ViewList")?id=' + Id,
-                type: 2,
-                area: ['90%', '90%'],
-                btn: ['鍏抽棴']
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="view">查看</a>
+    {{# if(d.Status == 0 || d.Status == null){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="audit">审核</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+    {{# } }}
+</script>
+
+<script type="text/html" id="statusTpl">
+    {{# var map = { 0:'未审核', 1:'已审核' }; var color = { 0:'#f7b500', 1:'#16a34a' }; }}
+    {{# var s = d.Status == null ? 0 : d.Status; }}
+    <span class="layui-badge" style="background-color:{{= color[s] || '#999' }};">{{= map[s] || s }}</span>
+</script>
+
+<script type="text/html" id="typeTpl">
+    {{# var m = { 1:'入库', 2:'出库', 3:'调拨' }; }}
+    <span>{{= m[d.BillType] || d.BillType || '-' }}</span>
+</script>
+
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="invForm">
+            <input type="hidden" name="Id" />
+            <input type="hidden" name="Status" />
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">单号</label>
+                    <div class="layui-input-inline"><input type="text" name="BillNo" class="layui-input" readonly placeholder="保存时自动生成" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">类型</label>
+                    <div class="layui-input-inline">
+                        <select name="BillType" lay-filter="billType">
+                            <option value="1">入库</option>
+                            <option value="2">出库</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">仓库</label>
+                    <div class="layui-input-inline"><input type="number" name="WHID" class="layui-input" /></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">部门</label>
+                    <div class="layui-input-inline"><input type="number" name="DeptId" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">日期</label>
+                    <div class="layui-input-inline"><input type="text" name="BillDate" id="fld_BillDate" class="layui-input" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-inline"><input type="text" name="Remark" class="layui-input" /></div>
+                </div>
+            </div>
+
+            <fieldset class="layui-elem-field layui-field-title">
+                <legend>明细</legend>
+                <div style="float:right;padding:6px 10px;"><button class="layui-btn layui-btn-xs" type="button" id="btnAddSub"><i class="layui-icon layui-icon-add-1"></i> 添加</button></div>
+            </fieldset>
+            <table class="layui-table" id="GridSubs" style="margin-top:0;">
+                <thead>
+                    <tr>
+                        <th style="width:36px;">#</th>
+                        <th style="width:30%;">备件</th>
+                        <th style="width:12%;">单位</th>
+                        <th style="width:14%;">数量</th>
+                        <th style="width:14%;">单价</th>
+                        <th>备注</th>
+                        <th style="width:60px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="SubsBody"></tbody>
+                <tfoot>
+                    <tr><td colspan="3" style="text-align:right;">合计</td><td id="totalQty">0</td><td colspan="3" id="totalAmt">0.00</td></tr>
+                </tfoot>
+            </table>
+
+            <div style="text-align:center;margin-top:14px;">
+                <button class="layui-btn" lay-submit lay-filter="submitInv" id="btnSubmit">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+<script type="text/html" id="tplPickSpare">
+    <div style="padding:14px;">
+        <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+            <div class="layui-col-md8"><input type="text" class="layui-input" id="spKw" placeholder="备件编码 / 名称 / 规格" /></div>
+            <div class="layui-col-md4" style="text-align:right;"><button class="layui-btn layui-btn-sm" id="btnSpSearch" type="button">搜索</button></div>
+        </div>
+        <table class="layui-table">
+            <thead><tr><th style="width:60px;"></th><th>编码</th><th>名称</th><th>规格</th><th>单位</th><th>单价</th></tr></thead>
+            <tbody id="SpBody"></tbody>
+        </table>
+        <div style="text-align:center;margin-top:10px;">
+            <button class="layui-btn" type="button" id="btnPickConfirm">选择并添加</button>
+            <button class="layui-btn layui-btn-primary" type="button" id="btnSpCancel">取消</button>
+        </div>
+    </div>
+</script>
+
+@section Script {
+<script>
+(function(){
+    layui.use(['table','layer','form','laydate'], function(){
+        var table = layui.table, layer = layui.layer, form = layui.form, laydate = layui.laydate, $ = layui.$;
+        var fixedBillType = @billType; // 0 = all, 1 = in, 2 = out
+        var currentStatus = '';
+
+        function ok(r){ return r && (r.code === 0 || r.code === 200); }
+        function build(){
+            var arr = [];
+            var kw = ($('#kw').val()||'').trim();
+            if (kw) arr.push({ field:'BillNo', value: kw, conditional:'like' });
+            if (currentStatus !== '') arr.push({ field:'Status', value: currentStatus, conditional:'=' });
+            if (fixedBillType > 0) arr.push({ field:'BillType', value: fixedBillType, conditional:'=' });
+            return JSON.stringify(arr);
+        }
+        function load(){
+            table.render({
+                elem:'#GridMain', url:'@Url.Action("GetMainList")', method:'post',
+                where:{ searchParam: build() },
+                contentType:'application/x-www-form-urlencoded',
+                page:true, limit:20, even:true,
+                response:{ statusCode:0, statusName:'code', countName:'count', dataName:'data', msgName:'msg' },
+                cols:[[
+                    { field:'BillNo', title:'单号', width:170 },
+                    { field:'BillDate', title:'日期', width:150, templet:function(d){ return d.BillDate ? String(d.BillDate).substring(0,16).replace('T',' ') : ''; } },
+                    { field:'BillType', title:'类型', width:80, templet:'#typeTpl' },
+                    { field:'WHID', title:'仓库', width:100 },
+                    { field:'DeptId', title:'部门', width:100 },
+                    { field:'Status', title:'状态', width:100, templet:'#statusTpl' },
+                    { field:'Checker', title:'审核人', width:120 },
+                    { field:'CheckDate', title:'审核时间', width:160, templet:function(d){ return d.CheckDate ? String(d.CheckDate).substring(0,16).replace('T',' ') : ''; } },
+                    { field:'Remark', title:'备注', minWidth:120 },
+                    { fixed:'right', title:'操作', width:280, align:'center', toolbar:'#barRow' }
+                ]]
             });
         }
-    </script>
-    <script src="~/js/Page/NomalListPage.js"></script>
+        $('#statusPills button').on('click', function(){
+            currentStatus = $(this).attr('data-status') || '';
+            $('#statusPills button').removeClass('layui-btn-normal').addClass('layui-btn-primary');
+            $(this).removeClass('layui-btn-primary').addClass('layui-btn-normal');
+            load();
+        });
+        $('#btnReload').on('click', load);
+        $('#kw').on('keyup', function(e){ if (e.keyCode===13) load(); });
+        $('#btnAdd').on('click', function(){ openForm(0, 'add'); });
+
+        table.on('tool(GridMain)', function(obj){
+            var d = obj.data, e = obj.event;
+            if (e==='view') openForm(d.Id, 'view');
+            else if (e==='edit') openForm(d.Id, 'edit');
+            else if (e==='audit') {
+                layer.confirm('审核后将更新库存数量，确认?', function(idx){
+                    $.post('@Url.Action("Audit")', { id: d.Id }, function(res){
+                        layer.close(idx);
+                        if (ok(res)){ layer.msg('已审核'); load(); } else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                });
+            }
+            else if (e==='del') {
+                layer.confirm('删除单据?', function(idx){
+                    $.post('@Url.Action("DeleteBill")', { id: d.Id }, function(res){
+                        layer.close(idx);
+                        if (ok(res)){ layer.msg('删除成功'); load(); } else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                });
+            }
+        });
+
+        function recalcTotal(){
+            var tQty = 0, tAmt = 0;
+            $('#SubsBody tr').each(function(){
+                var q = parseFloat($(this).find('.s-qty').val())||0;
+                var p = parseFloat($(this).find('.s-price').val())||0;
+                tQty += q; tAmt += q*p;
+            });
+            $('#totalQty').text(tQty.toFixed(2));
+            $('#totalAmt').text(tAmt.toFixed(2));
+        }
+        function appendSubRow(s, readonly){
+            s = s || {};
+            var dis = readonly ? ' readonly' : '';
+            var rowNum = $('#SubsBody tr').length + 1;
+            var html = '<tr data-spareid="' + (s.SpareId||'') + '">'
+                + '<td>' + rowNum + '</td>'
+                + '<td><div class="s-spare" style="line-height:30px;">' + (s.SpareName || s.SpareCode || '点击选择') + '</div></td>'
+                + '<td><input class="layui-input s-unit" type="text" value="' + (s.Danwei||'') + '"' + dis + ' /></td>'
+                + '<td><input class="layui-input s-qty" type="number" step="0.01" value="' + (s.Qty||0) + '"' + dis + ' /></td>'
+                + '<td><input class="layui-input s-price" type="number" step="0.01" value="' + (s.Danjia||0) + '"' + dis + ' /></td>'
+                + '<td><input class="layui-input s-rk" type="text" value="' + (s.Remark||'') + '"' + dis + ' /></td>'
+                + '<td style="text-align:center;">' + (readonly ? '' : '<a class="layui-btn layui-btn-xs layui-btn-danger sub-del">删</a>') + '</td>'
+                + '</tr>';
+            $('#SubsBody').append(html);
+            recalcTotal();
+        }
+        function collectSubs(){
+            var arr = [];
+            $('#SubsBody tr').each(function(){
+                var $tr = $(this);
+                var sid = $tr.attr('data-spareid');
+                arr.push({
+                    SpareId: sid ? parseInt(sid,10) : null,
+                    Qty: parseFloat($tr.find('.s-qty').val())||0,
+                    Danjia: parseFloat($tr.find('.s-price').val())||0,
+                    Danwei: $tr.find('.s-unit').val(),
+                    Remark: $tr.find('.s-rk').val()
+                });
+            });
+            return arr;
+        }
+        function setReadonly(readonly){
+            $('form[lay-filter="invForm"] input, form[lay-filter="invForm"] textarea, form[lay-filter="invForm"] select').each(function(){
+                if (this.type === 'hidden') return;
+                if (readonly) $(this).attr('disabled','disabled');
+                else $(this).removeAttr('disabled');
+            });
+            if (readonly) $('#btnSubmit').hide(); else $('#btnSubmit').show();
+            $('#btnAddSub').prop('disabled', readonly);
+        }
+
+        function openForm(id, mode){
+            layer.open({
+                type:1, area:['1000px','82%'], title: (mode==='add'?'新增':(mode==='edit'?'编辑':'查看')) + (fixedBillType===1?'入库单':(fixedBillType===2?'出库单':'单据')),
+                content: $('#tplForm').html(), shadeClose:false,
+                success: function(){
+                    laydate.render({ elem:'#fld_BillDate', type:'datetime' });
+                    $('#btnCancel').on('click', function(){ layer.closeAll(); });
+                    $('#btnAddSub').on('click', openPickSpare);
+                    $('#SubsBody').on('click', '.sub-del', function(){ $(this).closest('tr').remove(); recalcTotal(); });
+                    $('#SubsBody').on('input', '.s-qty,.s-price', recalcTotal);
+
+                    if (id){
+                        $.get('@Url.Action("GetDetail")', { id: id }, function(res){
+                            if (!ok(res)){ layer.msg(res.msg||'加载失败',{icon:2}); return; }
+                            var d = res.data || {}, m = d.Main || {}, subs = d.Subs || [];
+                            try { form.val('invForm', {
+                                Id: m.Id, Status: m.Status==null?0:m.Status,
+                                BillNo: m.BillNo||'',
+                                BillType: String(m.BillType||1),
+                                WHID: m.WHID||'', DeptId: m.DeptId||'',
+                                BillDate: m.BillDate ? String(m.BillDate).substring(0,16).replace('T',' ') : '',
+                                Remark: m.Remark||''
+                            }); } catch(e){}
+                            $('#SubsBody').empty();
+                            // fetch spare names for each sub
+                            var ids = subs.map(function(s){ return s.SpareId; }).filter(Boolean);
+                            if (ids.length){
+                                $.get('@Url.Action("GetSpares")', function(sr){
+                                    var map = {};
+                                    (sr.data||[]).forEach(function(s){ map[s.Id] = s; });
+                                    subs.forEach(function(s){
+                                        var info = map[s.SpareId] || {};
+                                        appendSubRow($.extend({}, s, { SpareCode: info.Code, SpareName: info.Name + ' (' + (info.Code||'') + ')' }), mode==='view');
+                                    });
+                                });
+                            } else {
+                                subs.forEach(function(s){ appendSubRow(s, mode==='view'); });
+                            }
+                            setReadonly(mode==='view');
+                            try { form.render(); } catch(e){}
+                        });
+                    } else {
+                        try { form.val('invForm', { Id:0, Status:0, BillType: String(fixedBillType>0?fixedBillType:1), BillDate: new Date().toISOString().substring(0,16).replace('T',' ') }); } catch(e){}
+                        setReadonly(false);
+                        try { form.render(); } catch(e){}
+                    }
+                }
+            });
+
+            form.off('submit(submitInv)').on('submit(submitInv)', function(data){
+                var f = data.field;
+                var subs = collectSubs();
+                if (!subs.length){ layer.msg('请添加明细',{icon:3}); return false; }
+                var payload = {
+                    Main: {
+                        Id: parseInt(f.Id||0,10),
+                        BillNo: f.BillNo,
+                        BillType: parseInt(f.BillType||1,10),
+                        WHID: f.WHID ? parseInt(f.WHID,10) : null,
+                        DeptId: f.DeptId ? parseInt(f.DeptId,10) : null,
+                        BillDate: f.BillDate || null,
+                        Remark: f.Remark || null,
+                        Status: parseInt(f.Status||0,10)
+                    },
+                    Subs: subs
+                };
+                $.ajax({ url:'@Url.Action("SaveBill")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
+                    .done(function(res){
+                        if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
+                        else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                return false;
+            });
+        }
+
+        var pickedSpare = null;
+        function openPickSpare(){
+            layer.open({
+                type:1, area:['640px','520px'], title:'选择备件',
+                content: $('#tplPickSpare').html(), shadeClose:false,
+                success: function(){
+                    function loadSp(){
+                        var kw = ($('#spKw').val()||'').trim();
+                        $.get('@Url.Action("GetSpares")', { kw: kw }, function(res){
+                            if (!ok(res)) return;
+                            var rows = res.data||[];
+                            $('#SpBody').html(rows.length ? rows.map(function(s){
+                                return '<tr data-id="' + s.Id + '" data-code="' + (s.Code||'') + '" data-name="' + (s.Name||'') + '" data-specs="' + (s.Specs||'') + '" data-unit="' + (s.Danwei||'') + '" data-price="' + (s.Danjia||'') + '">'
+                                    + '<td style="text-align:center;"><input type="radio" name="spPick" /></td>'
+                                    + '<td>' + (s.Code||'') + '</td><td>' + (s.Name||'') + '</td><td>' + (s.Specs||'') + '</td>'
+                                    + '<td>' + (s.Danwei||'') + '</td><td>' + (s.Danjia||'') + '</td></tr>';
+                            }).join('') : '<tr><td colspan="6" style="text-align:center;color:#999;">无数据</td></tr>');
+                        });
+                    }
+                    loadSp();
+                    $('#btnSpSearch').on('click', loadSp);
+                    $('#spKw').on('keyup', function(e){ if (e.keyCode===13) loadSp(); });
+                    $('#SpBody').on('click', 'tr', function(){
+                        $('#SpBody tr').css('background','');
+                        $(this).css('background','#fffbe6');
+                        $(this).find('input[name="spPick"]').prop('checked', true);
+                        pickedSpare = {
+                            Id: parseInt($(this).attr('data-id'),10),
+                            Code: $(this).attr('data-code'),
+                            Name: $(this).attr('data-name'),
+                            Danwei: $(this).attr('data-unit'),
+                            Danjia: parseFloat($(this).attr('data-price'))||0
+                        };
+                    });
+                    $('#btnSpCancel').on('click', function(){ layer.closeAll(); });
+                    $('#btnPickConfirm').on('click', function(){
+                        if (!pickedSpare){ layer.msg('请选择备件',{icon:3}); return; }
+                        appendSubRow({
+                            SpareId: pickedSpare.Id,
+                            SpareCode: pickedSpare.Code,
+                            SpareName: pickedSpare.Name + ' (' + pickedSpare.Code + ')',
+                            Danwei: pickedSpare.Danwei,
+                            Qty: 1,
+                            Danjia: pickedSpare.Danjia
+                        }, false);
+                        pickedSpare = null;
+                        layer.closeAll();
+                    });
+                }
+            });
+        }
+
+        load();
+    });
+})();
+</script>
 }

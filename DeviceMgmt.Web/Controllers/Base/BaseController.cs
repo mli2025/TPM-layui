@@ -76,6 +76,10 @@ public class BaseController : Controller
         if (req.Headers.TryGetValue("X-Requested-With", out var v) && v.ToString().Equals("XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
             return true;
         var accept = req.Headers.Accept.ToString();
-        return accept.Contains("application/json", StringComparison.OrdinalIgnoreCase);
+        if (accept.Contains("application/json", StringComparison.OrdinalIgnoreCase)) return true;
+        // mobile fetch APIs at /m/api/* always JSON
+        var path = req.Path.Value ?? string.Empty;
+        if (path.StartsWith("/m/api/", StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
     }
 }

@@ -1,0 +1,161 @@
+@{
+    ViewData["Title"] = "角色管理";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>角色管理</strong>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增角色</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑 / 授权</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="roleForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">角色名称</label>
+                    <div class="layui-input-inline"><input type="text" name="Name" class="layui-input" required /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-inline">
+                        <input type="radio" name="Status" value="1" title="启用" checked />
+                        <input type="radio" name="Status" value="0" title="停用" />
+                    </div>
+                </div>
+            </div>
+            <fieldset class="layui-elem-field layui-field-title"><legend>菜单授权</legend></fieldset>
+            <div id="moduleTree" style="max-height:320px;overflow:auto;border:1px solid #e2e8f0;border-radius:4px;padding:8px;"></div>
+            <div style="text-align:center;margin-top:14px;">
+                <button class="layui-btn" lay-submit lay-filter="submitRole">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+@section Script {
+<script>
+(function(){
+    layui.use(['table','layer','form'], function(){
+        var table = layui.table, layer = layui.layer, form = layui.form, $ = layui.$;
+        var allModules = [];
+
+        function ok(r){ return r && (r.code === 0 || r.code === 200); }
+        function load(){
+            table.render({
+                elem:'#GridMain', url:'@Url.Action("GetMainList")', method:'post',
+                contentType:'application/x-www-form-urlencoded',
+                page:true, limit:20, even:true,
+                response:{ statusCode:0, statusName:'code', countName:'count', dataName:'data', msgName:'msg' },
+                cols:[[
+                    { field:'Id', title:'Id', width:80 },
+                    { field:'Name', title:'角色名称', width:240 },
+                    { field:'Status', title:'状态', width:100, templet:function(d){ return d.Status===1?'<span class="layui-badge layui-bg-green">启用</span>':'<span class="layui-badge layui-bg-gray">停用</span>'; } },
+                    { fixed:'right', title:'操作', width:200, align:'center', toolbar:'#barRow' }
+                ]]
+            });
+        }
+        $('#btnReload').on('click', load);
+        $('#btnAdd').on('click', function(){ openForm(0); });
+
+        table.on('tool(GridMain)', function(obj){
+            var d = obj.data, e = obj.event;
+            if (e==='edit') openForm(d.Id);
+            else if (e==='del') {
+                layer.confirm('删除角色将解除所有授权关系，确认?', function(idx){
+                    $.post('@Url.Action("DeleteRole")', { id: d.Id }, function(res){
+                        layer.close(idx);
+                        if (ok(res)){ layer.msg('删除成功'); load(); } else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                });
+            }
+        });
+
+        function renderTree(selectedIds){
+            var sel = new Set(selectedIds || []);
+            // group by ParentId
+            var byParent = {};
+            allModules.forEach(function(m){
+                var p = m.ParentId || 0;
+                (byParent[p] = byParent[p] || []).push(m);
+            });
+            function nodeHtml(m, depth){
+                var children = byParent[m.Id] || [];
+                var checked = sel.has(m.Id) ? 'checked' : '';
+                var indent = (depth * 16) + 'px';
+                var hasChildren = children.length > 0;
+                var caret = hasChildren ? '<i class="layui-icon layui-icon-triangle-d" style="font-size:12px;color:#94a3b8;margin-right:4px;"></i>' : '<span style="display:inline-block;width:16px;"></span>';
+                var html = '<div class="tree-node" style="padding:3px 0;padding-left:' + indent + ';">'
+                    + caret
+                    + '<label><input type="checkbox" class="mod-cb" data-id="' + m.Id + '" ' + checked + ' /> ' + (m.Name||'') + ' <span style="color:#94a3b8;font-size:12px;">(' + (m.Code||'') + ')</span></label>'
+                    + '</div>';
+                children.forEach(function(c){ html += nodeHtml(c, depth + 1); });
+                return html;
+            }
+            var top = byParent[0] || [];
+            $('#moduleTree').html(top.map(function(n){ return nodeHtml(n, 0); }).join('') || '<span style="color:#999;font-size:12px;">无可用菜单</span>');
+        }
+
+        function openForm(id){
+            layer.open({
+                type:1, area:['720px','620px'], title: id?'编辑角色':'新增角色',
+                content: $('#tplForm').html(), shadeClose:false,
+                success: function(){
+                    $('#btnCancel').on('click', function(){ layer.closeAll(); });
+                    $.get('@Url.Action("GetModules")', function(res){
+                        if (ok(res)) allModules = res.data || [];
+                        if (id){
+                            $.get('@Url.Action("GetRole")', { id: id }, function(r){
+                                if (!ok(r)){ layer.msg(r.msg||'加载失败',{icon:2}); return; }
+                                var ro = r.data.role || {}, mids = r.data.moduleIds || [];
+                                try { form.val('roleForm', { Id: ro.Id, Name: ro.Name||'', Status: String(ro.Status==null?1:ro.Status) }); } catch(e){}
+                                renderTree(mids);
+                                try { form.render(); } catch(e){}
+                            });
+                        } else {
+                            try { form.val('roleForm', { Id:0, Status:'1' }); } catch(e){}
+                            renderTree([]);
+                            try { form.render(); } catch(e){}
+                        }
+                    });
+                }
+            });
+
+            form.off('submit(submitRole)').on('submit(submitRole)', function(data){
+                var f = data.field;
+                var moduleIds = $('#moduleTree .mod-cb:checked').map(function(){ return parseInt(this.dataset.id,10); }).get();
+                var payload = {
+                    Role: { Id: parseInt(f.Id||0,10), Name: f.Name, Status: parseInt(f.Status||1,10) },
+                    ModuleIds: moduleIds
+                };
+                $.ajax({ url:'@Url.Action("SaveRole")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
+                    .done(function(res){
+                        if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
+                        else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                return false;
+            });
+        }
+
+        load();
+    });
+})();
+</script>
+}

@@ -1,0 +1,274 @@
+@{
+    ViewData["Title"] = "菜单 / 按钮管理";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-row layui-col-space12">
+        <div class="layui-col-md7">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <strong>菜单树</strong>
+                    <span style="float:right;">
+                        <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增根菜单</button>
+                        <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                    </span>
+                </div>
+                <div class="layui-card-body">
+                    <div id="modTree" style="min-height:400px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md5">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <strong>按钮列表</strong>
+                    <span style="float:right;color:#94a3b8;font-size:12px;" id="modCurrent">请先选择菜单</span>
+                </div>
+                <div class="layui-card-body">
+                    <div style="margin-bottom:8px;">
+                        <button class="layui-btn layui-btn-sm" id="btnAddBtn" disabled>+ 新增按钮</button>
+                    </div>
+                    <table class="layui-table">
+                        <thead><tr><th>按钮名称</th><th>DomId</th><th style="width:120px;">操作</th></tr></thead>
+                        <tbody id="btnBody"><tr><td colspan="3" style="text-align:center;color:#999;">选择菜单后显示</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="tplModForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="modForm">
+            <input type="hidden" name="Id" />
+            <input type="hidden" name="ParentId" />
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">菜单名称</label>
+                    <div class="layui-input-inline"><input type="text" name="Name" class="layui-input" required /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">代码</label>
+                    <div class="layui-input-inline"><input type="text" name="Code" class="layui-input" /></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">URL</label>
+                    <div class="layui-input-inline"><input type="text" name="Url" class="layui-input" placeholder="/Controller/Action" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">图标</label>
+                    <div class="layui-input-inline"><input type="text" name="Icon" class="layui-input" placeholder="lucide 图标名" /></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">排序</label>
+                    <div class="layui-input-inline"><input type="number" name="Sort" class="layui-input" value="0" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-inline">
+                        <input type="radio" name="Status" value="1" title="启用" checked />
+                        <input type="radio" name="Status" value="0" title="停用" />
+                    </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">上级菜单</label>
+                <div class="layui-input-block" id="parentText" style="padding-top:8px;color:#475569;"></div>
+            </div>
+            <div style="text-align:center;margin-top:14px;">
+                <button class="layui-btn" lay-submit lay-filter="submitMod">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+<script type="text/html" id="tplBtnForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="btnForm">
+            <input type="hidden" name="Id" />
+            <input type="hidden" name="ModuleId" />
+            <div class="layui-form-item">
+                <label class="layui-form-label">按钮名称</label>
+                <div class="layui-input-block"><input type="text" name="Name" class="layui-input" required /></div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">DomId</label>
+                <div class="layui-input-block"><input type="text" name="DomId" class="layui-input" required placeholder="btn_Add / btn_Edit ..." /></div>
+            </div>
+            <div style="text-align:center;margin-top:14px;">
+                <button class="layui-btn" lay-submit lay-filter="submitBtn">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+@section Script {
+<script>
+(function(){
+    layui.use(['layer','form'], function(){
+        var layer = layui.layer, form = layui.form, $ = layui.$;
+        var allMods = [], currentMod = null;
+        function ok(r){ return r && (r.code === 0 || r.code === 200); }
+        function load(){
+            $.get('@Url.Action("List")', function(res){
+                if (!ok(res)){ layer.msg(res.msg||'加载失败',{icon:2}); return; }
+                allMods = res.data || [];
+                renderTree();
+            });
+        }
+        function findById(id){ for (var i=0;i<allMods.length;i++){ if (allMods[i].Id === id) return allMods[i]; } return null; }
+        function renderTree(){
+            var byParent = {};
+            allMods.forEach(function(m){ var p = m.ParentId||0; (byParent[p] = byParent[p] || []).push(m); });
+            function nodeHtml(m, depth){
+                var children = byParent[m.Id] || [];
+                var indent = (depth*20) + 'px';
+                var active = currentMod && currentMod.Id === m.Id ? 'background:#dcfce7;' : '';
+                var html = '<div class="tree-node" data-id="' + m.Id + '" style="padding:6px 8px;padding-left:' + indent + ';border-bottom:1px dashed #e2e8f0;display:flex;align-items:center;cursor:pointer;' + active + '">'
+                    + '<span style="flex:1;"><strong>' + (m.Name||'') + '</strong> <span style="color:#94a3b8;font-size:12px;margin-left:4px;">' + (m.Code||'') + '</span>'
+                    + (m.Url ? ' <span style="color:#475569;font-size:12px;margin-left:6px;">[' + m.Url + ']</span>' : '')
+                    + (m.Status===1?'':' <span class="layui-badge layui-bg-gray">停用</span>')
+                    + '</span>'
+                    + '<span onclick="event.stopPropagation();">'
+                    + '<a class="layui-btn layui-btn-xs" data-act="addChild" data-id="' + m.Id + '">+ 子菜单</a>'
+                    + '<a class="layui-btn layui-btn-xs layui-btn-normal" data-act="edit" data-id="' + m.Id + '">编辑</a>'
+                    + '<a class="layui-btn layui-btn-xs layui-btn-danger" data-act="del" data-id="' + m.Id + '">删除</a>'
+                    + '</span></div>';
+                children.forEach(function(c){ html += nodeHtml(c, depth+1); });
+                return html;
+            }
+            var top = byParent[0] || [];
+            $('#modTree').html(top.map(function(n){ return nodeHtml(n,0); }).join('') || '<div style="color:#999;text-align:center;padding:30px;">暂无数据</div>');
+        }
+        $('#btnReload').on('click', load);
+        $('#btnAdd').on('click', function(){ openModForm({ parentId:0 }); });
+
+        $('#modTree').on('click', '.tree-node', function(){
+            var id = parseInt($(this).data('id'), 10);
+            currentMod = findById(id);
+            $('#modCurrent').text(currentMod ? '当前: ' + currentMod.Name : '');
+            $('#btnAddBtn').prop('disabled', !currentMod);
+            loadButtons();
+            renderTree();
+        });
+        $('#modTree').on('click', '[data-act]', function(e){
+            var id = parseInt($(this).data('id'), 10);
+            var act = $(this).data('act');
+            if (act==='addChild') openModForm({ parentId: id });
+            else if (act==='edit') openModForm({ id: id });
+            else if (act==='del') {
+                layer.confirm('删除菜单 (含解除角色绑定)?', function(idx){
+                    $.post('@Url.Action("Delete")', { id: id }, function(res){
+                        layer.close(idx);
+                        if (ok(res)){ layer.msg('删除成功'); load(); } else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                });
+            }
+        });
+
+        function loadButtons(){
+            if (!currentMod) return;
+            $.get('@Url.Action("GetButtons")', { moduleId: currentMod.Id }, function(res){
+                if (!ok(res)){ $('#btnBody').html('<tr><td colspan="3" style="text-align:center;color:red;">' + (res.msg||'加载失败') + '</td></tr>'); return; }
+                var arr = res.data || [];
+                if (!arr.length){ $('#btnBody').html('<tr><td colspan="3" style="text-align:center;color:#999;">无按钮</td></tr>'); return; }
+                $('#btnBody').html(arr.map(function(b){
+                    return '<tr><td>' + (b.Name||'') + '</td><td><code>' + (b.DomId||'') + '</code></td>'
+                        + '<td><a class="layui-btn layui-btn-xs btn-edit" data-id="' + b.Id + '">编辑</a>'
+                        + '<a class="layui-btn layui-btn-xs layui-btn-danger btn-del" data-id="' + b.Id + '">删除</a></td></tr>';
+                }).join(''));
+            });
+        }
+
+        $('#btnAddBtn').on('click', function(){ openBtnForm(null); });
+        $('#btnBody').on('click', '.btn-edit', function(){
+            var id = parseInt($(this).data('id'), 10);
+            openBtnForm({ id: id });
+        });
+        $('#btnBody').on('click', '.btn-del', function(){
+            var id = parseInt($(this).data('id'), 10);
+            layer.confirm('删除按钮?', function(idx){
+                $.post('@Url.Action("DeleteButton")', { id: id }, function(res){
+                    layer.close(idx);
+                    if (ok(res)){ layer.msg('删除成功'); loadButtons(); } else layer.msg(res.msg||'失败',{icon:2});
+                });
+            });
+        });
+
+        function openModForm(opts){
+            layer.open({
+                type:1, area:['620px','auto'], title: opts.id?'编辑菜单':'新增菜单',
+                content: $('#tplModForm').html(), shadeClose:false,
+                success: function(){
+                    $('#btnCancel').on('click', function(){ layer.closeAll(); });
+                    if (opts.id){
+                        var m = findById(opts.id) || {};
+                        try { form.val('modForm', { Id:m.Id, ParentId:m.ParentId||0, Name:m.Name||'', Code:m.Code||'', Url:m.Url||'', Icon:m.Icon||'', Sort:m.Sort||0, Status:String(m.Status==null?1:m.Status) }); } catch(e){}
+                        var p = findById(m.ParentId||0);
+                        $('#parentText').text(p?p.Name:'根菜单');
+                    } else {
+                        try { form.val('modForm', { Id:0, ParentId:opts.parentId||0, Sort:0, Status:'1' }); } catch(e){}
+                        var pp = findById(opts.parentId||0);
+                        $('#parentText').text(pp?pp.Name:'根菜单');
+                    }
+                    try { form.render(); } catch(e){}
+                }
+            });
+            form.off('submit(submitMod)').on('submit(submitMod)', function(data){
+                var f = data.field;
+                var payload = { Id:parseInt(f.Id||0,10), ParentId:parseInt(f.ParentId||0,10),
+                    Name:f.Name||'', Code:f.Code||'', Url:f.Url||'', Icon:f.Icon||'',
+                    Sort:parseInt(f.Sort||0,10), Status:parseInt(f.Status||1,10) };
+                $.ajax({ url:'@Url.Action("Save")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
+                    .done(function(res){
+                        if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
+                        else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                return false;
+            });
+        }
+
+        function openBtnForm(opts){
+            layer.open({
+                type:1, area:['480px','auto'], title: (opts && opts.id)?'编辑按钮':'新增按钮',
+                content: $('#tplBtnForm').html(), shadeClose:false,
+                success: function(){
+                    $('#btnCancel').on('click', function(){ layer.closeAll(); });
+                    if (opts && opts.id){
+                        // search for the button in current loaded list
+                        $.get('@Url.Action("GetButtons")', { moduleId: currentMod.Id }, function(res){
+                            if (!ok(res)) return;
+                            var b = (res.data||[]).find(function(x){ return x.Id === opts.id; });
+                            if (!b){ layer.msg('按钮不存在',{icon:2}); return; }
+                            try { form.val('btnForm', { Id:b.Id, ModuleId:b.ModuleId, Name:b.Name||'', DomId:b.DomId||'' }); } catch(e){}
+                            try { form.render(); } catch(e){}
+                        });
+                    } else {
+                        try { form.val('btnForm', { Id:0, ModuleId: currentMod.Id }); } catch(e){}
+                        try { form.render(); } catch(e){}
+                    }
+                }
+            });
+            form.off('submit(submitBtn)').on('submit(submitBtn)', function(data){
+                var f = data.field;
+                var payload = { Id:parseInt(f.Id||0,10), ModuleId:parseInt(f.ModuleId||0,10), Name:f.Name||'', DomId:f.DomId||'' };
+                $.ajax({ url:'@Url.Action("SaveButton")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
+                    .done(function(res){
+                        if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); loadButtons(); }
+                        else layer.msg(res.msg||'失败',{icon:2});
+                    });
+                return false;
+            });
+        }
+
+        load();
+    });
+})();
+</script>
+}

@@ -1,0 +1,101 @@
+@{
+    Layout = "_LayoutMobile";
+    var id = (long)ViewBag.Id;
+}
+<div class="p-3 space-y-3" id="root" data-id="@id">
+    <div id="header" class="m-card p-3">
+        <div class="text-xs text-slate-500">保养单号</div>
+        <div id="billNo" class="text-base font-medium mt-1">-</div>
+        <div class="grid grid-cols-2 gap-3 mt-2 text-xs">
+            <div><span class="text-slate-400">设备:</span> <span id="facility">-</span></div>
+            <div><span class="text-slate-400">类型:</span> <span id="cycle">-</span></div>
+            <div><span class="text-slate-400">计划开始:</span> <span id="begin">-</span></div>
+            <div><span class="text-slate-400">计划结束:</span> <span id="end">-</span></div>
+            <div><span class="text-slate-400">派工:</span> <span id="dispatch">-</span></div>
+            <div><span class="text-slate-400">状态:</span> <span id="status">-</span></div>
+        </div>
+    </div>
+
+    <div>
+        <div class="m-section-title">保养项目</div>
+        <div id="subs" class="space-y-2">
+            <div class="text-center text-slate-400 text-xs py-4">加载中...</div>
+        </div>
+    </div>
+
+    <div class="m-card p-3">
+        <label class="text-xs text-slate-500">整体结论</label>
+        <div class="flex gap-2 mt-2" x-data="{ ok: '1' }">
+            <button class="m-btn flex-1" :class="ok==='1' ? 'primary' : ''" @@click="ok='1'; document.getElementById('isOK').value='1'">合格</button>
+            <button class="m-btn flex-1" :class="ok==='0' ? 'danger' : ''" @@click="ok='0'; document.getElementById('isOK').value='0'">不合格</button>
+        </div>
+        <input type="hidden" id="isOK" value="1" />
+        <label class="text-xs text-slate-500 mt-3 block">备注</label>
+        <textarea id="remark" class="m-textarea mt-1" rows="2"></textarea>
+    </div>
+
+    <div class="flex gap-2">
+        <button class="m-btn flex-1" id="btnAccept">接单</button>
+        <button class="m-btn primary flex-1" id="btnSubmit">提交完成</button>
+    </div>
+</div>
+
+@section Script {
+<script>
+(function(){
+    var id = parseInt(document.getElementById('root').dataset.id, 10);
+    var statusMap = { 0:'新建',1:'待接单',2:'保养中',3:'已完成',4:'已审核' };
+    var cycleMap = { YEAR:'年', QUARTER:'季', MONTH:'月', WEEK:'周' };
+    function fmt(s){ return s ? String(s).substring(0,16).replace('T',' ') : ''; }
+    function load(){
+        M.ajax({ url:'/m/api/maintain/detail?id=' + id, contentType:false }).then(function(res){
+            if (!M.ok(res)){ M.toast(res.msg || '加载失败', 'err'); return; }
+            var m = res.data.main || {}, subs = res.data.subs || [];
+            document.getElementById('billNo').textContent = m.BillNo || '-';
+            document.getElementById('facility').textContent = m.FacilityID || '-';
+            document.getElementById('cycle').textContent = cycleMap[(m.MaintainType||'').toUpperCase()] || m.MaintainType || '-';
+            document.getElementById('begin').textContent = fmt(m.BeginDate);
+            document.getElementById('end').textContent = fmt(m.EndDate);
+            document.getElementById('dispatch').textContent = (m.RepairStaff || m.Dispatch || '-');
+            document.getElementById('status').textContent = statusMap[m.Status==null?0:m.Status] || m.Status || '-';
+            document.getElementById('remark').value = m.Remark || '';
+
+            var html = subs.length === 0 ? '<div class="m-card p-3 text-xs text-slate-400 text-center">无保养项</div>'
+                : subs.map(function(s){
+                    return '<div class="m-card p-3" data-id="' + s.Id + '">'
+                        + '<div class="text-sm font-medium">' + (s.Project||'-') + '</div>'
+                        + (s.CheckMethod ? '<div class="text-xs text-slate-500 mt-1">检查方法: ' + s.CheckMethod + '</div>' : '')
+                        + (s.UpkeepMethod ? '<div class="text-xs text-slate-500 mt-1">保养方法: ' + s.UpkeepMethod + '</div>' : '')
+                        + '<label class="text-xs text-slate-500 mt-2 block">结果</label>'
+                        + '<input class="m-input mt-1 s-result" value="' + (s.Result||'') + '" />'
+                        + '<label class="text-xs text-slate-500 mt-2 block">备注</label>'
+                        + '<input class="m-input mt-1 s-remark" value="' + (s.Remark||'') + '" />'
+                        + '</div>';
+                }).join('');
+            document.getElementById('subs').innerHTML = html;
+        });
+    }
+    document.getElementById('btnAccept').addEventListener('click', function(){
+        var f = new FormData(); f.append('id', id);
+        M.ajax({ url:'/m/api/maintain/dispatch', method:'POST', data: f, contentType: false }).then(function(res){
+            if (M.ok(res)){ M.toast('接单成功'); load(); } else M.toast(res.msg||'操作失败','err');
+        });
+    });
+    document.getElementById('btnSubmit').addEventListener('click', function(){
+        var items = Array.prototype.map.call(document.querySelectorAll('#subs > div[data-id]'), function(div){
+            return {
+                Id: parseInt(div.dataset.id, 10),
+                Result: div.querySelector('.s-result').value,
+                Remark: div.querySelector('.s-remark').value
+            };
+        });
+        var payload = { Id: id, IsOK: parseInt(document.getElementById('isOK').value, 10), Remark: document.getElementById('remark').value, Items: items };
+        M.ajax({ url:'/m/api/maintain/submit', method:'POST', data: JSON.stringify(payload), contentType:'application/json' }).then(function(res){
+            if (M.ok(res)){ M.toast('提交成功'); setTimeout(function(){ history.back(); }, 800); }
+            else M.toast(res.msg||'提交失败','err');
+        });
+    });
+    load();
+})();
+</script>
+}

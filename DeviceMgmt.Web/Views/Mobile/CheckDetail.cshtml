@@ -1,0 +1,51 @@
+@{
+    Layout = "_LayoutMobile";
+    var id = (long)ViewBag.Id;
+}
+<div class="p-3 space-y-3" id="root" data-id="@id">
+    <div class="m-card p-3">
+        <div class="text-xs text-slate-500">点检单号</div>
+        <div id="billNo" class="text-base font-medium mt-1">-</div>
+        <div class="grid grid-cols-2 gap-3 mt-2 text-xs">
+            <div><span class="text-slate-400">设备:</span> <span id="facility">-</span></div>
+            <div><span class="text-slate-400">状态:</span> <span id="status">-</span></div>
+            <div><span class="text-slate-400">计划开始:</span> <span id="begin">-</span></div>
+            <div><span class="text-slate-400">计划结束:</span> <span id="end">-</span></div>
+        </div>
+    </div>
+    <div>
+        <div class="m-section-title">点检项目</div>
+        <div id="subs" class="space-y-2">
+            <div class="text-center text-slate-400 text-xs py-4">加载中...</div>
+        </div>
+    </div>
+</div>
+
+@section Script {
+<script>
+(function(){
+    var id = parseInt(document.getElementById('root').dataset.id, 10);
+    var statusMap = { 0:'新建',2:'进行中',3:'已完成',4:'已审核' };
+    function fmt(s){ return s ? String(s).substring(0,16).replace('T',' ') : ''; }
+    M.ajax({ url:'/m/api/maintain/detail?id=' + id, contentType:false }).then(function(res){
+        if (!M.ok(res)){ M.toast(res.msg||'加载失败','err'); return; }
+        var m = res.data.main || {}, subs = res.data.subs || [];
+        document.getElementById('billNo').textContent = m.BillNo || '-';
+        document.getElementById('facility').textContent = m.FacilityID || '-';
+        document.getElementById('begin').textContent = fmt(m.BeginDate);
+        document.getElementById('end').textContent = fmt(m.EndDate);
+        document.getElementById('status').textContent = statusMap[m.Status==null?0:m.Status] || m.Status || '-';
+        document.getElementById('subs').innerHTML = subs.length === 0
+            ? '<div class="m-card p-3 text-xs text-slate-400 text-center">无点检项</div>'
+            : subs.map(function(s){
+                return '<div class="m-card p-3">'
+                    + '<div class="text-sm font-medium">' + (s.Project||'-') + '</div>'
+                    + (s.CheckMethod ? '<div class="text-xs text-slate-500 mt-1">检查方法: ' + s.CheckMethod + '</div>' : '')
+                    + (s.Result ? '<div class="text-xs text-brand-700 mt-1">结果: ' + s.Result + '</div>' : '')
+                    + (s.Remark ? '<div class="text-xs text-slate-500 mt-1">备注: ' + s.Remark + '</div>' : '')
+                    + '</div>';
+            }).join('');
+    });
+})();
+</script>
+}

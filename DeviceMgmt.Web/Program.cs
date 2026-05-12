@@ -26,6 +26,8 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<EmployeeApp>();
 builder.Services.AddScoped<ModuleApp>();
 builder.Services.AddScoped<UserApp>();
+builder.Services.AddScoped<RoleApp>();
+builder.Services.AddScoped<DeptApp>();
 builder.Services.AddScoped<IAuth, AuthApp>();
 
 builder.Services.AddScoped<Basic_EquipmentResourcesApp>();

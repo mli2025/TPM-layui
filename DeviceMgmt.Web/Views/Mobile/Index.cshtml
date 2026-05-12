@@ -1,0 +1,50 @@
+@{
+    Layout = "_LayoutMobile";
+    ViewBag.PageTitle = "arbore TPM";
+    ViewBag.ActiveTab = "home";
+    var user = ViewData["CurrentUser"] as DeviceMgmt.Repository.Domain.Sys_User;
+    var name = user?.Name ?? user?.Account ?? "用户";
+}
+<div class="p-3 space-y-3">
+    <div class="m-card p-4 bg-gradient-to-br from-brand-700 to-brand-900 text-white">
+        <div class="text-xs opacity-80">您好</div>
+        <div class="text-lg font-medium mt-1">@name</div>
+        <div class="text-xs opacity-80 mt-1">@DateTime.Now.ToString("yyyy-MM-dd ddd")</div>
+    </div>
+
+    <div>
+        <div class="m-section-title">设备保养</div>
+        <div class="m-grid-tiles">
+            <a class="m-tile" href="/m/maintain"><i data-lucide="wrench"></i><span>待保养</span></a>
+            <a class="m-tile" href="/m/maintain?status=2"><i data-lucide="play"></i><span>进行中</span></a>
+            <a class="m-tile" href="/m/maintain?status=3"><i data-lucide="check-circle"></i><span>已完成</span></a>
+            <a class="m-tile" href="/m/maintain?status="><i data-lucide="list"></i><span>全部</span></a>
+        </div>
+    </div>
+
+    <div>
+        <div class="m-section-title">设备点检</div>
+        <div class="m-grid-tiles">
+            <a class="m-tile" href="/m/check"><i data-lucide="clipboard-check"></i><span>待点检</span></a>
+            <a class="m-tile" href="/m/check?status=3"><i data-lucide="check"></i><span>已完成</span></a>
+            <a class="m-tile" href="/m/check?status="><i data-lucide="list"></i><span>全部</span></a>
+        </div>
+    </div>
+
+    <div>
+        <div class="m-section-title">设备维修</div>
+        <div class="m-grid-tiles">
+            <a class="m-tile" href="/m/repair/create"><i data-lucide="plus-circle"></i><span>我要报修</span></a>
+            <a class="m-tile" href="/m/repair?mine=1"><i data-lucide="user"></i><span>我的工单</span></a>
+            <a class="m-tile" href="/m/repair?status=1"><i data-lucide="bell"></i><span>待接单</span></a>
+            <a class="m-tile" href="/m/repair?status="><i data-lucide="list"></i><span>全部</span></a>
+        </div>
+    </div>
+
+    <div>
+        <div class="m-section-title">快捷</div>
+        <div class="m-grid-tiles">
+            <a class="m-tile" href="/Account/Logout"><i data-lucide="log-out" class="text-red-500"></i><span>退出</span></a>
+        </div>
+    </div>
+</div>

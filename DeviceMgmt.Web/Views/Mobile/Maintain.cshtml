@@ -1,0 +1,60 @@
+@{
+    Layout = "_LayoutMobile";
+}
+<div class="p-3">
+    <div class="flex gap-2 mb-2" x-data="{ s: new URL(location.href).searchParams.get('status') || '' }">
+        <a class="m-btn flex-1" :class="s===''  ? 'primary' : ''" href="/m/maintain">全部</a>
+        <a class="m-btn flex-1" :class="s==='0' ? 'primary' : ''" href="/m/maintain?status=0">新建</a>
+        <a class="m-btn flex-1" :class="s==='1' ? 'primary' : ''" href="/m/maintain?status=1">待接单</a>
+        <a class="m-btn flex-1" :class="s==='2' ? 'primary' : ''" href="/m/maintain?status=2">保养中</a>
+    </div>
+    <input class="m-input mb-2" id="kw" placeholder="单号 / 备注 搜索" />
+    <div id="list" class="m-list">
+        <div class="text-center text-slate-400 text-xs py-6">加载中...</div>
+    </div>
+</div>
+
+@section Script {
+<script>
+(function(){
+    var url = new URL(location.href);
+    var status = url.searchParams.get('status') || '';
+    function load(){
+        var kw = document.getElementById('kw').value.trim();
+        M.ajax({ url: '/m/api/maintain?status=' + encodeURIComponent(status) + '&kw=' + encodeURIComponent(kw), method:'GET', contentType:false })
+            .then(function(res){
+                if (!M.ok(res)) { document.getElementById('list').innerHTML = '<div class="text-center text-red-500 text-xs py-6">' + (res.msg||'加载失败') + '</div>'; return; }
+                renderList(res.data || []);
+            });
+    }
+    function statusBadge(s){
+        var map = { 0:'新建',1:'待接单',2:'保养中',3:'已完成',4:'已审核' };
+        var cls = { 0:'new',1:'dispatch',2:'doing',3:'done',4:'audited' };
+        var k = s == null ? 0 : s;
+        return '<span class="m-badge ' + (cls[k]||'') + '">' + (map[k]||k) + '</span>';
+    }
+    function cycleText(t){
+        var m = { YEAR:'年', QUARTER:'季', MONTH:'月', WEEK:'周' };
+        return m[(t||'').toUpperCase()] || t || '';
+    }
+    function fmt(s){ return s ? String(s).substring(0,16).replace('T',' ') : ''; }
+    function renderList(arr){
+        if (!arr.length) { document.getElementById('list').innerHTML = '<div class="text-center text-slate-400 text-xs py-6">暂无数据</div>'; return; }
+        var html = arr.map(function(b){
+            return '<a class="m-list-item" href="/m/maintain/detail?id=' + b.Id + '">'
+                + '<div class="flex-1 min-w-0">'
+                + '<div class="flex items-center gap-2"><span class="font-medium truncate">' + (b.BillNo||'-') + '</span>' + statusBadge(b.Status) + '<span class="m-badge audited">' + cycleText(b.MaintainType) + '</span></div>'
+                + '<div class="text-xs text-slate-500 mt-1 truncate">设备: ' + (b.FacilityID||'-') + ' · 计划: ' + fmt(b.BeginDate) + '</div>'
+                + (b.Remark ? '<div class="text-xs text-slate-400 mt-1 truncate">' + b.Remark + '</div>' : '')
+                + '</div>'
+                + '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 mt-1"></i>'
+                + '</a>';
+        }).join('');
+        document.getElementById('list').innerHTML = html;
+        if (window.lucide) lucide.createIcons();
+    }
+    document.getElementById('kw').addEventListener('keyup', function(e){ if (e.key === 'Enter') load(); });
+    load();
+})();
+</script>
+}

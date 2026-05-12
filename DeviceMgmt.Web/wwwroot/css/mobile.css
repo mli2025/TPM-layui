@@ -1,0 +1,86 @@
+/* Mobile specific styles for arbore TPM */
+
+html, body { -webkit-text-size-adjust: 100%; }
+body { -webkit-tap-highlight-color: transparent; }
+
+.m-topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 30;
+}
+
+.m-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(15, 38, 32, 0.06);
+    border: 1px solid #eef2ef;
+}
+
+.m-list { display: flex; flex-direction: column; gap: 8px; }
+
+.m-list-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 12px; background: #fff;
+    border-radius: 10px; border: 1px solid #eef2ef;
+}
+.m-list-item:active { background: #f8fbf9; }
+
+.m-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    line-height: 16px;
+}
+.m-badge.new      { background: #fef3c7; color: #b45309; }
+.m-badge.dispatch { background: #dbeafe; color: #1d4ed8; }
+.m-badge.doing    { background: #ede9fe; color: #6d28d9; }
+.m-badge.done     { background: #dcfce7; color: #15803d; }
+.m-badge.audited  { background: #e2e8f0; color: #334155; }
+.m-badge.closed   { background: #f1f5f9; color: #475569; }
+
+.m-input {
+    width: 100%;
+    height: 38px;
+    padding: 0 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+}
+.m-input:focus { outline: none; border-color: #1F4D3B; }
+.m-textarea { width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #fff; min-height: 80px; }
+
+.m-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 40px; padding: 0 16px;
+    border-radius: 8px; font-size: 14px; font-weight: 500;
+    background: #fff; border: 1px solid #e2e8f0; color: #1F4D3B;
+}
+.m-btn.primary { background: #1F4D3B; color: #fff; border-color: #1F4D3B; }
+.m-btn.danger  { background: #dc2626; color: #fff; border-color: #dc2626; }
+.m-btn:active { opacity: .85; }
+.m-btn:disabled { opacity: .5; }
+
+.m-fab {
+    position: fixed; right: 16px; bottom: 72px;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #1F4D3B; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 18px rgba(31, 77, 59, 0.35);
+    z-index: 20;
+}
+
+.m-grid-tiles {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+}
+.m-tile {
+    background: #fff; border: 1px solid #eef2ef; border-radius: 10px;
+    padding: 14px 6px; text-align: center;
+}
+.m-tile i { width: 24px; height: 24px; color: #1F4D3B; margin: 0 auto 6px auto; display: block; }
+.m-tile span { font-size: 12px; color: #334155; display: block; }
+
+.m-section-title {
+    font-size: 13px; color: #64748b; margin: 4px 4px 6px 4px;
+}

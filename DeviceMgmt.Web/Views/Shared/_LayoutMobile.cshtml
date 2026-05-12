@@ -1,0 +1,124 @@
+@{
+    var title = ViewBag.Title as string ?? "arbore TPM";
+    var hideTabBar = (ViewBag.HideTabBar as bool?) ?? false;
+    var activeTab = ViewBag.ActiveTab as string ?? "home";
+    var pageTitle = ViewBag.PageTitle as string ?? title;
+    var showBack = (ViewBag.ShowBack as bool?) ?? false;
+}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="format-detection" content="telephone=no, email=no, address=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>@title</title>
+    <link rel="icon" href="~/favicon.ico" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50:  "#f1f7f4", 100: "#def0e5", 200: "#bee1cd",
+                            300: "#91c9ac", 400: "#61a983", 500: "#3f8b63",
+                            600: "#2c6f4e", 700: "#235840", 800: "#1f4d3b",
+                            900: "#1a3f31", 950: "#0f2620"
+                        }
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system",
+                               "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+                               "Microsoft YaHei", "sans-serif"]
+                    }
+                }
+            }
+        };
+    </script>
+    <link href="~/css/app.css" rel="stylesheet" />
+    <link href="~/css/mobile.css" rel="stylesheet" />
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.428.0/dist/umd/lucide.min.js"></script>
+    @RenderSection("Style", required: false)
+</head>
+<body class="font-sans antialiased bg-slate-50 text-slate-800" style="min-height:100vh;">
+    <header class="m-topbar">
+        <div class="flex items-center gap-2 px-3 h-11 bg-brand-800 text-white">
+            @if (showBack)
+            {
+                <button type="button" onclick="history.back()" class="-ml-1 p-1.5 active:bg-brand-900 rounded">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+            }
+            else
+            {
+                <img src="~/img/logo.png" alt="" class="w-6 h-6 rounded-sm" />
+            }
+            <h1 class="flex-1 text-base font-medium truncate">@pageTitle</h1>
+            @RenderSection("HeaderRight", required: false)
+        </div>
+    </header>
+
+    <main class="m-main" style="padding-top:44px;@(hideTabBar ? "" : "padding-bottom:56px;")">
+        @RenderBody()
+    </main>
+
+    @if (!hideTabBar)
+    {
+        <nav class="m-tabbar fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 grid grid-cols-4 h-14">
+            @RenderTab("home", "/m", "home", "首页", activeTab)
+            @RenderTab("maintain", "/m/maintain", "wrench", "保养", activeTab)
+            @RenderTab("check", "/m/check", "clipboard-check", "点检", activeTab)
+            @RenderTab("repair", "/m/repair", "alert-triangle", "报修", activeTab)
+        </nav>
+    }
+
+    <script src="~/js/app.js"></script>
+    <script>
+        (function(){
+            var token = (document.cookie.match(/(?:^|; )Token=([^;]*)/) || [])[1] || "";
+            window.M = {
+                token: token,
+                ajax: function(opts){
+                    opts.headers = Object.assign({ 'Token': token }, opts.headers || {});
+                    return fetch(opts.url, {
+                        method: opts.method || 'GET',
+                        headers: opts.contentType === false ? opts.headers : Object.assign({ 'Content-Type': opts.contentType || 'application/x-www-form-urlencoded' }, opts.headers),
+                        credentials: 'same-origin',
+                        body: opts.data
+                    }).then(function(r){ return r.json(); });
+                },
+                toast: function(msg, type){
+                    var el = document.createElement('div');
+                    el.textContent = msg;
+                    el.style.cssText = 'position:fixed;left:50%;top:60%;transform:translateX(-50%);padding:10px 14px;background:'
+                        + (type === 'err' ? '#dc2626' : type === 'warn' ? '#d97706' : '#1F4D3B')
+                        + ';color:#fff;border-radius:8px;font-size:14px;z-index:9999;max-width:80%;text-align:center;';
+                    document.body.appendChild(el);
+                    setTimeout(function(){ el.style.opacity='0'; el.style.transition='opacity .3s'; }, 1500);
+                    setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 1900);
+                },
+                ok: function(res){ return res && (res.code === 0 || res.code === 200); }
+            };
+            if (window.lucide) lucide.createIcons();
+        })();
+    </script>
+    @RenderSection("Script", required: false)
+</body>
+</html>
+
+@functions {
+    Microsoft.AspNetCore.Html.IHtmlContent RenderTab(string key, string href, string icon, string label, string active)
+    {
+        var on = key == active;
+        var color = on ? "text-brand-800" : "text-slate-500";
+        var html = $"<a href=\"{href}\" class=\"flex flex-col items-center justify-center gap-0.5 {color} active:bg-slate-100\">"
+                 + $"<i data-lucide=\"{icon}\" class=\"w-5 h-5\"></i>"
+                 + $"<span class=\"text-[11px]\">{label}</span></a>";
+        return new Microsoft.AspNetCore.Html.HtmlString(html);
+    }
+}

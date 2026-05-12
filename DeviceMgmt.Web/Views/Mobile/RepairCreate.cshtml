@@ -1,0 +1,87 @@
+@{
+    Layout = "_LayoutMobile";
+}
+<div class="p-3 space-y-3">
+    <div class="m-card p-3">
+        <label class="text-xs text-slate-500">设备 <span class="text-red-500">*</span></label>
+        <div class="relative mt-1">
+            <input id="devKw" class="m-input" placeholder="输入编码 / 名称 搜索" autocomplete="off" />
+            <div id="devList" class="hidden absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 max-h-60 overflow-auto"></div>
+        </div>
+        <input type="hidden" id="facilityId" />
+        <div id="devPicked" class="hidden mt-2 p-2 bg-brand-50 rounded text-xs text-brand-800"></div>
+    </div>
+
+    <div class="m-card p-3">
+        <label class="text-xs text-slate-500">故障部件</label>
+        <input id="faultLoc" class="m-input mt-1" placeholder="例: 主轴 / 控制板" />
+        <label class="text-xs text-slate-500 mt-3 block">故障类别</label>
+        <input id="faultCat" class="m-input mt-1" placeholder="例: 电气 / 机械" />
+    </div>
+
+    <div class="m-card p-3">
+        <label class="text-xs text-slate-500">故障描述 <span class="text-red-500">*</span></label>
+        <textarea id="descr" class="m-textarea mt-1" rows="3" placeholder="简要描述故障现象..."></textarea>
+        <label class="text-xs text-slate-500 mt-3 block">备注</label>
+        <textarea id="remark" class="m-textarea mt-1" rows="2"></textarea>
+    </div>
+
+    <button class="m-btn primary w-full" id="btnSubmit">提交报修</button>
+</div>
+
+@section Script {
+<script>
+(function(){
+    var devEl = document.getElementById('devKw');
+    var listEl = document.getElementById('devList');
+    var pickedEl = document.getElementById('devPicked');
+    var t = null;
+    devEl.addEventListener('input', function(){
+        clearTimeout(t);
+        t = setTimeout(function(){
+            var kw = devEl.value.trim();
+            if (!kw) { listEl.classList.add('hidden'); return; }
+            M.ajax({ url:'/m/api/devices?kw=' + encodeURIComponent(kw), contentType:false }).then(function(res){
+                if (!M.ok(res)) return;
+                var arr = res.data || [];
+                if (!arr.length) { listEl.innerHTML = '<div class="px-3 py-2 text-xs text-slate-400">无匹配设备</div>'; listEl.classList.remove('hidden'); return; }
+                listEl.innerHTML = arr.map(function(d){
+                    return '<div class="px-3 py-2 text-sm border-b border-slate-100 active:bg-brand-50 dev-row" data-id="' + d.Id + '" data-name="' + (d.FacilityName||'') + ' (' + (d.FacilityCode||'') + ')">'
+                        + (d.FacilityName||'') + ' <span class="text-xs text-slate-400">(' + (d.FacilityCode||'') + ')</span></div>';
+                }).join('');
+                listEl.classList.remove('hidden');
+                Array.prototype.forEach.call(listEl.querySelectorAll('.dev-row'), function(r){
+                    r.addEventListener('click', function(){
+                        document.getElementById('facilityId').value = r.dataset.id;
+                        pickedEl.textContent = '已选: ' + r.dataset.name;
+                        pickedEl.classList.remove('hidden');
+                        listEl.classList.add('hidden');
+                        devEl.value = '';
+                    });
+                });
+            });
+        }, 280);
+    });
+
+    document.getElementById('btnSubmit').addEventListener('click', function(){
+        var fid = document.getElementById('facilityId').value;
+        var descr = document.getElementById('descr').value.trim();
+        if (!fid) { M.toast('请选择设备', 'warn'); return; }
+        if (!descr) { M.toast('请填写故障描述', 'warn'); return; }
+        var payload = {
+            FacilityId: parseInt(fid, 10),
+            Descr: descr,
+            ReasonText: descr,
+            FaultLocation: document.getElementById('faultLoc').value,
+            FaultCategory: document.getElementById('faultCat').value,
+            Remark: document.getElementById('remark').value
+        };
+        M.ajax({ url:'/m/api/repair/create', method:'POST', data: JSON.stringify(payload), contentType:'application/json' })
+            .then(function(res){
+                if (M.ok(res)){ M.toast('报修成功'); setTimeout(function(){ location.href = '/m/repair?mine=1'; }, 700); }
+                else M.toast(res.msg || '提交失败', 'err');
+            });
+    });
+})();
+</script>
+}

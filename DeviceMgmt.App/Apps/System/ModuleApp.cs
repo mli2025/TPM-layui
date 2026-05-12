@@ -72,4 +72,32 @@ public class ModuleApp : BaseApp<Sys_Module>
             return new List<Sys_ModuleButtons>();
         }
     }
+
+    public long SaveModule(Sys_Module m)
+    {
+        if (m.Id == 0)
+        {
+            if (m.Status == 0) m.Status = 1;
+            Repository.Insert(m);
+        }
+        else
+        {
+            Repository.Update(m);
+        }
+        return m.Id;
+    }
+
+    public List<Sys_ModuleButtons> GetButtons(long moduleId)
+    {
+        return _buttonRepo.Find("[ModuleId]=@m", new { m = moduleId }, "[Id] ASC").ToList();
+    }
+
+    public long SaveButton(Sys_ModuleButtons b)
+    {
+        if (b.Id == 0) _buttonRepo.Insert(b);
+        else _buttonRepo.Update(b);
+        return b.Id;
+    }
+
+    public void DeleteButton(long id) => _buttonRepo.Delete(id);
 }
