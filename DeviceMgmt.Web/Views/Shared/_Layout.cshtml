@@ -1,4 +1,4 @@
-@using DeviceMgmt.Repository.Domain
+﻿@using DeviceMgmt.Repository.Domain
 @{
     IgnoreBody();
     var title = ViewBag.Title as string ?? "首页";
@@ -100,6 +100,15 @@
         .tab-pill:hover .tab-close, .tab-pill.active .tab-close { opacity: .7; }
         .tab-pill .tab-close:hover { opacity: 1; background: rgba(0,0,0,.08); }
         .tab-pill.home-tab .tab-close { display: none; }
+
+        .tab-ctx-menu { z-index: 300; min-width: 10.5rem; padding: 4px 0;
+            border-radius: 8px; border: 1px solid var(--border-soft); background: var(--bg);
+            box-shadow: var(--shadow-pop); font-size: 13px; color: var(--fg); }
+        .tab-ctx-menu-item { padding: 8px 14px; cursor: pointer; user-select: none; }
+        .tab-ctx-menu-item:hover { background: var(--bg-muted); }
+        .tab-ctx-menu-item.danger { color: var(--danger); }
+        .tab-ctx-menu-item.danger:hover { background: #fef2f2; }
+        [data-theme="dark"] .tab-ctx-menu-item.danger:hover { background: rgba(220,38,38,.12); }
     </style>
     @RenderSection("Style", required: false)
 </head>
@@ -174,7 +183,7 @@
             <template x-if="!sidebarCollapsed">
                 <div class="nav-section">导航</div>
             </template>
-            <div class="nav-item" :class="{ active: activeTabId === 'home' }" @@click="openHomeTab">
+            <div class="nav-item" :class="{ active: activeTabId === 'home' }" :title="sidebarCollapsed ? '首页' : ''" @@click="openHomeTab">
                 <i data-lucide="home"></i>
                 <span class="nav-item-label">首页</span>
             </div>
@@ -183,6 +192,7 @@
                 <div>
                     <div class="nav-item"
                          :class="{ active: activeMenuId === m.id, expanded: expanded[m.id] }"
+                         :title="sidebarCollapsed ? (m.name || '') : ''"
                          @@click="onMenuClick(m)">
                         <i :data-lucide="m.icon || 'circle-dot'"></i>
                         <span class="nav-item-label" x-text="m.name"></span>
@@ -220,7 +230,9 @@
             <template x-for="t in tabs" :key="t.id">
                 <div class="tab-pill"
                      :class="{ active: activeTabId === t.id, 'home-tab': t.id === 'home' }"
-                     @@click="activateTab(t.id)">
+                     @@click="activateTab(t.id)"
+                     @@contextmenu.prevent="openTabCtx($event, t.id)"
+                     @@mousedown="onTabMouseDown($event, t.id)">
                     <span class="tab-name" x-text="t.title"></span>
                     <span class="tab-close" @@click.stop="closeTab(t.id)" x-show="t.id !== 'home'">
                         <i data-lucide="x" class="w-3 h-3"></i>
@@ -235,12 +247,18 @@
             </template>
         </div>
     </main>
-</div>
 
-@* ===== 改密弹窗 ===== *@
-<template x-data x-if="$root.changePwdOpen" x-teleport="body">
-    <div></div>
-</template>
+    <!-- Tab 右键菜单（关闭 / 关闭其他 / 关闭右侧） -->
+    <div x-show="tabCtxMenu.open"
+         x-cloak
+         class="tab-ctx-menu fixed"
+         :style="'left:' + tabCtxMenu.x + 'px;top:' + tabCtxMenu.y + 'px'"
+         @@click.outside="closeTabCtx">
+        <div class="tab-ctx-menu-item" @@click.stop="ctxCloseTab">关闭</div>
+        <div class="tab-ctx-menu-item" @@click.stop="ctxCloseOthers">关闭其他</div>
+        <div class="tab-ctx-menu-item" @@click.stop="ctxCloseRight">关闭右侧</div>
+    </div>
+</div>
 
 <div x-data="{}" @@open-change-pwd.window="document.getElementById('cp-modal').classList.remove('hidden')"></div>
 
@@ -321,12 +339,15 @@
             theme: localStorage.getItem("theme") || "light",
             menuOpen: false,
             expanded: {},
+            tabCtxMenu: { open: false, x: 0, y: 0, tabId: null },
             tabs: [{ id: "home", title: "首页", url: "about:blank", menuId: null }],
             activeTabId: "home",
             activeMenuId: null,
 
             init() {
                 this.tabs[0].url = "@Url.Action("Welcome", "Home")";
+                this.theme = localStorage.getItem("theme") || "light";
+                document.documentElement.setAttribute("data-theme", this.theme);
                 this.$nextTick(() => {
                     if (window.lucide) lucide.createIcons();
                 });
@@ -337,6 +358,9 @@
                             t.title = e.data.title;
                         }
                     }
+                });
+                document.addEventListener("keydown", (e) => {
+                    if (e.key === "Escape") this.closeTabCtx();
                 });
             },
 
@@ -359,6 +383,7 @@
             },
 
             openTab(m) {
+                this.closeTabCtx();
                 if (!m.url) { App.warn("该菜单未配置 URL"); return; }
                 this.activeMenuId = m.id;
                 var existed = this.tabs.find(t => t.menuId === m.id);
@@ -374,11 +399,13 @@
             },
 
             openHomeTab() {
+                this.closeTabCtx();
                 this.activeTabId = "home";
                 this.activeMenuId = null;
             },
 
             activateTab(id) {
+                this.closeTabCtx();
                 this.activeTabId = id;
                 var t = this.tabs.find(x => x.id === id);
                 this.activeMenuId = t ? t.menuId : null;
@@ -395,6 +422,50 @@
                 }
             },
 
+            openTabCtx(e, tabId) {
+                if (tabId === "home") return;
+                e.preventDefault();
+                e.stopPropagation();
+                var mw = 172, mh = 120;
+                var x = Math.min(e.clientX, window.innerWidth - mw - 6);
+                var y = Math.min(e.clientY, window.innerHeight - mh - 6);
+                this.tabCtxMenu = { open: true, x: Math.max(6, x), y: Math.max(6, y), tabId: tabId };
+            },
+
+            closeTabCtx() {
+                this.tabCtxMenu.open = false;
+                this.tabCtxMenu.tabId = null;
+            },
+
+            onTabMouseDown(e, tabId) {
+                if (e.button !== 1) return;
+                e.preventDefault();
+                if (tabId !== "home") this.closeTab(tabId);
+            },
+
+            ctxCloseTab() {
+                if (this.tabCtxMenu.tabId) this.closeTab(this.tabCtxMenu.tabId);
+                this.closeTabCtx();
+            },
+
+            ctxCloseOthers() {
+                var keep = this.tabCtxMenu.tabId;
+                this.tabs = this.tabs.filter(t => t.id === "home" || t.id === keep);
+                this.activateTab(keep || "home");
+                this.closeTabCtx();
+            },
+
+            ctxCloseRight() {
+                var tid = this.tabCtxMenu.tabId;
+                var idx = this.tabs.findIndex(t => t.id === tid);
+                if (idx < 0) { this.closeTabCtx(); return; }
+                for (var i = this.tabs.length - 1; i > idx; i--) {
+                    if (this.tabs[i].id !== "home") this.tabs.splice(i, 1);
+                }
+                if (!this.tabs.some(t => t.id === this.activeTabId)) this.activateTab(tid);
+                this.closeTabCtx();
+            },
+
             toggleSidebar() {
                 this.sidebarCollapsed = !this.sidebarCollapsed;
                 localStorage.setItem("sidebarCollapsed", this.sidebarCollapsed ? "1" : "0");
@@ -409,17 +480,20 @@
 
             openProfile() {
                 this.menuOpen = false;
+                this.closeTabCtx();
                 document.getElementById("pf-modal").classList.remove("hidden");
                 document.getElementById("pf-modal").dispatchEvent(new CustomEvent("pf-open"));
             },
 
             openChangePwd() {
                 this.menuOpen = false;
+                this.closeTabCtx();
                 document.getElementById("cp-modal").classList.remove("hidden");
             },
 
             logout() {
                 this.menuOpen = false;
+                this.closeTabCtx();
                 if (confirm("确定退出登录？")) {
                     window.location.href = __URL_LOGOUT__;
                 }

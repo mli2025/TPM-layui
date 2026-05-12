@@ -2,6 +2,40 @@
    arbore TPM · 全局样式（Tailwind 之外的自定义层）
    ================================================================ */
 
+/* Alpine 首屏前隐藏带 x-cloak 的节点，避免闪烁 */
+[x-cloak] {
+  display: none !important;
+}
+
+/* AppShell 顶栏 / Tab 在暗色主题下与 Tailwind slate 文字对齐 */
+[data-theme="dark"] .app-header {
+  background: var(--bg);
+  border-bottom-color: var(--border-soft);
+}
+[data-theme="dark"] .app-header .text-slate-800,
+[data-theme="dark"] .app-header .text-slate-700 {
+  color: var(--fg) !important;
+}
+[data-theme="dark"] .app-header .text-slate-400,
+[data-theme="dark"] .app-header .text-slate-500 {
+  color: var(--fg-muted) !important;
+}
+[data-theme="dark"] .app-tabs {
+  background: var(--bg);
+  border-bottom-color: var(--border-soft);
+}
+[data-theme="dark"] .tab-pill {
+  color: var(--fg-muted);
+}
+[data-theme="dark"] .tab-pill:hover {
+  background: var(--bg-muted);
+  color: var(--fg);
+}
+[data-theme="dark"] .tab-pill.active {
+  background: rgba(31, 77, 59, 0.45);
+  color: #d8f0e4;
+}
+
 /* Inter 字体 - 通过 jsDelivr CDN 加载（国内可达） */
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css");
 

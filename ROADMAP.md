@@ -61,6 +61,7 @@
 - [x] favicon（`wwwroot/favicon.ico`，复用 logo）
 - [x] `wwwroot/css/app.css`（基线 + 组件层 + 暗色变量预留）
 - [x] `wwwroot/js/app.js`（cookie / query / ajax-token / toast / theme / lucide 工具集）
+- [x] **强化**：全局 `[x-cloak]` 规则写入 `app.css`（登录页与 AppShell 共用）
 
 ### P0.2 登录页 ✓
 
@@ -69,6 +70,8 @@
 - [x] 右半幕：账号 + 密码（图标 + 显隐切换）+ 记住我 + 错误内联提示
 - [x] 回车提交 / 显隐 / disabled + spinner
 - [x] AJAX POST `/Account/DoLogin`（不在 URL 暴露密码）
+- [x] **强化**：`GET /Account/Login` 若 Cookie 中 Token 仍有效则**直接跳转首页**（已登录不重复登录）
+- [x] **强化**：登录表单根节点 `x-cloak` + 全局 `[x-cloak]` 样式，减少 Alpine 首屏闪烁
 
 ### P0.3 主界面（AppShell）✓
 
@@ -87,6 +90,9 @@
   - [x] 关闭 tab 自动激活相邻
   - [x] iframe 隔离业务页面
   - [x] 子页面 postMessage 同步标题
+- [x] **强化**：Tab **右键菜单**（关闭 / 关闭其他 / 关闭右侧）+ **中键关闭** + `Escape` 关闭菜单
+- [x] **强化**：侧栏折叠时父级菜单 `title` 提示（peek）
+- [x] **强化**：`init` 同步 `data-theme` 与顶栏/Tab 在暗色下的可读样式（`app.css`）
 
 ### P0.4 用户栏（profile dropdown）✓
 

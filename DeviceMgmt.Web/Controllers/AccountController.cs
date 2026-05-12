@@ -1,4 +1,5 @@
 using DeviceMgmt.App.Interface;
+using DeviceMgmt.Web.Controllers.Base;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DeviceMgmt.Web.Controllers;
@@ -15,6 +16,13 @@ public class AccountController : Controller
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
     {
+        if (Request.Cookies.TryGetValue(BaseController.TokenKey, out var token)
+            && !string.IsNullOrEmpty(token)
+            && _auth.CheckLogin(token))
+        {
+            return Redirect(Url.Content("~/"));
+        }
+
         ViewBag.ReturnUrl = returnUrl ?? Url.Content("~/");
         return View();
     }
