@@ -156,32 +156,48 @@
                 { type: 2, mt: null,      field: 'The5STemplateMainId' }
             ];
 
-            var __dialogState = { entity: null, tplLoaded: false, historyLoaded: false };
+            var __dialogState = { entity: null, tplLoaded: false, historyLoaded: false, tplErrors: [] };
 
-            function loadOneTemplate(c, currentValue) {
+            function loadOneTemplate(c) {
                 var params = { type: c.type };
                 if (c.mt) params.maintenanceType = c.mt;
-                return $.get(URL_TPL_OPTS, params).then(function (res) {
-                    var $sel = $('#facilityForm select[name="' + c.field + '"]');
-                    if (!$sel.length) return;
-                    $sel.empty().append('<option value="">-- 请选择 --</option>');
-                    if (ok(res) && Array.isArray(res.data)) {
-                        res.data.forEach(function (it) {
-                            var sel = (currentValue != null && String(currentValue) === String(it.Id)) ? ' selected' : '';
-                            $sel.append('<option value="' + it.Id + '"' + sel + '>' + (it.HNumber || '') + ' / ' + (it.HName || '') + '</option>');
-                        });
-                    }
-                });
+                return $.ajax({ url: URL_TPL_OPTS, type: 'GET', data: params, dataType: 'json' })
+                    .then(function (res) {
+                        var $sel = $('#facilityForm select[name="' + c.field + '"]');
+                        if (!$sel.length) return;
+                        var html = '<option value="">-- 请选择 --</option>';
+                        if (ok(res) && Array.isArray(res.data)) {
+                            res.data.forEach(function (it) {
+                                html += '<option value="' + it.Id + '">' + (it.HNumber || '') + ' / ' + (it.HName || '') + '</option>';
+                            });
+                        }
+                        $sel.html(html);
+                    }, function (xhr) {
+                        __dialogState.tplErrors.push(c.field + ': HTTP ' + (xhr && xhr.status));
+                    });
             }
 
             function loadTemplatesForEntity(entity) {
                 if (__dialogState.tplLoaded) return;
                 __dialogState.tplLoaded = true;
-                TPL_CYCLES.forEach(function (c) {
-                    var cur = entity ? entity[c.field] : null;
-                    loadOneTemplate(c, cur).always(function () {
-                        try { form.render('select', 'facilityForm'); } catch (e) { try { form.render(); } catch (e2) {} }
-                    });
+                var $tip = $('#tplLoadingTip');
+                $tip.text('正在加载模板...').css('color', '#888');
+                var promises = TPL_CYCLES.map(function (c) { return loadOneTemplate(c); });
+                $.when.apply($, promises).always(function () {
+                    if (entity) {
+                        TPL_CYCLES.forEach(function (c) {
+                            var v = entity[c.field];
+                            $('#facilityForm select[name="' + c.field + '"]').val(v == null ? '' : v);
+                        });
+                    }
+                    try { form.render('select'); } catch (e) {}
+                    try { form.render(); } catch (e) {}
+                    if (__dialogState.tplErrors.length > 0) {
+                        $tip.text('部分模板加载失败: ' + __dialogState.tplErrors.join('; ')).css('color', '#e53935');
+                    } else {
+                        $tip.text('模板加载完成').css('color', '#16a34a');
+                        setTimeout(function () { $tip.fadeOut(); }, 1500);
+                    }
                 });
             }
 
@@ -204,25 +220,31 @@
                     btn: isView ? ['关闭'] : ['保存', '取消'],
                     success: function () {
                         try { element.render('tab'); } catch (e) {}
-                        bindDates();
+                        try { bindDates(); } catch (e) {}
                         try { form.render(); } catch (e) {}
 
-                        // 步骤 1：先加载主数据，立即填表
+                        // 模板下拉：立即开始异步加载（不等主数据）
+                        loadTemplatesForEntity(null);
+
                         if (isEdit || isView) {
                             $.get(URL_GET, { Id: row.Id }, function (res) {
                                 if (!ok(res) || !res.data) { toastErr(res && res.msg || '加载失败'); return; }
                                 __dialogState.entity = res.data;
                                 fillForm(res.data);
                                 if (isView) lockForm();
-                                // 步骤 2：填完后异步加载模板下拉（不阻塞）
-                                loadTemplatesForEntity(res.data);
+                                // 主数据到了，再次设置一遍模板下拉值（防止模板比主数据先到导致没选中）
+                                TPL_CYCLES.forEach(function (c) {
+                                    var v = res.data[c.field];
+                                    $('#facilityForm select[name="' + c.field + '"]').val(v == null ? '' : v);
+                                });
+                                try { form.render('select'); } catch (e) {}
+                                try { form.render(); } catch (e) {}
                             }).fail(function () { toastErr('加载失败，请检查网络或服务'); });
                         } else {
                             fillForm({ Id: 0, Status: 0, EntityId: 1 });
-                            loadTemplatesForEntity(null);
                         }
 
-                        // 步骤 3：切到保养/点检记录 tab 时再加载历史
+                        // 切到保养/点检记录 tab 时再加载历史
                         element.on('tab(resTabs)', function (data) {
                             if (data.index === 5 && !__dialogState.historyLoaded) {
                                 __dialogState.historyLoaded = true;

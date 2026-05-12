@@ -1,14 +1,13 @@
 @{
     var L = "layui-col-lg4 layui-col-md4 layui-col-sm6 layui-col-xs12";
 }
+<div id="tplLoadingTip" style="margin:0 0 8px 8px;font-size:12px;color:#888;">&nbsp;</div>
 <div class="layui-row layui-col-space10">
     <div class="@L">
         <div class="layui-form-item">
             <label class="layui-form-label">点检模版</label>
             <div class="layui-input-block">
-                <select name="TheTemplateMainId" lay-filter="tplCheck" lay-search>
-                    <option value="">-- 请选择 --</option>
-                </select>
+                <select name="TheTemplateMainId" class="tpl-select"><option value="">-- 请选择 --</option></select>
             </div>
         </div>
     </div>
@@ -16,9 +15,7 @@
         <div class="layui-form-item">
             <label class="layui-form-label">周保养模版</label>
             <div class="layui-input-block">
-                <select name="WeekTempId" lay-filter="tplWeek" lay-search>
-                    <option value="">-- 请选择 --</option>
-                </select>
+                <select name="WeekTempId" class="tpl-select"><option value="">-- 请选择 --</option></select>
             </div>
         </div>
     </div>
@@ -26,9 +23,7 @@
         <div class="layui-form-item">
             <label class="layui-form-label">月保养模版</label>
             <div class="layui-input-block">
-                <select name="MonthTempId" lay-filter="tplMonth" lay-search>
-                    <option value="">-- 请选择 --</option>
-                </select>
+                <select name="MonthTempId" class="tpl-select"><option value="">-- 请选择 --</option></select>
             </div>
         </div>
     </div>
@@ -36,9 +31,7 @@
         <div class="layui-form-item">
             <label class="layui-form-label">季保养模版</label>
             <div class="layui-input-block">
-                <select name="SeasonTempId" lay-filter="tplQuarter" lay-search>
-                    <option value="">-- 请选择 --</option>
-                </select>
+                <select name="SeasonTempId" class="tpl-select"><option value="">-- 请选择 --</option></select>
             </div>
         </div>
     </div>
@@ -46,9 +39,7 @@
         <div class="layui-form-item">
             <label class="layui-form-label">年保养模版</label>
             <div class="layui-input-block">
-                <select name="YearTempId" lay-filter="tplYear" lay-search>
-                    <option value="">-- 请选择 --</option>
-                </select>
+                <select name="YearTempId" class="tpl-select"><option value="">-- 请选择 --</option></select>
             </div>
         </div>
     </div>
@@ -56,9 +47,7 @@
         <div class="layui-form-item">
             <label class="layui-form-label">5S模版</label>
             <div class="layui-input-block">
-                <select name="The5STemplateMainId" lay-filter="tpl5S" lay-search>
-                    <option value="">-- 请选择 --</option>
-                </select>
+                <select name="The5STemplateMainId" class="tpl-select"><option value="">-- 请选择 --</option></select>
             </div>
         </div>
     </div>
