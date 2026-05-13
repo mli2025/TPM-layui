@@ -27,6 +27,7 @@
                 </div>
                 <div class="layui-col-md4" style="text-align:right;">
                     <button class="layui-btn layui-btn-sm" id="btnPlan"><i class="layui-icon layui-icon-add-1"></i> @("\u5efa\u7acb\u4fdd\u517b\u8ba1\u5212")</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnBatchDispatch"><i class="layui-icon layui-icon-share"></i> @("\u6279\u91cf\u6d3e\u5de5")</button>
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> @("\u5237\u65b0")</button>
                 </div>
             </div>
@@ -86,8 +87,39 @@
     <a class="layui-btn layui-btn-xs" lay-event="view">&#x67e5;&#x770b;</a>
     {{# if(d.Status == 0 || d.Status == null){ }}
     <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">&#x7f16;&#x8f91;</a>
+    <a class="layui-btn layui-btn-xs layui-bg-blue" lay-event="dispatch" style="background-color:#1e88e5;color:#fff;">&#x6d3e;&#x5de5;</a>
     <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">&#x5220;&#x9664;</a>
     {{# } }}
+</script>
+
+<script type="text/html" id="tplDispatch">
+    <div style="padding:14px;">
+        <div id="dispBatchHint" style="display:none;background:#fff3cd;color:#664d03;padding:6px 10px;border-radius:4px;margin-bottom:10px;"></div>
+        <div class="layui-form layui-row layui-col-space10" style="margin-bottom:10px;">
+            <div class="layui-col-md4">
+                <label class="layui-form-label">&#x6d3e;&#x5de5;&#x65f6;&#x95f4;</label>
+                <div class="layui-input-block"><input id="disp_DispatchDate" class="layui-input" placeholder="&#x9ed8;&#x8ba4;&#x5f53;&#x524d;&#x65f6;&#x95f4;"></div>
+            </div>
+            <div class="layui-col-md4">
+                <label class="layui-form-label">&#x5f00;&#x59cb;&#x65f6;&#x95f4;</label>
+                <div class="layui-input-block"><input id="disp_BeginDate" class="layui-input" placeholder="&#x4fdd;&#x6301;&#x5468;&#x671f;&#x9ed8;&#x8ba4;"></div>
+            </div>
+            <div class="layui-col-md4">
+                <label class="layui-form-label">&#x7ed3;&#x675f;&#x65f6;&#x95f4;</label>
+                <div class="layui-input-block"><input id="disp_EndDate" class="layui-input" placeholder="&#x4fdd;&#x6301;&#x5468;&#x671f;&#x9ed8;&#x8ba4;"></div>
+            </div>
+            <div class="layui-col-md12">
+                <label class="layui-form-label">&#x5907;&#x6ce8;</label>
+                <div class="layui-input-block"><textarea id="disp_Remark" class="layui-textarea" rows="2" placeholder="&#x6d3e;&#x5de5;&#x8bf4;&#x660e; / &#x6ce8;&#x610f;&#x4e8b;&#x9879;"></textarea></div>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <input type="text" id="dispKw" class="layui-input" placeholder="&#x8f93;&#x5165;&#x59d3;&#x540d;/&#x5de5;&#x53f7;&#x8fc7;&#x6ee4;" style="max-width:280px;">
+            <button class="layui-btn layui-btn-sm" id="btnDispSearch" type="button">&#x67e5;&#x8be2;</button>
+            <span style="color:#888;font-size:12px;">&#x70b9;&#x51fb;&#x884c;&#x9009;&#x4e2d;&#x67d0;&#x4eba;&#x540e;&#x518d;&#x70b9;&#x300c;&#x786e;&#x8ba4;&#x6d3e;&#x5de5;&#x300d;</span>
+        </div>
+        <table id="GridDispEmp" lay-filter="GridDispEmp"></table>
+    </div>
 </script>
 
 <script type="text/html" id="tplBillDetail">
@@ -206,6 +238,9 @@
         var URL_BATCH_GENERATE  = '@Url.Action("BatchGenerate")';
         var URL_CHECK_TEMPLATES = '@Url.Action("CheckTemplates")';
         var URL_PLAN_DEVICES    = '@Url.Action("GetPlanDevices")';
+        var URL_DISPATCH        = '@Url.Action("Dispatch")';
+        var URL_BATCH_DISPATCH  = '@Url.Action("BatchDispatch")';
+        var URL_EMPLOYEES       = '@Url.Action("GetEmployees")';
 
         layui.use(['table', 'form', 'layer', 'laydate'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate;
@@ -274,6 +309,7 @@
                     page: true,
                     height: 'full-260',
                     cols: [[
+                        { type: 'checkbox', fixed: 'left' },
                         { type: 'numbers', title: '#' },
                         { field: 'BillNo', title: '\u4fdd\u517b\u5355\u53f7', width: 160 },
                         { field: 'FacilityID', title: '\u8bbe\u5907ID', width: 110 },
@@ -284,7 +320,7 @@
                         { field: 'Status', title: '\u72b6\u6001', width: 100, templet: billStatusCell },
                         { field: 'RepairStaff', title: '\u4fdd\u517b\u4eba', width: 110 },
                         { field: 'Remark', title: '\u5907\u6ce8', minWidth: 160 },
-                        { title: '\u64cd\u4f5c', width: 200, toolbar: '#barRow', fixed: 'right' }
+                        { title: '\u64cd\u4f5c', width: 240, toolbar: '#barRow', fixed: 'right' }
                     ]]
                 });
             }
@@ -647,8 +683,8 @@
                 });
                 $('#kanbanBoard').html(html);
                 $('#kanbanBoard .kanban-card').on('click', function () {
-                    var id = $(this).data('id');
-                    var row = allBills.find(function (b) { return rowId(b) === id; });
+                    var id = String($(this).attr('data-id'));
+                    var row = allBills.find(function (b) { return String(rowId(b)) === id; });
                     if (row) openDetail(row, true);
                 });
             }
@@ -701,8 +737,8 @@
                 }
                 $('#calBody').html(html);
                 $('#calBody .cal-item').on('click', function () {
-                    var id = $(this).data('id');
-                    var row = allBills.find(function (b) { return rowId(b) === id; });
+                    var id = String($(this).attr('data-id'));
+                    var row = allBills.find(function (b) { return String(rowId(b)) === id; });
                     if (row) openDetail(row, true);
                 });
             }
@@ -828,8 +864,8 @@
                 html += '</tbody></table>';
                 $('#ganttContainer').html(html);
                 $('#ganttContainer .gantt-bar').on('click', function () {
-                    var id = $(this).data('id');
-                    var row = allBills.find(function (b) { return rowId(b) === id; });
+                    var id = String($(this).attr('data-id'));
+                    var row = allBills.find(function (b) { return String(rowId(b)) === id; });
                     if (row) openDetail(row, true);
                 });
             }
@@ -837,6 +873,7 @@
             table.on('tool(GridMain)', function (obj) {
                 if (obj.event === 'view') openDetail(obj.data, true);
                 if (obj.event === 'edit') openDetail(obj.data, false);
+                if (obj.event === 'dispatch') openDispatchDialog('single', { ids: [obj.data.Id], row: obj.data });
                 if (obj.event === 'del') {
                     layer.confirm('\u786e\u8ba4\u5220\u9664\u8be5\u4fdd\u517b\u5355\uff08\u5df2\u6d3e\u5de5\u4e0d\u5141\u8bb8\u5220\u9664\uff09\uff1f', function (idx) {
                         $.post(URL_DELETE_BILL, { id: obj.data.Id }, function (res) {
@@ -846,6 +883,113 @@
                         });
                     });
                 }
+            });
+
+            $('#btnBatchDispatch').on('click', function () {
+                var chk = table.checkStatus('GridMain').data || [];
+                if (chk.length === 0) { toastWarn('\u8bf7\u5148\u52fe\u9009\u8981\u6d3e\u5de5\u7684\u4fdd\u517b\u5355'); return; }
+                var bad = chk.filter(function (r) { var s = parseInt(r.Status, 10) || 0; return s !== 0; });
+                if (bad.length > 0) { toastErr('\u9009\u4e2d\u7684\u5355\u4e2d\u6709 ' + bad.length + ' \u5f20\u4e0d\u662f\u300c\u65b0\u5efa\u300d\u72b6\u6001\uff0c\u4e0d\u5141\u8bb8\u6d3e\u5de5'); return; }
+                openDispatchDialog('batch', { ids: chk.map(function (r) { return r.Id; }) });
+            });
+
+            function nowStr() {
+                var d = new Date(), p = function (n) { return n < 10 ? '0' + n : '' + n; };
+                return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+            }
+
+            var __dispState = { selected: null };
+            function openDispatchDialog(mode, payload) {
+                __dispState = { selected: null };
+                layer.open({
+                    type: 1,
+                    title: mode === 'batch' ? '\u6279\u91cf\u6d3e\u5de5 (' + payload.ids.length + ' \u5f20)' : ('\u6d3e\u5de5 ' + ((payload.row && payload.row.BillNo) || '')),
+                    area: ['860px', '580px'],
+                    content: $('#tplDispatch').html(),
+                    btn: ['\u786e\u8ba4\u6d3e\u5de5', '\u53d6\u6d88'],
+                    success: function () {
+                        if (mode === 'batch') {
+                            $('#dispBatchHint').show().text('\u6279\u91cf\u6d3e\u5de5\uff1a\u9009\u4e2d\u7684 ' + payload.ids.length + ' \u5f20\u5355\u4f1a\u88ab\u6307\u5b9a\u7ed9\u540c\u4e00\u4f4d\u5458\u5de5');
+                        }
+                        laydate.render({ elem: '#disp_DispatchDate', type: 'datetime', value: nowStr() });
+                        laydate.render({ elem: '#disp_BeginDate', type: 'datetime' });
+                        laydate.render({ elem: '#disp_EndDate', type: 'datetime' });
+                        // 单据派工时如果已知 BeginDate/EndDate，回填
+                        if (mode === 'single' && payload.row) {
+                            if (payload.row.BeginDate) $('#disp_BeginDate').val(fmtDate(payload.row.BeginDate));
+                            if (payload.row.EndDate)   $('#disp_EndDate').val(fmtDate(payload.row.EndDate));
+                        }
+                        renderDispEmpGrid();
+                        $('#btnDispSearch').on('click', renderDispEmpGrid);
+                        $('#dispKw').on('keydown', function (e) { if (e.keyCode === 13) renderDispEmpGrid(); });
+                    },
+                    yes: function (idx) {
+                        if (!__dispState.selected) { toastWarn('\u8bf7\u5728\u5217\u8868\u4e2d\u70b9\u51fb\u9009\u4e2d\u88ab\u6d3e\u5458\u5de5'); return; }
+                        var repairStaff = __dispState.selected.EmployeeNumber || __dispState.selected.Name;
+                        var common = {
+                            repairStaff: repairStaff,
+                            dispatchDate: $('#disp_DispatchDate').val() || '',
+                            beginDate: $('#disp_BeginDate').val() || '',
+                            endDate: $('#disp_EndDate').val() || '',
+                            dispatchRemark: $('#disp_Remark').val() || ''
+                        };
+                        if (mode === 'batch') {
+                            var data = Object.assign({}, common, {});
+                            // 数组要按 key=val&key=val 提交
+                            var fd = new FormData();
+                            payload.ids.forEach(function (id) { fd.append('ids', id); });
+                            Object.keys(common).forEach(function (k) { fd.append(k, common[k]); });
+                            $.ajax({ url: URL_BATCH_DISPATCH, type: 'POST', data: fd, processData: false, contentType: false })
+                                .done(function (res) {
+                                    if (ok(res)) { layer.close(idx); toastOk(res.msg); refreshCurrentView(); }
+                                    else toastErr(res.msg || '\u6279\u91cf\u6d3e\u5de5\u5931\u8d25');
+                                });
+                        } else {
+                            $.post(URL_DISPATCH, Object.assign({ id: payload.ids[0] }, common), function (res) {
+                                if (ok(res)) { layer.close(idx); toastOk('\u6d3e\u5de5\u6210\u529f'); refreshCurrentView(); }
+                                else toastErr(res.msg || '\u6d3e\u5de5\u5931\u8d25');
+                            });
+                        }
+                    }
+                });
+            }
+
+            function renderDispEmpGrid() {
+                table.render({
+                    elem: '#GridDispEmp',
+                    id: 'GridDispEmp',
+                    url: URL_EMPLOYEES,
+                    method: 'get',
+                    where: { kw: $('#dispKw').val() || '' },
+                    page: false,
+                    height: 320,
+                    cols: [[
+                        { field: 'EmployeeNumber', title: '\u5de5\u53f7', width: 110 },
+                        { field: 'Name', title: '\u59d3\u540d', width: 120 },
+                        { field: 'DeptName', title: '\u90e8\u95e8', width: 160 },
+                        { field: 'PendingCount', title: '\u5f53\u524d\u5f85\u529e\u4fdd\u517b', width: 130, templet: function (d) {
+                            var c = parseInt(d.PendingCount, 10) || 0;
+                            if (c === 0) return '<span style="color:#888;">0</span>';
+                            if (c >= 3) return '<span class="layui-badge" style="background:#dc2626;">' + c + '</span>';
+                            return '<span class="layui-badge layui-bg-orange">' + c + '</span>';
+                        } }
+                    ]],
+                    done: function () {
+                        if (__dispState.selected) {
+                            // 重渲染后保留高亮
+                            $('#GridDispEmp').next('.layui-table-view').find('tbody tr').each(function () {
+                                var name = $(this).find('td[data-field=EmployeeNumber] div').text();
+                                if (name === __dispState.selected.EmployeeNumber) $(this).addClass('layui-table-click');
+                            });
+                        }
+                    }
+                });
+            }
+
+            // 行点击选中（layui table 内置事件）
+            table.on('row(GridDispEmp)', function (obj) {
+                __dispState.selected = obj.data;
+                obj.tr.addClass('layui-table-click').siblings().removeClass('layui-table-click');
             });
 
             function formatToday() {

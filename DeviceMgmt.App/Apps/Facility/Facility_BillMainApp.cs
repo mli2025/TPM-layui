@@ -103,14 +103,15 @@ public class Facility_BillMainApp : BaseApp<Facility_BillMain>
             {
                 lastBillNo++;
                 var billDate = AddCycle(startDate, cycleUpper, i);
+                var (begin, end) = ResolveBillWindow(billDate, cycleUpper);
 
                 var main = new Facility_BillMain
                 {
                     BillNo = $"TPM{lastBillNo:D9}",
                     BillDate = billDate,
                     BillType = "MAINTENANCE",
-                    BeginDate = billDate,
-                    EndDate = billDate,
+                    BeginDate = begin,
+                    EndDate = end,
                     FacilityID = s.DeviceId,
                     TempID = tempId,
                     MaintainType = cycleUpper,
@@ -203,6 +204,116 @@ public class Facility_BillMainApp : BaseApp<Facility_BillMain>
             "WEEK"    => baseDate.AddDays(i * 7),
             _ => baseDate
         };
+
+    /// <summary>
+    /// 根据保养周期与计划基准日，推导该单据的执行窗口 [BeginDate, EndDate]。
+    /// 不再让两者等于 BillDate（占位用），保证看板/甘特能看到真实跨度。
+    /// </summary>
+    public static (DateTime Begin, DateTime End) ResolveBillWindow(DateTime billDate, string cycle)
+    {
+        var d = billDate.Date;
+        DateTime begin, end;
+        switch ((cycle ?? string.Empty).Trim().ToUpperInvariant())
+        {
+            case "YEAR":
+                begin = new DateTime(d.Year, 1, 1);
+                end   = new DateTime(d.Year, 12, 31, 23, 59, 59);
+                break;
+            case "QUARTER":
+                {
+                    var qStartMonth = ((d.Month - 1) / 3) * 3 + 1;
+                    begin = new DateTime(d.Year, qStartMonth, 1);
+                    end   = begin.AddMonths(3).AddSeconds(-1);
+                    break;
+                }
+            case "MONTH":
+                begin = new DateTime(d.Year, d.Month, 1);
+                end   = begin.AddMonths(1).AddSeconds(-1);
+                break;
+            case "WEEK":
+                {
+                    // 以周一为起点（Monday=1）
+                    var diff = ((int)d.DayOfWeek + 6) % 7;
+                    begin = d.AddDays(-diff);
+                    end   = begin.AddDays(7).AddSeconds(-1);
+                    break;
+                }
+            default:
+                begin = d;
+                end   = d.AddDays(1).AddSeconds(-1);
+                break;
+        }
+        return (begin, end);
+    }
+
+    /// <summary>
+    /// 派工：状态 0(新建) -> 1(已派工)，允许覆盖 BeginDate/EndDate/Remark
+    /// </summary>
+    public (bool ok, string msg) Dispatch(long id, string repairStaff, long currentUserId,
+        string? dispatchUser = null, DateTime? dispatchDate = null,
+        DateTime? beginDate = null, DateTime? endDate = null, string? dispatchRemark = null)
+    {
+        var main = Repository.FindSingle(id);
+        if (main == null) return (false, "保养单不存在");
+        if ((main.Status ?? 0) != 0) return (false, "该保养单已派工，无法重复派工");
+        if (string.IsNullOrWhiteSpace(repairStaff)) return (false, "请选择被派人员");
+        var now = DateTime.Now;
+        main.RepairStaff = repairStaff.Trim();
+        main.Dispatch = string.IsNullOrWhiteSpace(dispatchUser) ? currentUserId.ToString() : dispatchUser;
+        main.DispatchDate = dispatchDate ?? now;
+        main.RepairStaffDate = now;
+        if (beginDate.HasValue) main.BeginDate = beginDate.Value;
+        if (endDate.HasValue) main.EndDate = endDate.Value;
+        if (!string.IsNullOrWhiteSpace(dispatchRemark))
+        {
+            var stamp = $"[派工@{now:yyyy-MM-dd HH:mm}] {dispatchRemark}";
+            main.Remark = string.IsNullOrWhiteSpace(main.Remark) ? stamp : stamp + "\n" + main.Remark;
+        }
+        main.Status = 1;
+        main.LastUpdateUserId = currentUserId;
+        main.LastUpdateDate = now;
+        main.FGC_LastModifier = currentUserId.ToString();
+        main.FGC_LastModifyDate = now.ToString("yyyy/MM/dd HH:mm:ss");
+        Repository.Update(main);
+        return (true, "ok");
+    }
+
+    public (int success, int fail, List<string> errors) BatchDispatch(long[] ids, string repairStaff, long currentUserId,
+        string? dispatchUser, DateTime? dispatchDate, DateTime? beginDate, DateTime? endDate, string? dispatchRemark)
+    {
+        int ok = 0, fail = 0;
+        var errors = new List<string>();
+        foreach (var id in ids ?? Array.Empty<long>())
+        {
+            var (success, msg) = Dispatch(id, repairStaff, currentUserId, dispatchUser, dispatchDate, beginDate, endDate, dispatchRemark);
+            if (success) ok++;
+            else { fail++; errors.Add($"#{id}: {msg}"); }
+        }
+        return (ok, fail, errors);
+    }
+
+    /// <summary>
+    /// 当前活跃保养单（Status=1 已派工 / 2 保养中）按 RepairStaff 编码分组的负载计数
+    /// </summary>
+    public Dictionary<string, int> GetPendingCountByStaff()
+    {
+        var rows = Repository.Query<StaffCountRow>(
+            "SELECT RepairStaff AS Staff, COUNT(*) AS Cnt FROM [Facility_BillMain] " +
+            "WHERE [Status] IN (1,2) AND [RepairStaff] IS NOT NULL AND LTRIM(RTRIM([RepairStaff]))<>'' " +
+            "GROUP BY RepairStaff").ToList();
+        var dict = new Dictionary<string, int>();
+        foreach (var r in rows)
+        {
+            if (!string.IsNullOrWhiteSpace(r.Staff)) dict[r.Staff!] = r.Cnt;
+        }
+        return dict;
+    }
+
+    private class StaffCountRow
+    {
+        public string? Staff { get; set; }
+        public int Cnt { get; set; }
+    }
 }
 
 public class BillDetail

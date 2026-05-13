@@ -15,16 +15,22 @@ public class Facility_BillMainController : BaseController
     private readonly Facility_BillMainApp _app;
     private readonly IRepository<Facility_ResourceDetail> _deviceRepo;
     private readonly IRepository<Facility_TheTemplateMain> _tplMainRepo;
+    private readonly IRepository<Basic_Employee> _empRepo;
+    private readonly IRepository<Sys_Dept> _deptRepo;
 
     public Facility_BillMainController(
         IAuth auth,
         Facility_BillMainApp app,
         IRepository<Facility_ResourceDetail> deviceRepo,
-        IRepository<Facility_TheTemplateMain> tplMainRepo) : base(auth)
+        IRepository<Facility_TheTemplateMain> tplMainRepo,
+        IRepository<Basic_Employee> empRepo,
+        IRepository<Sys_Dept> deptRepo) : base(auth)
     {
         _app = app;
         _deviceRepo = deviceRepo;
         _tplMainRepo = tplMainRepo;
+        _empRepo = empRepo;
+        _deptRepo = deptRepo;
     }
 
     public IActionResult Index() => View();
@@ -152,6 +158,60 @@ public class Facility_BillMainController : BaseController
     {
         var (ok, msg) = _app.DeleteBillWithGuard(id);
         return Json(new ResponseData { code = ok ? 0 : 400, msg = msg });
+    }
+
+    /// <summary>保养派工：Status 0→1，挂上 RepairStaff/DispatchDate，可覆盖 BeginDate/EndDate</summary>
+    [HttpPost]
+    public IActionResult Dispatch([FromForm] long id, [FromForm] string repairStaff,
+        [FromForm] DateTime? dispatchDate, [FromForm] DateTime? beginDate, [FromForm] DateTime? endDate,
+        [FromForm] string? dispatchRemark)
+    {
+        var uid = CurrentUser?.User?.Id ?? 0L;
+        var dispatchUser = CurrentUser?.User?.Account;
+        var (ok, msg) = _app.Dispatch(id, repairStaff, uid, dispatchUser, dispatchDate, beginDate, endDate, dispatchRemark);
+        return Json(new ResponseData { code = ok ? 0 : 400, msg = msg });
+    }
+
+    [HttpPost]
+    public IActionResult BatchDispatch([FromForm] long[] ids, [FromForm] string repairStaff,
+        [FromForm] DateTime? dispatchDate, [FromForm] DateTime? beginDate, [FromForm] DateTime? endDate,
+        [FromForm] string? dispatchRemark)
+    {
+        var uid = CurrentUser?.User?.Id ?? 0L;
+        var dispatchUser = CurrentUser?.User?.Account;
+        var (success, fail, errors) = _app.BatchDispatch(ids ?? Array.Empty<long>(), repairStaff, uid, dispatchUser, dispatchDate, beginDate, endDate, dispatchRemark);
+        return Json(new ResponseData
+        {
+            code = 0,
+            msg = $"成功 {success} 张，失败 {fail} 张",
+            data = new { success, fail, errors }
+        });
+    }
+
+    /// <summary>员工列表（含部门、当前待办保养任务数）用于派工选择</summary>
+    [HttpGet]
+    public IActionResult GetEmployees([FromQuery] string? kw = null)
+    {
+        var where = "[Status]=1";
+        object? param = null;
+        if (!string.IsNullOrWhiteSpace(kw))
+        {
+            where += " AND ([Name] LIKE @k OR [EmployeeNumber] LIKE @k)";
+            param = new { k = "%" + kw + "%" };
+        }
+        var emps = _empRepo.Find(where, param, "[Id] DESC").ToList();
+        var deptMap = _deptRepo.Find(null, null, "[Id] ASC").ToDictionary(d => d.Id, d => d.DeptName);
+        var loadMap = _app.GetPendingCountByStaff();
+        var rows = emps.Select(e => new
+        {
+            Id = e.Id,
+            Name = e.Name,
+            EmployeeNumber = e.EmployeeNumber,
+            DeptId = e.DeptId,
+            DeptName = deptMap.TryGetValue(e.DeptId, out var n) ? n : "",
+            PendingCount = loadMap.TryGetValue(e.EmployeeNumber ?? "", out var c) ? c : 0
+        }).ToList();
+        return Json(new TableData { code = 0, count = rows.Count, data = rows });
     }
 
     [HttpPost]
