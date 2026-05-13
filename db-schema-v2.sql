@@ -615,11 +615,13 @@ SELECT N'角色管理',     'sys-role',    '/Sys_Role/Index',                [Id
 INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
 SELECT N'部门管理',     'sys-dept',    '/Sys_Dept/Index',                [Id], 3, 1, NULL FROM [Sys_Module] WHERE [Code]='system';
 INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
-SELECT N'菜单管理',     'sys-module',  '/Sys_Module/Index',              [Id], 4, 1, NULL FROM [Sys_Module] WHERE [Code]='system';
+SELECT N'员工主数据',   'sys-employee','/Basic_Employee/Index',          [Id], 4, 1, NULL FROM [Sys_Module] WHERE [Code]='system';
 INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
-SELECT N'全局设置',     'sys-setting', '/Sys_Setting/Index',             [Id], 5, 1, NULL FROM [Sys_Module] WHERE [Code]='system';
+SELECT N'菜单管理',     'sys-module',  '/Sys_Module/Index',              [Id], 5, 1, NULL FROM [Sys_Module] WHERE [Code]='system';
 INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
-SELECT N'版本记录',     'sys-version', '/Sys_Version/Index',             [Id], 6, 1, NULL FROM [Sys_Module] WHERE [Code]='system';
+SELECT N'全局设置',     'sys-setting', '/Sys_Setting/Index',             [Id], 6, 1, NULL FROM [Sys_Module] WHERE [Code]='system';
+INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
+SELECT N'版本记录',     'sys-version', '/Sys_Version/Index',             [Id], 7, 1, NULL FROM [Sys_Module] WHERE [Code]='system';
 GO
 
 /* --- 5.4 bind all menus to admin role --- */
@@ -661,7 +663,7 @@ INSERT INTO [Sys_Version] ([Version], [ReleaseDate], [Title], [Content], [IsCurr
   0, N'arbore');
 
 INSERT INTO [Sys_Version] ([Version], [ReleaseDate], [Title], [Content], [IsCurrent], [Author]) VALUES
- ('v1.1.0', getdate(), N'保养工单全生命周期 + 附件组件兼容性修复',
+ ('v1.1.0', '2026-05-13', N'保养工单全生命周期 + 附件组件兼容性修复',
   N'## 新增功能' + CHAR(10) +
   N'- 保养派工：列表行级「派工」按钮 + 顶部「批量派工」（状态=新建才允许），员工列表带部门 + 当前待办负载着色' + CHAR(10) +
   N'- 状态流转：派工(0→1) → 开始保养(1→2) → 完工(2→3) → 审核通过(3→4)，每步都有状态守卫' + CHAR(10) +
@@ -679,6 +681,18 @@ INSERT INTO [Sys_Version] ([Version], [ReleaseDate], [Title], [Content], [IsCurr
   N'  不再依赖业务页面 layui.use 列表是否包含 upload；上传增加 loading 反馈与失败提示' + CHAR(10) +
   N'## 体验增强' + CHAR(10) +
   N'- 甘特图横条按 [BeginDate, EndDate] 跨格渲染 + 同设备多单 lane stacking，不再只显示在 BillDate 单格内',
+  0, N'arbore');
+
+INSERT INTO [Sys_Version] ([Version], [ReleaseDate], [Title], [Content], [IsCurrent], [Author]) VALUES
+ ('v1.1.1', getdate(), N'员工主数据：系统管理新增基础资料维护',
+  N'## 新增功能' + CHAR(10) +
+  N'- 系统管理 → 员工主数据（/Basic_Employee/Index）：工号 / 姓名 / 部门 / 状态 CRUD' + CHAR(10) +
+  N'- 列表支持按部门、状态过滤，工号 + 姓名模糊搜索，分页、批量删除、Excel 导出' + CHAR(10) +
+  N'- 工号在全表唯一校验，保存重复将提示「工号 XXX 已存在」' + CHAR(10) +
+  N'- 系统管理菜单顺序调整：用户 / 角色 / 部门 / 员工主数据 / 菜单 / 全局设置 / 版本记录' + CHAR(10) +
+  N'## 关联' + CHAR(10) +
+  N'- 维修单 / 保养单派工时的「员工列表」、保养人姓名显示均来自此表，' + CHAR(10) +
+  N'  请尽快在「员工主数据」里补齐人员后再使用派工功能',
   1, N'arbore');
 GO
 

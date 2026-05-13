@@ -1,0 +1,243 @@
+@{
+    ViewData["Title"] = "员工主数据";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>员工主数据</strong>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md3">
+                    <select id="fltDept" lay-filter="fltDept" lay-search>
+                        <option value="">-- 部门(全部) --</option>
+                    </select>
+                </div>
+                <div class="layui-col-md3">
+                    <select id="fltStatus" lay-filter="fltStatus">
+                        <option value="">-- 状态(全部) --</option>
+                        <option value="1">启用</option>
+                        <option value="0">停用</option>
+                    </select>
+                </div>
+                <div class="layui-col-md3">
+                    <input type="text" id="kw" class="layui-input" placeholder="工号 / 姓名 模糊搜索">
+                </div>
+                <div class="layui-col-md3" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 查询</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-danger" id="btnBatchDel"><i class="layui-icon layui-icon-delete"></i> 批量删除</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-warm" id="btnExport"><i class="layui-icon layui-icon-download-circle"></i> 导出</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="empForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label"><span style="color:#e53935;">*</span>工号</label>
+                    <div class="layui-input-inline"><input type="text" name="EmployeeNumber" class="layui-input" required lay-verify="required" placeholder="如 ZHANG001"></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label"><span style="color:#e53935;">*</span>姓名</label>
+                    <div class="layui-input-inline"><input type="text" name="Name" class="layui-input" required lay-verify="required"></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label"><span style="color:#e53935;">*</span>所属部门</label>
+                    <div class="layui-input-inline">
+                        <select name="DeptId" id="fld_DeptId" lay-search lay-verify="required"></select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-inline" style="padding-top:8px;">
+                        <input type="radio" name="Status" value="1" title="启用" checked />
+                        <input type="radio" name="Status" value="0" title="停用" />
+                    </div>
+                </div>
+            </div>
+            <div style="text-align:center;margin-top:14px;">
+                <button class="layui-btn" lay-submit lay-filter="submitEmp">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+@section Script{
+    <script>
+        var URL_LIST   = '@Url.Action("GetMainList")';
+        var URL_DEPTS  = '@Url.Action("GetDepts")';
+        var URL_SAVE   = '@Url.Action("Save")';
+        var URL_DEL    = '@Url.Action("Delete")';
+        var URL_BDEL   = '@Url.Action("BatchDelete")';
+        var URL_EXPORT = '@Url.Action("ExportExcel")';
+
+        layui.use(['table', 'form', 'layer', 'laydate'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer;
+            function ok(r) { return r && (r.code === 0 || r.code === 200); }
+            function toastOk(m) { layer.msg(m || '操作成功', { icon: 1 }); }
+            function toastErr(m) { layer.msg(m || '操作失败', { icon: 2 }); }
+            function toastWarn(m) { layer.msg(m || '', { icon: 0 }); }
+
+            var deptList = [];
+            function loadDepts(cb) {
+                $.get(URL_DEPTS, function (res) {
+                    if (!ok(res)) return;
+                    deptList = res.data || [];
+                    var opts = '<option value="">-- 部门(全部) --</option>';
+                    deptList.forEach(function (d) {
+                        opts += '<option value="' + d.Id + '">' + d.DeptName + '</option>';
+                    });
+                    $('#fltDept').html(opts);
+                    try { form.render('select'); } catch (e) {}
+                    if (cb) cb();
+                });
+            }
+
+            function statusCell(d) {
+                var s = parseInt(d.Status, 10);
+                if (s === 1) return '<span class="layui-badge layui-bg-green">启用</span>';
+                return '<span class="layui-badge layui-bg-gray">停用</span>';
+            }
+
+            function getWhere() {
+                var list = [];
+                var kw = $('#kw').val();
+                var dept = $('#fltDept').val();
+                var st = $('#fltStatus').val();
+                if (kw) list.push({ field: 'Name', conditional: 'like', value: kw });
+                if (dept !== '' && dept != null) list.push({ field: 'DeptId', conditional: 'eq', value: dept });
+                if (st !== '' && st != null) list.push({ field: 'Status', conditional: 'eq', value: st });
+                return { page: 1, limit: 20, searchParam: list };
+            }
+
+            function renderList() {
+                table.render({
+                    elem: '#GridMain',
+                    id: 'GridMain',
+                    url: URL_LIST,
+                    method: 'post',
+                    where: getWhere(),
+                    page: true,
+                    height: 'full-200',
+                    cols: [[
+                        { type: 'checkbox', fixed: 'left' },
+                        { type: 'numbers', title: '#' },
+                        { field: 'EmployeeNumber', title: '工号', width: 150, sort: true },
+                        { field: 'Name', title: '姓名', width: 140 },
+                        { field: 'DeptName', title: '所属部门', minWidth: 180 },
+                        { field: 'Status', title: '状态', width: 90, templet: statusCell },
+                        { title: '操作', width: 160, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+
+            $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
+            $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+            form.on('select(fltDept)', function () { $('#btnReload').click(); });
+            form.on('select(fltStatus)', function () { $('#btnReload').click(); });
+
+            $('#btnAdd').on('click', function () { openForm({}); });
+
+            $('#btnBatchDel').on('click', function () {
+                var chk = table.checkStatus('GridMain').data || [];
+                if (chk.length === 0) { toastWarn('请勾选要删除的员工'); return; }
+                layer.confirm('确认删除选中的 ' + chk.length + ' 名员工?', function (idx) {
+                    var fd = new FormData();
+                    chk.forEach(function (r) { fd.append('ids', r.Id); });
+                    $.ajax({ url: URL_BDEL, type: 'POST', data: fd, processData: false, contentType: false })
+                        .done(function (res) {
+                            layer.close(idx);
+                            if (ok(res)) { toastOk(res.msg); table.reload('GridMain'); }
+                            else toastErr(res.msg || '删除失败');
+                        });
+                });
+            });
+
+            $('#btnExport').on('click', function () {
+                var $f = $('<form/>', { method: 'POST', action: URL_EXPORT });
+                var w = getWhere();
+                w.searchParam.forEach(function (p, i) {
+                    $f.append('<input name="searchParam[' + i + '].field" value="' + p.field + '">');
+                    $f.append('<input name="searchParam[' + i + '].conditional" value="' + p.conditional + '">');
+                    $f.append('<input name="searchParam[' + i + '].value" value="' + p.value + '">');
+                });
+                $f.append('<input name="page" value="1"><input name="limit" value="999999">');
+                $f.appendTo(document.body).submit().remove();
+            });
+
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'edit') openForm(obj.data);
+                if (obj.event === 'del') {
+                    layer.confirm('确认删除员工「' + (obj.data.Name || '') + '」?', function (idx) {
+                        $.post(URL_DEL, { id: obj.data.Id }, function (res) {
+                            layer.close(idx);
+                            if (ok(res)) { obj.del(); toastOk('删除成功'); }
+                            else toastErr(res.msg || '删除失败');
+                        });
+                    });
+                }
+            });
+
+            form.on('submit(submitEmp)', function (data) {
+                var f = data.field;
+                var payload = {
+                    Id: (f.Id && String(f.Id).trim() !== '') ? f.Id : 0,
+                    EmployeeNumber: (f.EmployeeNumber || '').trim(),
+                    Name: (f.Name || '').trim(),
+                    DeptId: f.DeptId || '',
+                    Status: parseInt(f.Status || 1, 10)
+                };
+                $.post(URL_SAVE, payload, function (res) {
+                    if (ok(res)) { toastOk('保存成功'); layer.closeAll(); table.reload('GridMain'); }
+                    else toastErr(res.msg || '保存失败');
+                });
+                return false;
+            });
+
+            function openForm(row) {
+                row = row || {};
+                layer.open({
+                    type: 1,
+                    area: ['620px', 'auto'],
+                    title: row.Id ? '编辑员工' : '新增员工',
+                    content: $('#tplForm').html(),
+                    shadeClose: false,
+                    success: function (layero, idx) {
+                        var $sel = $(layero).find('#fld_DeptId');
+                        var html = '<option value="">-- 请选择 --</option>';
+                        deptList.forEach(function (d) { html += '<option value="' + d.Id + '">' + d.DeptName + '</option>'; });
+                        $sel.html(html);
+                        try {
+                            form.val('empForm', {
+                                Id: row.Id || 0,
+                                EmployeeNumber: row.EmployeeNumber || '',
+                                Name: row.Name || '',
+                                DeptId: row.DeptId != null ? String(row.DeptId) : '',
+                                Status: row.Status != null ? String(row.Status) : '1'
+                            });
+                        } catch (e) {}
+                        try { form.render(); } catch (e) {}
+                        $(layero).find('#btnCancel').off('click').on('click', function () { layer.close(idx); });
+                    }
+                });
+            }
+
+            loadDepts(function () { renderList(); });
+        });
+    </script>
+}
