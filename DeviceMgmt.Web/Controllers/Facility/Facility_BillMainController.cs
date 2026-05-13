@@ -188,6 +188,34 @@ public class Facility_BillMainController : BaseController
         });
     }
 
+    /// <summary>开始保养：Status 1→2</summary>
+    [HttpPost]
+    public IActionResult StartMaintain([FromForm] long id)
+    {
+        var uid = CurrentUser?.User?.Id ?? 0L;
+        var (ok, msg) = _app.StartMaintain(id, uid);
+        return Json(new ResponseData { code = ok ? 0 : 400, msg = msg });
+    }
+
+    /// <summary>完工：Status 2→3</summary>
+    [HttpPost]
+    public IActionResult FinishMaintain([FromForm] long id, [FromForm] int? isOk, [FromForm] string? finishRemark)
+    {
+        var uid = CurrentUser?.User?.Id ?? 0L;
+        var (ok, msg) = _app.FinishMaintain(id, uid, isOk, finishRemark);
+        return Json(new ResponseData { code = ok ? 0 : 400, msg = msg });
+    }
+
+    /// <summary>审核：Status 3→4</summary>
+    [HttpPost]
+    public IActionResult Audit([FromForm] long id)
+    {
+        var uid = CurrentUser?.User?.Id ?? 0L;
+        var checker = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account;
+        var (ok, msg) = _app.Audit(id, uid, checker);
+        return Json(new ResponseData { code = ok ? 0 : 400, msg = msg });
+    }
+
     /// <summary>员工列表（含部门、当前待办保养任务数）用于派工选择</summary>
     [HttpGet]
     public IActionResult GetEmployees([FromQuery] string? kw = null)

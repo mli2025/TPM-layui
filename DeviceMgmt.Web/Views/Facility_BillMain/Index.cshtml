@@ -124,6 +124,7 @@
 
 <script type="text/html" id="tplBillDetail">
     <div style="padding:14px;">
+        <div id="billActions" style="margin-bottom:10px;padding:6px 0;border-bottom:1px dashed #e2e8f0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"></div>
         <form class="layui-form" lay-filter="billForm">
             <input type="hidden" name="Id">
             <input type="hidden" name="MaintainType">
@@ -241,6 +242,9 @@
         var URL_DISPATCH        = '@Url.Action("Dispatch")';
         var URL_BATCH_DISPATCH  = '@Url.Action("BatchDispatch")';
         var URL_EMPLOYEES       = '@Url.Action("GetEmployees")';
+        var URL_START_MAINTAIN  = '@Url.Action("StartMaintain")';
+        var URL_FINISH_MAINTAIN = '@Url.Action("FinishMaintain")';
+        var URL_AUDIT           = '@Url.Action("Audit")';
 
         layui.use(['table', 'form', 'layer', 'laydate'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate;
@@ -290,6 +294,25 @@
 
             var currentStatus = '';
             var planState = { cycle: 'MONTH', count: 1, startDate: '', devices: [] };
+            var staffNameMap = {}; // EmployeeNumber -> Name
+            function loadStaffMap() {
+                $.get(URL_EMPLOYEES, function (res) {
+                    if (ok(res) && res.data) {
+                        res.data.forEach(function (e) {
+                            if (e.EmployeeNumber) staffNameMap[e.EmployeeNumber] = e.Name || e.EmployeeNumber;
+                        });
+                        // 已渲染过的列表如果存在，刷新一次以替换姓名
+                        try { table.reload('GridMain'); } catch (ex) {}
+                    }
+                });
+            }
+            function staffDisplay(code) {
+                if (!code) return '';
+                var name = staffNameMap[code];
+                return name
+                    ? (name + ' <span style="color:#888;font-size:11px;">(' + code + ')</span>')
+                    : code;
+            }
 
             function getWhere() {
                 var list = [];
@@ -318,17 +341,89 @@
                         { field: 'BeginDate', title: '\u5f00\u59cb\u65f6\u95f4', width: 160, templet: function (d) { return fmtDate(d.BeginDate); } },
                         { field: 'EndDate', title: '\u7ed3\u675f\u65f6\u95f4', width: 160, templet: function (d) { return fmtDate(d.EndDate); } },
                         { field: 'Status', title: '\u72b6\u6001', width: 100, templet: billStatusCell },
-                        { field: 'RepairStaff', title: '\u4fdd\u517b\u4eba', width: 110 },
+                        { field: 'RepairStaff', title: '\u4fdd\u517b\u4eba', width: 150, templet: function (d) { return staffDisplay(d.RepairStaff || d.repairStaff); } },
                         { field: 'Remark', title: '\u5907\u6ce8', minWidth: 160 },
                         { title: '\u64cd\u4f5c', width: 240, toolbar: '#barRow', fixed: 'right' }
                     ]]
                 });
             }
 
+            function renderBillActions(billId, status, main, dlgIdx, readOnly) {
+                var html = '';
+                html += '<span style="color:#666;">' + billStatusCell({ Status: status }) + '</span>';
+                if (main && main.RepairStaff) {
+                    html += '<span style="margin-left:6px;color:#666;font-size:12px;">\u4fdd\u517b\u4eba\uff1a' + staffDisplay(main.RepairStaff) + '</span>';
+                }
+                if (main && main.DispatchDate) {
+                    html += '<span style="margin-left:6px;color:#888;font-size:12px;">\u6d3e\u5de5\u4e8e ' + fmtDate(main.DispatchDate) + '</span>';
+                }
+                html += '<span style="flex:1;"></span>';
+                if (status === 0) {
+                    html += '<button class="layui-btn layui-btn-sm" id="btnGoDispatch" style="background:#1e88e5;color:#fff;"><i class="layui-icon layui-icon-share"></i> \u6d3e\u5de5</button>';
+                }
+                if (status === 1) {
+                    html += '<button class="layui-btn layui-btn-sm" id="btnStartM"><i class="layui-icon layui-icon-play"></i> \u5f00\u59cb\u4fdd\u517b</button>';
+                }
+                if (status === 2) {
+                    html += '<button class="layui-btn layui-btn-sm layui-btn-normal" id="btnFinishM"><i class="layui-icon layui-icon-ok-circle"></i> \u5b8c\u5de5</button>';
+                }
+                if (status === 3) {
+                    html += '<button class="layui-btn layui-btn-sm layui-btn-warm" id="btnAuditM"><i class="layui-icon layui-icon-auz"></i> \u5ba1\u6838\u901a\u8fc7</button>';
+                }
+                $('#billActions').html(html);
+
+                $('#btnGoDispatch').on('click', function () {
+                    layer.close(dlgIdx);
+                    openDispatchDialog('single', { ids: [billId], row: main });
+                });
+                $('#btnStartM').on('click', function () {
+                    layer.confirm('\u786e\u8ba4\u300c\u5f00\u59cb\u4fdd\u517b\u300d\uff1f\u300c\u5f00\u59cb\u65f6\u95f4\u300d\u5c06\u88ab\u5f53\u524d\u65f6\u95f4\u8986\u76d6', function (i) {
+                        $.post(URL_START_MAINTAIN, { id: billId }, function (res) {
+                            layer.close(i);
+                            if (ok(res)) { layer.close(dlgIdx); refreshCurrentView(); toastOk('\u5df2\u5f00\u59cb\u4fdd\u517b'); }
+                            else toastErr(res.msg || '\u64cd\u4f5c\u5931\u8d25');
+                        });
+                    });
+                });
+                $('#btnFinishM').on('click', function () {
+                    layer.open({
+                        type: 1, title: '\u5b8c\u5de5\u786e\u8ba4', area: ['520px', '320px'],
+                        content: '<div style="padding:14px;">'
+                            + '<div class="layui-form-item"><label class="layui-form-label">\u4fdd\u517b\u7ed3\u679c</label>'
+                            + '<div class="layui-input-block"><select id="finIsOk"><option value="1">\u6b63\u5e38</option><option value="0">\u5f02\u5e38</option></select></div></div>'
+                            + '<div class="layui-form-item"><label class="layui-form-label">\u5b8c\u5de5\u5907\u6ce8</label>'
+                            + '<div class="layui-input-block"><textarea id="finRemark" rows="3" class="layui-textarea" placeholder="\u53ef\u9009"></textarea></div></div>'
+                            + '</div>',
+                        btn: ['\u63d0\u4ea4', '\u53d6\u6d88'],
+                        success: function () { form.render(); },
+                        yes: function (i) {
+                            $.post(URL_FINISH_MAINTAIN, {
+                                id: billId,
+                                isOk: $('#finIsOk').val(),
+                                finishRemark: $('#finRemark').val() || ''
+                            }, function (res) {
+                                layer.close(i);
+                                if (ok(res)) { layer.close(dlgIdx); refreshCurrentView(); toastOk('\u5df2\u5b8c\u5de5'); }
+                                else toastErr(res.msg || '\u64cd\u4f5c\u5931\u8d25');
+                            });
+                        }
+                    });
+                });
+                $('#btnAuditM').on('click', function () {
+                    layer.confirm('\u786e\u8ba4\u5ba1\u6838\u901a\u8fc7\uff1f', function (i) {
+                        $.post(URL_AUDIT, { id: billId }, function (res) {
+                            layer.close(i);
+                            if (ok(res)) { layer.close(dlgIdx); refreshCurrentView(); toastOk('\u5df2\u5ba1\u6838'); }
+                            else toastErr(res.msg || '\u64cd\u4f5c\u5931\u8d25');
+                        });
+                    });
+                });
+            }
+
             function openDetail(row, readOnly) {
-                layer.open({
+                var dlgIdx = layer.open({
                     type: 1,
-                    area: ['1000px', '680px'],
+                    area: ['1000px', '720px'],
                     title: (readOnly ? '\u67e5\u770b' : '\u7f16\u8f91') + ' \u4fdd\u517b\u5355 ' + (row.BillNo || ''),
                     content: $('#tplBillDetail').html(),
                     btn: readOnly ? ['\u5173\u95ed'] : ['\u4fdd\u5b58', '\u5173\u95ed'],
@@ -341,7 +436,7 @@
                             if (!ok(res) || !res.data) { toastErr(res.msg || '\u52a0\u8f7d\u5931\u8d25'); return; }
                             var m = res.data.Main || {};
                             var rawCycle = (m.MaintainType || '').toUpperCase();
-                            var rawStatus = m.Status == null ? 0 : m.Status;
+                            var rawStatus = parseInt(m.Status, 10); if (isNaN(rawStatus)) rawStatus = 0;
                             m.BillDate = fmtDate(m.BillDate);
                             m.BeginDate = fmtDate(m.BeginDate);
                             m.EndDate = fmtDate(m.EndDate);
@@ -350,6 +445,7 @@
                             $('#fld_BillNoText').text(m.BillNo || '');
                             $('#fld_MaintainTypeText').text(cycleText(rawCycle));
                             $('#fld_StatusText').text(statusText(rawStatus));
+                            renderBillActions(row.Id, rawStatus, m, dlgIdx, readOnly);
                             if (readOnly) {
                                 $('form[lay-filter=billForm] input').attr('readonly', true).attr('disabled', true);
                             }
@@ -788,10 +884,13 @@
                 var totalDays = Math.round((endMs - startMs) / 86400000) + 1;
                 $('#ganttRange').text(fmtDate(range.start) + ' ~ ' + fmtDate(range.end));
 
+                // 跨格渲染：用单据的 [BeginDate, EndDate] 区间和当前可视窗口求交集
                 var bills = allBills.filter(function (b) {
-                    var bd = b.BillDate || b.billDate;
-                    var bs = bd ? new Date(bd).getTime() : 0;
-                    return bs >= startMs && bs <= endMs;
+                    var s = new Date(b.BeginDate || b.beginDate || b.BillDate || b.billDate || 0).getTime();
+                    var e = new Date(b.EndDate   || b.endDate   || b.BillDate || b.billDate || 0).getTime();
+                    if (!s) return false;
+                    if (!e || e < s) e = s + 86400000;
+                    return e >= startMs && s <= endMs;
                 });
 
                 var groups = {};
@@ -826,8 +925,32 @@
 
                 var labelW = 160, cellW = ganttScale === 'YEAR' ? 80 : (ganttScale === 'QUARTER' ? 60 : 36);
                 var totalW = labelW + cells.length * cellW;
+                var rowH = 30; // 每条 bar 占用的高度
+                // 计算每个分组里的 bar 行内堆叠：相同 (left,width) 区间内多张单据需要堆叠
+                function layoutBars(arr) {
+                    // 排序，按开始时间升序，简单堆叠：每条挑选第一条无冲突的轨道
+                    var sorted = arr.slice().sort(function (a, b) {
+                        var sa = new Date(a.BeginDate || a.BillDate || 0).getTime();
+                        var sb = new Date(b.BeginDate || b.BillDate || 0).getTime();
+                        return sa - sb;
+                    });
+                    var lanes = []; // 每条 lane 保存最后结束的 ms
+                    sorted.forEach(function (b) {
+                        var s = new Date(b.BeginDate || b.BillDate || 0).getTime();
+                        var e = new Date(b.EndDate   || b.BillDate || 0).getTime();
+                        if (!e || e < s) e = s + 86400000;
+                        var laneIdx = -1;
+                        for (var i = 0; i < lanes.length; i++) {
+                            if (s > lanes[i]) { laneIdx = i; break; }
+                        }
+                        if (laneIdx < 0) { laneIdx = lanes.length; lanes.push(e); }
+                        else lanes[laneIdx] = e;
+                        b.__lane = laneIdx;
+                    });
+                    return { items: sorted, lanes: Math.max(1, lanes.length) };
+                }
 
-                var html = '<table style="border-collapse:collapse;width:' + totalW + 'px;font-size:12px;">';
+                var html = '<table style="border-collapse:collapse;width:' + totalW + 'px;font-size:12px;table-layout:fixed;">';
                 html += '<thead><tr><th style="position:sticky;left:0;background:#f5f5f5;border:1px solid #e2e8f0;padding:6px;width:' + labelW + 'px;text-align:left;">' + (ganttGroup === 'facility' ? '\u8bbe\u5907' : '\u4fdd\u517b\u5355') + '</th>';
                 cells.forEach(function (c) {
                     html += '<th style="border:1px solid #e2e8f0;padding:4px 2px;width:' + cellW + 'px;background:#f5f5f5;font-weight:normal;">' + c.label + '</th>';
@@ -838,27 +961,38 @@
                     html += '<tr><td colspan="' + (cells.length + 1) + '" style="padding:24px;text-align:center;color:#888;">\u6682\u65e0\u6570\u636e</td></tr>';
                 } else {
                     groupOrder.forEach(function (key) {
-                        html += '<tr><td style="position:sticky;left:0;background:#fff;border:1px solid #e2e8f0;padding:6px;">' + key + '</td>';
-                        cells.forEach(function (c) {
-                            var items = groups[key].filter(function (b) {
-                                var bd = b.BillDate || b.billDate;
-                                var bs = bd ? new Date(bd).getTime() : 0;
-                                return bs >= c.start && bs <= c.end;
-                            });
-                            html += '<td style="border:1px solid #e2e8f0;padding:1px;position:relative;">';
-                            items.forEach(function (b) {
-                                var sid = b.Status != null ? b.Status : b.status;
-                                var sn = parseInt(sid, 10);
-                                if (isNaN(sn)) sn = 0;
-                                var color = statusColor(sn);
-                                html += '<div class="gantt-bar" data-id="' + rowId(b) + '" title="' + (b.BillNo || '') + '" '
-                                    + 'style="background:' + color + ';color:#fff;font-size:10px;border-radius:3px;'
-                                    + 'padding:2px 4px;margin-bottom:1px;cursor:pointer;white-space:nowrap;overflow:hidden;'
-                                    + 'text-overflow:ellipsis;">' + (b.BillNo || '').replace(/^TPM0*/, 'TPM') + '</div>';
-                            });
-                            html += '</td>';
+                        var layout = layoutBars(groups[key]);
+                        var rowHeight = Math.max(rowH, layout.lanes * rowH);
+                        html += '<tr style="height:' + (rowHeight + 8) + 'px;">';
+                        html += '<td style="position:sticky;left:0;background:#fff;border:1px solid #e2e8f0;padding:6px;vertical-align:top;">' + key + '</td>';
+                        // 用一个跨列的 wrapper TD：保留每个时间格的网格背景，bar 用 absolute 定位
+                        html += '<td colspan="' + cells.length + '" style="border:1px solid #e2e8f0;padding:0;position:relative;">';
+                        // 背景刻度（用线性渐变模拟）
+                        html += '<div style="position:relative;height:' + (rowHeight + 6) + 'px;width:' + (cells.length * cellW) + 'px;'
+                            + 'background-image:linear-gradient(to right, #e2e8f0 0, #e2e8f0 1px, transparent 1px, transparent ' + cellW + 'px);'
+                            + 'background-size:' + cellW + 'px 100%;">';
+                        layout.items.forEach(function (b) {
+                            var sid = b.Status != null ? b.Status : b.status;
+                            var sn = parseInt(sid, 10); if (isNaN(sn)) sn = 0;
+                            var color = statusColor(sn);
+                            var s = new Date(b.BeginDate || b.BillDate || 0).getTime();
+                            var e = new Date(b.EndDate   || b.BillDate || 0).getTime();
+                            if (!e || e < s) e = s + 86400000;
+                            // clamp 到可视窗口
+                            var sClamp = Math.max(s, startMs);
+                            var eClamp = Math.min(e, endMs);
+                            var totalMs = endMs - startMs;
+                            var leftPx = ((sClamp - startMs) / totalMs) * (cells.length * cellW);
+                            var widthPx = Math.max(8, ((eClamp - sClamp) / totalMs) * (cells.length * cellW));
+                            var topPx = b.__lane * rowH + 3;
+                            html += '<div class="gantt-bar" data-id="' + rowId(b) + '" title="' + (b.BillNo || '') + ' \u00b7 ' + fmtDate(b.BeginDate) + ' ~ ' + fmtDate(b.EndDate) + '" '
+                                + 'style="position:absolute;left:' + leftPx + 'px;width:' + widthPx + 'px;top:' + topPx + 'px;height:' + (rowH - 6) + 'px;'
+                                + 'background:' + color + ';color:#fff;font-size:11px;border-radius:4px;'
+                                + 'padding:2px 6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+                                + 'box-shadow:0 1px 2px rgba(0,0,0,.08);line-height:' + (rowH - 10) + 'px;">'
+                                + (b.BillNo || '').replace(/^TPM0*/, 'TPM') + '</div>';
                         });
-                        html += '</tr>';
+                        html += '</div></td></tr>';
                     });
                 }
                 html += '</tbody></table>';
@@ -998,6 +1132,7 @@
                 return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
             }
 
+            loadStaffMap();
             renderList();
             form.render();
         });

@@ -293,6 +293,75 @@ public class Facility_BillMainApp : BaseApp<Facility_BillMain>
     }
 
     /// <summary>
+    /// 开始保养：状态 1(已派工) -> 2(保养中)，BeginDate 用实际开工时间覆盖
+    /// </summary>
+    public (bool ok, string msg) StartMaintain(long id, long currentUserId)
+    {
+        var main = Repository.FindSingle(id);
+        if (main == null) return (false, "保养单不存在");
+        var st = main.Status ?? 0;
+        if (st != 1) return (false, st == 0 ? "请先派工" : st == 2 ? "已在保养中" : "当前状态不允许开始保养");
+        var now = DateTime.Now;
+        main.BeginDate = now;
+        main.Status = 2;
+        main.LastUpdateUserId = currentUserId;
+        main.LastUpdateDate = now;
+        main.FGC_LastModifier = currentUserId.ToString();
+        main.FGC_LastModifyDate = now.ToString("yyyy/MM/dd HH:mm:ss");
+        Repository.Update(main);
+        return (true, "ok");
+    }
+
+    /// <summary>
+    /// 完工：状态 2(保养中) -> 3(已保养)，EndDate 用实际完工时间覆盖，LastMaintainTime=now
+    /// </summary>
+    public (bool ok, string msg) FinishMaintain(long id, long currentUserId, int? isOk = null, string? finishRemark = null)
+    {
+        var main = Repository.FindSingle(id);
+        if (main == null) return (false, "保养单不存在");
+        var st = main.Status ?? 0;
+        if (st != 2) return (false, st < 2 ? "请先开始保养" : "该单已完工或已审核");
+        var now = DateTime.Now;
+        main.EndDate = now;
+        main.LastMaintainTime = now;
+        if (isOk.HasValue) main.IsOK = isOk.Value;
+        if (!string.IsNullOrWhiteSpace(finishRemark))
+        {
+            var stamp = $"[完工@{now:yyyy-MM-dd HH:mm}] {finishRemark}";
+            main.Remark = string.IsNullOrWhiteSpace(main.Remark) ? stamp : stamp + "\n" + main.Remark;
+        }
+        main.Status = 3;
+        main.LastUpdateUserId = currentUserId;
+        main.LastUpdateDate = now;
+        main.FGC_LastModifier = currentUserId.ToString();
+        main.FGC_LastModifyDate = now.ToString("yyyy/MM/dd HH:mm:ss");
+        Repository.Update(main);
+        return (true, "ok");
+    }
+
+    /// <summary>
+    /// 审核：状态 3(已保养) -> 4(已审核)
+    /// </summary>
+    public (bool ok, string msg) Audit(long id, long currentUserId, string? checkerName = null)
+    {
+        var main = Repository.FindSingle(id);
+        if (main == null) return (false, "保养单不存在");
+        var st = main.Status ?? 0;
+        if (st != 3) return (false, st < 3 ? "请先完成保养" : "该单已审核");
+        var now = DateTime.Now;
+        main.Checker = string.IsNullOrWhiteSpace(checkerName) ? currentUserId.ToString() : checkerName;
+        main.CheckDate = now;
+        main.CheckerUserId = currentUserId;
+        main.Status = 4;
+        main.LastUpdateUserId = currentUserId;
+        main.LastUpdateDate = now;
+        main.FGC_LastModifier = currentUserId.ToString();
+        main.FGC_LastModifyDate = now.ToString("yyyy/MM/dd HH:mm:ss");
+        Repository.Update(main);
+        return (true, "ok");
+    }
+
+    /// <summary>
     /// 当前活跃保养单（Status=1 已派工 / 2 保养中）按 RepairStaff 编码分组的负载计数
     /// </summary>
     public Dictionary<string, int> GetPendingCountByStaff()
