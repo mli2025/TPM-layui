@@ -1,0 +1,175 @@
+@{
+    ViewBag.Title = "版本记录";
+    Layout = "~/Views/Shared/_LayoutInner.cshtml";
+}
+
+<div class="layui-card">
+    <div class="layui-card-header">
+        <span style="font-weight:600">版本记录</span>
+        <span style="margin-left:12px;color:#888;font-size:12px">发布新版本会自动取消之前的"当前版本"标记</span>
+    </div>
+    <div class="layui-card-body">
+        <div style="margin-bottom:10px">
+            <button class="layui-btn" id="btnNew"><i class="layui-icon">&#xe654;</i> 发布版本</button>
+            <button class="layui-btn layui-btn-normal" id="btnRefresh"><i class="layui-icon">&#xe669;</i> 刷新</button>
+        </div>
+        <div id="timeline"></div>
+    </div>
+</div>
+
+<script type="text/html" id="tplForm">
+    <form class="layui-form" lay-filter="versionForm" style="padding:14px">
+        <input type="hidden" name="Id">
+        <div class="layui-form-item">
+            <label class="layui-form-label">版本号<span style="color:red">*</span></label>
+            <div class="layui-input-block">
+                <input type="text" name="Version" required placeholder="v1.2.3" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">发布日期</label>
+            <div class="layui-input-block">
+                <input type="text" name="ReleaseDate" id="ReleaseDate" placeholder="yyyy-MM-dd" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">标题<span style="color:red">*</span></label>
+            <div class="layui-input-block">
+                <input type="text" name="Title" required class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">设为当前</label>
+            <div class="layui-input-block">
+                <input type="checkbox" name="IsCurrent" lay-skin="switch" lay-text="是|否">
+            </div>
+        </div>
+        <div class="layui-form-item layui-form-text">
+            <label class="layui-form-label">变更内容</label>
+            <div class="layui-input-block">
+                <textarea name="Content" rows="8" placeholder="支持 Markdown 风格的纯文本，每行一条" class="layui-textarea"></textarea>
+            </div>
+        </div>
+    </form>
+</script>
+
+@section Script {
+    <style>
+        .ver-line { border-left:2px solid #d6e4dd; margin-left:18px; padding-left:18px }
+        .ver-item { position:relative; margin-bottom:18px; padding:10px 14px; background:#fff; border:1px solid #eee; border-radius:6px }
+        .ver-item .ver-dot { position:absolute; left:-26px; top:14px; width:12px; height:12px; border-radius:50%; background:#fff; border:2px solid #888 }
+        .ver-item.current .ver-dot { background:#1F4D3B; border-color:#1F4D3B; box-shadow:0 0 0 4px rgba(31,77,59,.15) }
+        .ver-item .ver-no { font-weight:600; font-size:16px; color:#1F4D3B }
+        .ver-item.current .ver-no::after { content:"当前"; margin-left:6px; padding:0 6px; background:#1F4D3B; color:#fff; font-size:12px; border-radius:3px }
+        .ver-item .ver-date { color:#888; font-size:12px; margin-left:8px }
+        .ver-item .ver-title { margin-top:4px; font-size:14px }
+        .ver-item .ver-content { margin-top:8px; color:#555; white-space:pre-wrap; line-height:1.6 }
+        .ver-item .ver-ops { float:right }
+    </style>
+
+    <script>
+        layui.use(['form','layer','laydate'], function () {
+            var $ = layui.jquery, form = layui.form, layer = layui.layer, laydate = layui.laydate;
+            var URLList = '@Url.Action("List","Sys_Version")';
+            var URLSave = '@Url.Action("Save","Sys_Version")';
+            var URLDelete = '@Url.Action("Delete","Sys_Version")';
+
+            function escapeHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            function fmtDate(d) {
+                if (!d) return '';
+                var dt = new Date(d);
+                return isNaN(dt) ? '' : dt.toISOString().substring(0, 10);
+            }
+
+            function render() {
+                $.get(URLList, function (res) {
+                    if (res.code !== 0) return layer.msg(res.msg || '加载失败');
+                    if (!res.data || !res.data.length) {
+                        $('#timeline').html('<div style="padding:30px;text-align:center;color:#888">暂无版本记录</div>');
+                        return;
+                    }
+                    var html = '<div class="ver-line">' + res.data.map(function (v) {
+                        return '<div class="ver-item ' + (v.IsCurrent ? 'current' : '') + '" data-id="' + v.Id + '">'
+                            + '<span class="ver-dot"></span>'
+                            + '<span class="ver-no">' + escapeHtml(v.Version) + '</span>'
+                            + '<span class="ver-date">' + fmtDate(v.ReleaseDate) + '</span>'
+                            + '<span class="ver-ops">'
+                            + '  <a class="layui-btn layui-btn-xs" data-act="edit">编辑</a>'
+                            + '  <a class="layui-btn layui-btn-xs layui-btn-danger" data-act="del">删除</a>'
+                            + '</span>'
+                            + '<div class="ver-title">' + escapeHtml(v.Title) + '</div>'
+                            + '<div class="ver-content">' + escapeHtml(v.Content || '') + '</div>'
+                            + '</div>';
+                    }).join('') + '</div>';
+                    $('#timeline').html(html);
+                });
+            }
+
+            function openForm(row) {
+                var html = $('#tplForm').html();
+                layer.open({
+                    type: 1, area: ['620px', '600px'], title: row ? '编辑版本' : '发布新版本',
+                    content: html,
+                    success: function (layero) {
+                        laydate.render({ elem: '#ReleaseDate' });
+                        if (row) {
+                            var $f = $(layero).find('form');
+                            $f.find('[name=Id]').val(row.Id);
+                            $f.find('[name=Version]').val(row.Version);
+                            $f.find('[name=Title]').val(row.Title);
+                            $f.find('[name=ReleaseDate]').val(fmtDate(row.ReleaseDate));
+                            $f.find('[name=Content]').val(row.Content || '');
+                            $f.find('[name=IsCurrent]').prop('checked', row.IsCurrent);
+                        } else {
+                            $(layero).find('[name=ReleaseDate]').val(new Date().toISOString().substring(0, 10));
+                            $(layero).find('[name=IsCurrent]').prop('checked', true);
+                        }
+                        form.render();
+                    },
+                    btn: ['保存', '取消'],
+                    yes: function (idx, layero) {
+                        var data = {};
+                        $(layero).find('form').serializeArray().forEach(function (kv) { data[kv.name] = kv.value; });
+                        data.IsCurrent = $(layero).find('[name=IsCurrent]').prop('checked');
+                        if (!data.Version || !data.Title) { layer.msg('版本号/标题必填'); return; }
+                        $.ajax({
+                            url: URLSave, method: 'POST', contentType: 'application/json',
+                            data: JSON.stringify(data),
+                            success: function (res) {
+                                if (res.code === 0) { layer.close(idx); render(); layer.msg('已保存'); }
+                                else layer.msg(res.msg || '保存失败');
+                            }
+                        });
+                    }
+                });
+            }
+
+            $('#btnNew').on('click', function () { openForm(null); });
+            $('#btnRefresh').on('click', render);
+
+            $('#timeline').on('click', '[data-act]', function () {
+                var act = $(this).data('act');
+                var id = $(this).closest('.ver-item').data('id');
+                $.get(URLList, function (res) {
+                    var row = (res.data || []).find(function (x) { return String(x.Id) === String(id); });
+                    if (!row) return;
+                    if (act === 'edit') openForm(row);
+                    if (act === 'del') {
+                        layer.confirm('确认删除版本 ' + row.Version + ' ?', function (idx) {
+                            $.post(URLDelete, { id: id }, function (r) {
+                                if (r.code === 0) { layer.close(idx); render(); layer.msg('已删除'); }
+                                else layer.msg(r.msg || '删除失败');
+                            });
+                        });
+                    }
+                });
+            });
+
+            render();
+        });
+    </script>
+}

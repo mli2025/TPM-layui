@@ -1,0 +1,127 @@
+@{
+    ViewBag.Title = "全局设置";
+    Layout = "~/Views/Shared/_LayoutInner.cshtml";
+}
+
+<div class="layui-card">
+    <div class="layui-card-header">
+        <span style="font-weight:600">全局设置</span>
+        <span style="margin-left:12px;color:#888;font-size:12px">修改后点击"保存"立即生效；首次安装后请先校验附件存储路径</span>
+    </div>
+    <div class="layui-card-body">
+        <div class="layui-tab layui-tab-brief" lay-filter="settingTab">
+            <ul class="layui-tab-title" id="tabTitles"></ul>
+            <div class="layui-tab-content" id="tabContents"></div>
+        </div>
+        <div style="text-align:right;margin-top:10px">
+            <button class="layui-btn layui-btn-normal" id="btnReload">
+                <i class="layui-icon">&#xe669;</i> 重载缓存
+            </button>
+            <button class="layui-btn" id="btnSave">
+                <i class="layui-icon">&#xe605;</i> 保存
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Script {
+    <script>
+        layui.use(['form','layer','element'], function () {
+            var $ = layui.jquery, form = layui.form, element = layui.element, layer = layui.layer;
+            var URLList = '@Url.Action("List","Sys_Setting")';
+            var URLSave = '@Url.Action("Save","Sys_Setting")';
+            var URLReload = '@Url.Action("Reload","Sys_Setting")';
+
+            var GroupLabels = {
+                display: '显示',
+                system:  '系统',
+                attachment: '附件',
+                security: '安全',
+                mobile: '移动端'
+            };
+
+            function renderAll() {
+                $.get(URLList, function (res) {
+                    if (res.code !== 0) return layer.msg(res.msg || '加载失败');
+                    var groups = {};
+                    res.data.forEach(function (s) {
+                        (groups[s.Group] = groups[s.Group] || []).push(s);
+                    });
+                    var titles = '', contents = '', first = true;
+                    Object.keys(groups).forEach(function (gk) {
+                        var label = GroupLabels[gk] || gk;
+                        titles += '<li lay-id="' + gk + '"' + (first ? ' class="layui-this"' : '') + '>' + label + '</li>';
+                        var rows = groups[gk].map(function (s) {
+                            return renderRow(s);
+                        }).join('');
+                        contents += '<div class="layui-tab-item' + (first ? ' layui-show' : '') + '"><form class="layui-form" lay-filter="form_' + gk + '">'
+                            + '<table class="layui-table"><colgroup><col width="220"><col><col width="280"></colgroup>'
+                            + '<thead><tr><th>标题</th><th>值</th><th>说明</th></tr></thead><tbody>'
+                            + rows + '</tbody></table></form></div>';
+                        first = false;
+                    });
+                    $('#tabTitles').html(titles);
+                    $('#tabContents').html(contents);
+                    element.render('tab', 'settingTab');
+                    form.render();
+                });
+            }
+
+            function renderRow(s) {
+                var input;
+                var v = (s.Value == null) ? '' : s.Value;
+                if (s.ValueType === 'bool') {
+                    var checked = String(v).toLowerCase() === 'true' ? 'checked' : '';
+                    input = '<input type="checkbox" name="' + s.Key + '" lay-skin="switch" lay-text="开|关" ' + checked + (s.Editable ? '' : ' disabled') + '>';
+                } else if (s.ValueType === 'int' || s.ValueType === 'long') {
+                    input = '<input type="number" name="' + s.Key + '" value="' + v + '" class="layui-input"' + (s.Editable ? '' : ' readonly') + '>';
+                } else if (v.length > 80) {
+                    input = '<textarea name="' + s.Key + '" class="layui-textarea" rows="3"' + (s.Editable ? '' : ' readonly') + '>' + escapeHtml(v) + '</textarea>';
+                } else {
+                    input = '<input type="text" name="' + s.Key + '" value="' + escapeHtml(v) + '" class="layui-input"' + (s.Editable ? '' : ' readonly') + '>';
+                }
+                return '<tr>'
+                    + '<td>' + escapeHtml(s.Title) + '<br><span style="color:#999;font-size:12px">' + s.Key + '</span></td>'
+                    + '<td>' + input + '</td>'
+                    + '<td style="color:#666">' + escapeHtml(s.Descr || '') + '</td>'
+                    + '</tr>';
+            }
+
+            function escapeHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+            }
+
+            $('#btnSave').on('click', function () {
+                var payload = {};
+                $('input[name], textarea[name]').each(function () {
+                    var $el = $(this);
+                    var k = $el.attr('name');
+                    if (!k) return;
+                    if (this.type === 'checkbox') payload[k] = $el.prop('checked') ? 'true' : 'false';
+                    else payload[k] = $el.val();
+                });
+                $.ajax({
+                    url: URLSave, method: 'POST', contentType: 'application/json',
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        if (res.code === 0) {
+                            layer.msg('已保存 ' + res.data + ' 项，需刷新页面以重新加载 AppSettings', { icon: 1 });
+                        } else {
+                            layer.msg(res.msg || '保存失败', { icon: 2 });
+                        }
+                    }
+                });
+            });
+
+            $('#btnReload').on('click', function () {
+                $.get(URLReload, function (res) {
+                    if (res.code === 0) { renderAll(); layer.msg('已重载', { icon: 1 }); }
+                });
+            });
+
+            renderAll();
+        });
+    </script>
+}

@@ -3,7 +3,6 @@ using System.Text;
 using Dapper;
 using DeviceMgmt.Repository.Interface;
 using Infrastructure;
-using Infrastructure.Snowflake;
 
 namespace DeviceMgmt.Repository.Core;
 
@@ -63,15 +62,17 @@ public class Repository<T> : IRepository<T> where T : Entity
 
     public long Insert(T entity)
     {
-        var (table, props, id) = Meta();
-        if (entity.Id == 0) entity.Id = IdGenerator.NextId();
-        var insertProps = props.Where(p => p.Name != "Id" || entity.Id != 0).ToArray();
+        // [Id] is bigint IDENTITY(1,1) in all tables; never include it in INSERT.
+        // Return new Id from SCOPE_IDENTITY() in a single round-trip.
+        var (table, props, _) = Meta();
+        var insertProps = props.Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)).ToArray();
         var cols = string.Join(",", insertProps.Select(p => $"[{p.Name}]"));
         var vals = string.Join(",", insertProps.Select(p => "@" + p.Name));
-        var sql = $"INSERT INTO {table}({cols}) VALUES({vals})";
+        var sql = $"INSERT INTO {table}({cols}) VALUES({vals}); SELECT CAST(SCOPE_IDENTITY() AS bigint);";
         using var conn = _unitWork.OpenConnection();
-        conn.Execute(sql, entity);
-        return entity.Id;
+        var newId = conn.ExecuteScalar<long>(sql, entity);
+        entity.Id = newId;
+        return newId;
     }
 
     public int Update(T entity)
