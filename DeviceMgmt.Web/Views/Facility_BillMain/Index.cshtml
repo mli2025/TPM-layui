@@ -1,6 +1,59 @@
 @{
     ViewData["Title"] = "\u8bbe\u5907\u4fdd\u517b\u5355\u5217\u8868";
 }
+@section Style{
+<style>
+    /* ================= Gantt 专业化样式 ================= */
+    .gantt-toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;background:linear-gradient(180deg,#ffffff,#f8fafc);border:1px solid #e2e8f0;border-radius:8px 8px 0 0;}
+    .gantt-toolbar .gtb-block{display:flex;align-items:center;gap:6px;}
+    .gantt-toolbar .gtb-label{font-size:12px;color:#64748b;margin-right:2px;}
+    .gantt-toolbar .layui-btn-group .layui-btn{margin-right:0;}
+    .gantt-toolbar .layui-btn-group .layui-btn-sm{height:30px;line-height:30px;padding:0 14px;font-size:12px;border-radius:0;}
+    .gantt-toolbar .layui-btn-group .layui-btn-sm:first-child{border-radius:4px 0 0 4px;}
+    .gantt-toolbar .layui-btn-group .layui-btn-sm:last-child{border-radius:0 4px 4px 0;}
+    .gantt-toolbar .gantt-dateinput{width:150px;height:30px;line-height:30px;border:1px solid #cbd5e1;border-radius:4px;padding:0 28px 0 10px;font-size:12px;background:#fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%2364748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>') no-repeat right 8px center;cursor:pointer;}
+    .gantt-toolbar .gtb-right{margin-left:auto;display:flex;align-items:center;gap:6px;}
+    .gantt-toolbar .gantt-range{display:inline-block;min-width:240px;text-align:center;font-weight:600;color:#1F4D3B;font-size:13px;padding:0 10px;letter-spacing:.5px;}
+    .gantt-toolbar .gtb-nav{height:30px;line-height:30px;padding:0 12px;}
+    .gantt-toolbar .gtb-today{height:30px;line-height:30px;padding:0 14px;border:1px solid #1F4D3B;color:#1F4D3B;background:#fff;border-radius:4px;font-size:12px;}
+    .gantt-toolbar .gtb-today:hover{background:#1F4D3B;color:#fff;}
+
+    .gantt-legend{display:flex;gap:18px;flex-wrap:wrap;padding:8px 14px;background:#fafbfc;border:1px solid #e2e8f0;border-top:none;font-size:12px;color:#475569;}
+    .gantt-legend .gl-item{display:inline-flex;align-items:center;gap:6px;}
+    .gantt-legend .gl-dot{display:inline-block;width:10px;height:10px;border-radius:2px;}
+
+    .gantt-board{overflow:auto;max-height:580px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;background:#fff;position:relative;}
+    .gantt-board table{border-collapse:separate;border-spacing:0;font-size:12px;}
+    .gantt-board thead .row-major th{padding:6px 4px;background:linear-gradient(180deg,#26593F,#1F4D3B);color:#fff;border-right:1px solid rgba(255,255,255,.15);border-bottom:1px solid #1F4D3B;font-weight:600;letter-spacing:1px;text-align:center;}
+    .gantt-board thead .row-minor th{padding:5px 2px;background:#f8fafc;color:#475569;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;font-weight:500;text-align:center;}
+    .gantt-board thead .row-minor th.is-weekend{background:#f1f5f9;color:#94a3b8;}
+    .gantt-board thead .row-minor th.is-today{background:#fff7ed;color:#c2410c;font-weight:700;}
+    .gantt-board thead th.gantt-corner{position:sticky;left:0;z-index:3;background:linear-gradient(180deg,#26593F,#1F4D3B);color:#fff;text-align:left;padding-left:12px;border-right:1px solid rgba(255,255,255,.2);}
+
+    .gantt-board td.gantt-label{position:sticky;left:0;background:#fff;border-right:1px solid #e2e8f0;border-bottom:1px solid #f1f5f9;padding:8px 12px;vertical-align:middle;font-size:12px;color:#1f2937;font-weight:500;z-index:2;}
+    .gantt-board tr:nth-child(even) td.gantt-label{background:#fafbfc;}
+    .gantt-board tr:hover td.gantt-label{background:#ecfdf5;color:#065f46;}
+    .gantt-board td.gantt-track{border-bottom:1px solid #f1f5f9;padding:0;position:relative;background:#fff;}
+    .gantt-board tr:nth-child(even) td.gantt-track .track-bg{background:#fcfcfd;}
+    .gantt-board tr:hover td.gantt-track{background:#f8fffb;}
+
+    .gantt-board .track-bg{position:relative;height:100%;}
+    .gantt-board .today-line{position:absolute;top:0;bottom:0;width:2px;background:#f59e0b;z-index:5;pointer-events:none;box-shadow:0 0 6px rgba(245,158,11,.5);}
+    .gantt-board .weekend-cell{position:absolute;top:0;bottom:0;background:rgba(241,245,249,.55);z-index:0;pointer-events:none;}
+
+    .gantt-bar{position:absolute;height:24px;border-radius:5px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-size:11px;font-weight:600;line-height:24px;padding:0 10px;box-shadow:0 1px 3px rgba(15,23,42,.14),0 1px 2px rgba(15,23,42,.08);transition:transform .12s ease,box-shadow .12s ease;}
+    .gantt-bar:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(15,23,42,.22);z-index:6;}
+    .gantt-bar.status-0{background:linear-gradient(135deg,#fcd34d,#f59e0b);}
+    .gantt-bar.status-1{background:linear-gradient(135deg,#60a5fa,#1e88e5);}
+    .gantt-bar.status-2{background:linear-gradient(135deg,#a78bfa,#7c3aed);background-image:linear-gradient(135deg,#a78bfa,#7c3aed),repeating-linear-gradient(45deg,rgba(255,255,255,.18) 0,rgba(255,255,255,.18) 4px,transparent 4px,transparent 8px);}
+    .gantt-bar.status-3{background:linear-gradient(135deg,#34d399,#16a34a);}
+    .gantt-bar.status-4{background:linear-gradient(135deg,#94a3b8,#475569);}
+    .gantt-bar .gb-icon{display:inline-block;width:5px;height:14px;background:rgba(255,255,255,.7);border-radius:2px;margin-right:6px;vertical-align:-3px;}
+
+    /* 状态 pills 现代样式（顺便润色） */
+    #statusPills .layui-btn{border-radius:14px;padding:0 14px;height:28px;line-height:28px;}
+</style>
+}
 <div class="layui-fluid" style="padding:12px;">
     <div class="layui-card">
         <div class="layui-card-header">
@@ -64,20 +117,44 @@
             </div>
 
             <div id="paneGantt" style="display:none;">
-                <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;">
-                    <span>@("\u65f6\u95f4\u7c92\u5ea6")</span>
-                    <button class="layui-btn layui-btn-sm gantt-scale" data-scale="WEEK">@("\u5468")</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="MONTH">@("\u6708")</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="QUARTER">@("\u5b63")</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="YEAR">@("\u5e74")</button>
-                    <span style="margin-left:16px;">@("\u5206\u7ec4")</span>
-                    <button class="layui-btn layui-btn-sm gantt-group" data-group="bill">@("\u6309\u4fdd\u517b\u5355")</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary gantt-group" data-group="facility">@("\u6309\u8bbe\u5907")</button>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="ganttPrev" style="margin-left:16px;"><i class="layui-icon layui-icon-left"></i></button>
-                    <span id="ganttRange" style="font-weight:600;min-width:200px;text-align:center;"></span>
-                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="ganttNext"><i class="layui-icon layui-icon-right"></i></button>
+                <div class="gantt-toolbar">
+                    <div class="gtb-block">
+                        <span class="gtb-label">@("\u65f6\u95f4\u7c92\u5ea6")</span>
+                        <div class="layui-btn-group">
+                            <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="WEEK">@("\u5468")</button>
+                            <button class="layui-btn layui-btn-sm gantt-scale" data-scale="MONTH">@("\u6708")</button>
+                            <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="QUARTER">@("\u5b63")</button>
+                            <button class="layui-btn layui-btn-sm layui-btn-primary gantt-scale" data-scale="YEAR">@("\u5e74")</button>
+                        </div>
+                    </div>
+                    <div class="gtb-block">
+                        <span class="gtb-label">@("\u5b9a\u4f4d\u65e5\u671f")</span>
+                        <input id="ganttDate" class="gantt-dateinput" placeholder="@("\u9009\u62e9\u65e5\u671f")" readonly>
+                        <button class="gtb-today" id="ganttToday" type="button"><i class="layui-icon layui-icon-time"></i> @("\u4eca\u65e5")</button>
+                    </div>
+                    <div class="gtb-block">
+                        <span class="gtb-label">@("\u5206\u7ec4")</span>
+                        <div class="layui-btn-group">
+                            <button class="layui-btn layui-btn-sm gantt-group" data-group="facility">@("\u6309\u8bbe\u5907")</button>
+                            <button class="layui-btn layui-btn-sm layui-btn-primary gantt-group" data-group="bill">@("\u6309\u4fdd\u517b\u5355")</button>
+                        </div>
+                    </div>
+                    <div class="gtb-right">
+                        <button class="layui-btn layui-btn-sm gtb-nav" id="ganttPrev" type="button"><i class="layui-icon layui-icon-left"></i></button>
+                        <span id="ganttRange" class="gantt-range"></span>
+                        <button class="layui-btn layui-btn-sm gtb-nav" id="ganttNext" type="button"><i class="layui-icon layui-icon-right"></i></button>
+                    </div>
                 </div>
-                <div id="ganttContainer" style="overflow:auto;max-height:560px;border:1px solid #e2e8f0;"></div>
+                <div class="gantt-legend">
+                    <span class="gtb-label" style="font-weight:600;color:#1F4D3B;">@("\u72b6\u6001\u56fe\u4f8b")</span>
+                    <span class="gl-item"><span class="gl-dot" style="background:linear-gradient(135deg,#fcd34d,#f59e0b);"></span>@("\u65b0\u5efa")</span>
+                    <span class="gl-item"><span class="gl-dot" style="background:linear-gradient(135deg,#60a5fa,#1e88e5);"></span>@("\u5df2\u6d3e\u5de5")</span>
+                    <span class="gl-item"><span class="gl-dot" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);"></span>@("\u4fdd\u517b\u4e2d")</span>
+                    <span class="gl-item"><span class="gl-dot" style="background:linear-gradient(135deg,#34d399,#16a34a);"></span>@("\u5df2\u4fdd\u517b")</span>
+                    <span class="gl-item"><span class="gl-dot" style="background:linear-gradient(135deg,#94a3b8,#475569);"></span>@("\u5df2\u5ba1\u6838")</span>
+                    <span class="gl-item" style="margin-left:auto;color:#94a3b8;font-style:italic;">@("\u7c7b\u578b\u53ef\u5e26\u659c\u7eb9\u8868\u793a&quot;\u4fdd\u517b\u4e2d&quot;\u8fdb\u884c\u4e2d")</span>
+                </div>
+                <div id="ganttContainer" class="gantt-board"></div>
             </div>
         </div>
     </div>
@@ -735,7 +812,12 @@
                 if (name === 'list') { table.reload('GridMain', { where: getWhere() }); }
                 if (name === 'kanban')  { $('#paneKanban').show();  loadAllBills(renderKanban); }
                 if (name === 'calendar'){ $('#paneCalendar').show();loadAllBills(renderCalendar); }
-                if (name === 'gantt')   { $('#paneGantt').show();   loadAllBills(renderGantt); }
+                if (name === 'gantt')   {
+                    $('#paneGantt').show();
+                    rebuildGanttDatePicker();
+                    syncGanttDateInput();
+                    loadAllBills(renderGantt);
+                }
             }
 
             // ---------------- Kanban ----------------
@@ -846,10 +928,56 @@
             function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 
             // ---------------- Gantt ----------------
+            var __ganttDateInst = null;
+            function ganttDateType() {
+                if (ganttScale === 'YEAR')    return 'year';
+                if (ganttScale === 'QUARTER') return 'month';
+                if (ganttScale === 'MONTH')   return 'month';
+                return 'date';
+            }
+            function ganttDateValue(d) {
+                var p = function (n) { return n < 10 ? '0' + n : '' + n; };
+                if (ganttScale === 'YEAR')    return d.getFullYear() + '';
+                if (ganttScale === 'QUARTER' || ganttScale === 'MONTH') return d.getFullYear() + '-' + p(d.getMonth() + 1);
+                return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+            }
+            function syncGanttDateInput() {
+                $('#ganttDate').val(ganttDateValue(ganttCursor));
+            }
+            function rebuildGanttDatePicker() {
+                if (__ganttDateInst && __ganttDateInst.config && __ganttDateInst.config.elem) {
+                    try { __ganttDateInst.hint && __ganttDateInst.hint(''); } catch (e) {}
+                }
+                __ganttDateInst = laydate.render({
+                    elem: '#ganttDate',
+                    type: ganttDateType(),
+                    trigger: 'click',
+                    theme: '#1F4D3B',
+                    value: ganttDateValue(ganttCursor),
+                    done: function (value) {
+                        if (!value) return;
+                        var parsed;
+                        if (ganttScale === 'YEAR') {
+                            parsed = new Date(parseInt(value, 10), 0, 1);
+                        } else if (ganttScale === 'QUARTER' || ganttScale === 'MONTH') {
+                            var seg = value.split('-');
+                            parsed = new Date(parseInt(seg[0], 10), parseInt(seg[1], 10) - 1, 1);
+                        } else {
+                            parsed = new Date(value.replace(/-/g, '/'));
+                        }
+                        if (!isNaN(parsed.getTime())) {
+                            ganttCursor = parsed;
+                            renderGantt();
+                        }
+                    }
+                });
+            }
+
             $('.gantt-scale').on('click', function () {
                 $('.gantt-scale').addClass('layui-btn-primary');
                 $(this).removeClass('layui-btn-primary');
                 ganttScale = $(this).data('scale');
+                rebuildGanttDatePicker();
                 renderGantt();
             });
             $('.gantt-group').on('click', function () {
@@ -860,17 +988,19 @@
             });
             $('#ganttPrev').on('click', function () { shiftGantt(-1); });
             $('#ganttNext').on('click', function () { shiftGantt(1); });
+            $('#ganttToday').on('click', function () { ganttCursor = new Date(); syncGanttDateInput(); renderGantt(); });
             function shiftGantt(dir) {
                 if (ganttScale === 'WEEK')    ganttCursor.setDate(ganttCursor.getDate() + dir * 7);
                 if (ganttScale === 'MONTH')   ganttCursor.setMonth(ganttCursor.getMonth() + dir);
                 if (ganttScale === 'QUARTER') ganttCursor.setMonth(ganttCursor.getMonth() + dir * 3);
                 if (ganttScale === 'YEAR')    ganttCursor.setFullYear(ganttCursor.getFullYear() + dir);
+                syncGanttDateInput();
                 renderGantt();
             }
 
             function getGanttRange() {
                 var s = new Date(ganttCursor), e = new Date(ganttCursor);
-                if (ganttScale === 'WEEK')    { s.setDate(s.getDate() - s.getDay()); e = new Date(s); e.setDate(s.getDate() + 6); }
+                if (ganttScale === 'WEEK')    { var diff = ((s.getDay() + 6) % 7); s.setDate(s.getDate() - diff); e = new Date(s); e.setDate(s.getDate() + 6); }
                 if (ganttScale === 'MONTH')   { s = new Date(s.getFullYear(), s.getMonth(), 1); e = new Date(s.getFullYear(), s.getMonth() + 1, 0); }
                 if (ganttScale === 'QUARTER') { var q = Math.floor(s.getMonth() / 3); s = new Date(s.getFullYear(), q * 3, 1); e = new Date(s.getFullYear(), q * 3 + 3, 0); }
                 if (ganttScale === 'YEAR')    { s = new Date(s.getFullYear(), 0, 1); e = new Date(s.getFullYear(), 11, 31); }
@@ -881,8 +1011,8 @@
             function renderGantt() {
                 var range = getGanttRange();
                 var startMs = range.start.getTime(), endMs = range.end.getTime();
-                var totalDays = Math.round((endMs - startMs) / 86400000) + 1;
-                $('#ganttRange').text(fmtDate(range.start) + ' ~ ' + fmtDate(range.end));
+                var todayMs = (function () { var t = new Date(); t.setHours(0,0,0,0); return t.getTime(); })();
+                $('#ganttRange').text(formatRangeLabel(range.start, range.end));
 
                 // 跨格渲染：用单据的 [BeginDate, EndDate] 区间和当前可视窗口求交集
                 var bills = allBills.filter(function (b) {
@@ -904,37 +1034,80 @@
                     groups[key].push(b);
                 });
 
-                var cells = [];
+                // ===== 计算两层表头数据 =====
+                var cells = [], majorSpans = [];
+                var weekdayCN = ['\u65e5','\u4e00','\u4e8c','\u4e09','\u56db','\u4e94','\u516d'];
                 if (ganttScale === 'WEEK' || ganttScale === 'MONTH') {
+                    // minor = 每天；major = 月份聚合
+                    var totalDays = Math.round((endMs - startMs) / 86400000) + 1;
+                    var curMajor = null;
                     for (var i = 0; i < totalDays; i++) {
                         var d = new Date(startMs + i * 86400000);
-                        cells.push({ label: pad2(d.getMonth() + 1) + '/' + pad2(d.getDate()), start: d.getTime(), end: d.getTime() + 86400000 - 1 });
+                        var dow = d.getDay();
+                        cells.push({
+                            day: d.getDate(),
+                            weekday: weekdayCN[dow],
+                            isWeekend: dow === 0 || dow === 6,
+                            isToday: d.getTime() === todayMs,
+                            start: d.getTime(), end: d.getTime() + 86400000 - 1
+                        });
+                        var majKey = d.getFullYear() + '-' + (d.getMonth() + 1);
+                        if (curMajor && curMajor.key === majKey) curMajor.span++;
+                        else { curMajor = { key: majKey, label: d.getFullYear() + '\u5e74' + pad2(d.getMonth() + 1) + '\u6708', span: 1 }; majorSpans.push(curMajor); }
                     }
                 } else if (ganttScale === 'QUARTER') {
-                    for (var w = new Date(range.start); w <= range.end; w.setDate(w.getDate() + 7)) {
-                        var ws = new Date(w), we = new Date(w); we.setDate(we.getDate() + 6);
-                        cells.push({ label: pad2(ws.getMonth() + 1) + '/' + pad2(ws.getDate()), start: ws.getTime(), end: we.getTime() });
+                    // minor = 每周（周一起）；major = 月份聚合
+                    var curMajor2 = null;
+                    var cur = new Date(range.start);
+                    var diff = ((cur.getDay() + 6) % 7);
+                    cur.setDate(cur.getDate() - diff); // 对齐到周一
+                    while (cur <= range.end) {
+                        var ws = new Date(cur), we = new Date(cur); we.setDate(we.getDate() + 6);
+                        if (we < range.start || ws > range.end) { cur.setDate(cur.getDate() + 7); continue; }
+                        cells.push({
+                            day: pad2(ws.getMonth() + 1) + '/' + pad2(ws.getDate()),
+                            weekday: '',
+                            isWeekend: false,
+                            isToday: todayMs >= ws.getTime() && todayMs <= we.getTime() + 86399999,
+                            start: ws.getTime(), end: we.getTime() + 86399999
+                        });
+                        var monthKey = ws.getFullYear() + '-' + (ws.getMonth() + 1);
+                        if (curMajor2 && curMajor2.key === monthKey) curMajor2.span++;
+                        else { curMajor2 = { key: monthKey, label: ws.getFullYear() + '\u5e74' + pad2(ws.getMonth() + 1) + '\u6708', span: 1 }; majorSpans.push(curMajor2); }
+                        cur.setDate(cur.getDate() + 7);
                     }
                 } else {
+                    // YEAR: minor = 月份；major = 季度
+                    var qNames = ['\u4e00\u5b63\u5ea6','\u4e8c\u5b63\u5ea6','\u4e09\u5b63\u5ea6','\u56db\u5b63\u5ea6'];
+                    for (var q = 0; q < 4; q++) majorSpans.push({ label: range.start.getFullYear() + '\u5e74 ' + qNames[q], span: 3 });
                     for (var m = 0; m < 12; m++) {
                         var ms = new Date(range.start.getFullYear(), m, 1);
                         var me = new Date(range.start.getFullYear(), m + 1, 0);
-                        cells.push({ label: (m + 1) + '\u6708', start: ms.getTime(), end: me.getTime() + 86399999 });
+                        cells.push({
+                            day: (m + 1) + '\u6708',
+                            weekday: '',
+                            isWeekend: false,
+                            isToday: todayMs >= ms.getTime() && todayMs <= me.getTime() + 86399999,
+                            start: ms.getTime(), end: me.getTime() + 86399999
+                        });
                     }
                 }
 
-                var labelW = 160, cellW = ganttScale === 'YEAR' ? 80 : (ganttScale === 'QUARTER' ? 60 : 36);
+                var labelW = 180;
+                var cellW = ganttScale === 'YEAR' ? 90
+                          : ganttScale === 'QUARTER' ? 70
+                          : ganttScale === 'WEEK' ? 90
+                          : 38;
                 var totalW = labelW + cells.length * cellW;
-                var rowH = 30; // 每条 bar 占用的高度
-                // 计算每个分组里的 bar 行内堆叠：相同 (left,width) 区间内多张单据需要堆叠
+                var rowH = 30;
+
                 function layoutBars(arr) {
-                    // 排序，按开始时间升序，简单堆叠：每条挑选第一条无冲突的轨道
                     var sorted = arr.slice().sort(function (a, b) {
                         var sa = new Date(a.BeginDate || a.BillDate || 0).getTime();
                         var sb = new Date(b.BeginDate || b.BillDate || 0).getTime();
                         return sa - sb;
                     });
-                    var lanes = []; // 每条 lane 保存最后结束的 ms
+                    var lanes = [];
                     sorted.forEach(function (b) {
                         var s = new Date(b.BeginDate || b.BillDate || 0).getTime();
                         var e = new Date(b.EndDate   || b.BillDate || 0).getTime();
@@ -950,47 +1123,77 @@
                     return { items: sorted, lanes: Math.max(1, lanes.length) };
                 }
 
-                var html = '<table style="border-collapse:collapse;width:' + totalW + 'px;font-size:12px;table-layout:fixed;">';
-                html += '<thead><tr><th style="position:sticky;left:0;background:#f5f5f5;border:1px solid #e2e8f0;padding:6px;width:' + labelW + 'px;text-align:left;">' + (ganttGroup === 'facility' ? '\u8bbe\u5907' : '\u4fdd\u517b\u5355') + '</th>';
+                // ===== 构建 HTML =====
+                var html = '<table style="width:' + totalW + 'px;table-layout:fixed;">';
+
+                // 表头：major 行
+                html += '<thead>';
+                html += '<tr class="row-major">';
+                html += '<th class="gantt-corner" rowspan="2" style="width:' + labelW + 'px;">'
+                     + (ganttGroup === 'facility' ? '\u8bbe\u5907' : '\u4fdd\u517b\u5355') + '</th>';
+                majorSpans.forEach(function (m) {
+                    html += '<th colspan="' + m.span + '" style="width:' + (m.span * cellW) + 'px;">' + m.label + '</th>';
+                });
+                html += '</tr>';
+
+                // 表头：minor 行
+                html += '<tr class="row-minor">';
                 cells.forEach(function (c) {
-                    html += '<th style="border:1px solid #e2e8f0;padding:4px 2px;width:' + cellW + 'px;background:#f5f5f5;font-weight:normal;">' + c.label + '</th>';
+                    var cls = 'row-minor-cell';
+                    if (c.isWeekend) cls += ' is-weekend';
+                    if (c.isToday) cls += ' is-today';
+                    html += '<th class="' + cls + '" style="width:' + cellW + 'px;">'
+                          + '<div style="line-height:1.4;">' + c.day + '</div>'
+                          + (c.weekday ? '<div style="font-size:10px;opacity:.75;">' + c.weekday + '</div>' : '')
+                          + '</th>';
                 });
                 html += '</tr></thead><tbody>';
 
                 if (groupOrder.length === 0) {
-                    html += '<tr><td colspan="' + (cells.length + 1) + '" style="padding:24px;text-align:center;color:#888;">\u6682\u65e0\u6570\u636e</td></tr>';
+                    html += '<tr><td colspan="' + (cells.length + 1) + '" style="padding:32px;text-align:center;color:#94a3b8;background:#fff;">'
+                          + '<i class="layui-icon layui-icon-face-cry" style="font-size:32px;display:block;margin-bottom:6px;opacity:.5;"></i>'
+                          + '\u5f53\u524d\u533a\u95f4\u6682\u65e0\u4fdd\u517b\u5355\u636e</td></tr>';
                 } else {
                     groupOrder.forEach(function (key) {
                         var layout = layoutBars(groups[key]);
-                        var rowHeight = Math.max(rowH, layout.lanes * rowH);
-                        html += '<tr style="height:' + (rowHeight + 8) + 'px;">';
-                        html += '<td style="position:sticky;left:0;background:#fff;border:1px solid #e2e8f0;padding:6px;vertical-align:top;">' + key + '</td>';
-                        // 用一个跨列的 wrapper TD：保留每个时间格的网格背景，bar 用 absolute 定位
-                        html += '<td colspan="' + cells.length + '" style="border:1px solid #e2e8f0;padding:0;position:relative;">';
-                        // 背景刻度（用线性渐变模拟）
-                        html += '<div style="position:relative;height:' + (rowHeight + 6) + 'px;width:' + (cells.length * cellW) + 'px;'
-                            + 'background-image:linear-gradient(to right, #e2e8f0 0, #e2e8f0 1px, transparent 1px, transparent ' + cellW + 'px);'
-                            + 'background-size:' + cellW + 'px 100%;">';
+                        var rowHeight = Math.max(rowH + 6, layout.lanes * rowH + 6);
+                        html += '<tr style="height:' + rowHeight + 'px;">';
+                        html += '<td class="gantt-label" style="width:' + labelW + 'px;">' + key
+                             + ' <span style="color:#94a3b8;font-size:11px;font-weight:normal;">\u00d7' + layout.items.length + '</span></td>';
+                        html += '<td class="gantt-track" colspan="' + cells.length + '" style="height:' + rowHeight + 'px;">';
+                        html += '<div class="track-bg" style="position:relative;height:100%;width:' + (cells.length * cellW) + 'px;'
+                             + 'background-image:linear-gradient(to right, #f1f5f9 0, #f1f5f9 1px, transparent 1px);background-size:' + cellW + 'px 100%;">';
+                        // 周末浅灰背景列
+                        cells.forEach(function (c, idx) {
+                            if (c.isWeekend) {
+                                html += '<div class="weekend-cell" style="left:' + (idx * cellW) + 'px;width:' + cellW + 'px;"></div>';
+                            }
+                        });
+                        // 今日竖线
+                        if (todayMs >= startMs && todayMs <= endMs) {
+                            var todayLeft = ((todayMs - startMs) / (endMs - startMs)) * (cells.length * cellW);
+                            html += '<div class="today-line" style="left:' + todayLeft + 'px;"></div>';
+                        }
+                        // bars
                         layout.items.forEach(function (b) {
                             var sid = b.Status != null ? b.Status : b.status;
                             var sn = parseInt(sid, 10); if (isNaN(sn)) sn = 0;
-                            var color = statusColor(sn);
                             var s = new Date(b.BeginDate || b.BillDate || 0).getTime();
                             var e = new Date(b.EndDate   || b.BillDate || 0).getTime();
                             if (!e || e < s) e = s + 86400000;
-                            // clamp 到可视窗口
                             var sClamp = Math.max(s, startMs);
                             var eClamp = Math.min(e, endMs);
                             var totalMs = endMs - startMs;
                             var leftPx = ((sClamp - startMs) / totalMs) * (cells.length * cellW);
-                            var widthPx = Math.max(8, ((eClamp - sClamp) / totalMs) * (cells.length * cellW));
+                            var widthPx = Math.max(12, ((eClamp - sClamp) / totalMs) * (cells.length * cellW));
                             var topPx = b.__lane * rowH + 3;
-                            html += '<div class="gantt-bar" data-id="' + rowId(b) + '" title="' + (b.BillNo || '') + ' \u00b7 ' + fmtDate(b.BeginDate) + ' ~ ' + fmtDate(b.EndDate) + '" '
-                                + 'style="position:absolute;left:' + leftPx + 'px;width:' + widthPx + 'px;top:' + topPx + 'px;height:' + (rowH - 6) + 'px;'
-                                + 'background:' + color + ';color:#fff;font-size:11px;border-radius:4px;'
-                                + 'padding:2px 6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
-                                + 'box-shadow:0 1px 2px rgba(0,0,0,.08);line-height:' + (rowH - 10) + 'px;">'
-                                + (b.BillNo || '').replace(/^TPM0*/, 'TPM') + '</div>';
+                            var staffTxt = b.RepairStaff ? (' \u00b7 ' + (staffNameMap[b.RepairStaff] || b.RepairStaff)) : '';
+                            html += '<div class="gantt-bar status-' + sn + '" data-id="' + rowId(b) + '" '
+                                  + 'title="' + (b.BillNo || '') + ' \u00b7 ' + statusText(sn) + staffTxt + '\u000a' + fmtDate(b.BeginDate) + '  ~  ' + fmtDate(b.EndDate) + '" '
+                                  + 'style="left:' + leftPx + 'px;width:' + widthPx + 'px;top:' + topPx + 'px;">'
+                                  + '<span class="gb-icon"></span>'
+                                  + (b.BillNo || '').replace(/^TPM0*/, 'TPM')
+                                  + '</div>';
                         });
                         html += '</div></td></tr>';
                     });
@@ -1002,6 +1205,16 @@
                     var row = allBills.find(function (b) { return String(rowId(b)) === id; });
                     if (row) openDetail(row, true);
                 });
+            }
+
+            function formatRangeLabel(s, e) {
+                var p = function (n) { return n < 10 ? '0' + n : '' + n; };
+                if (ganttScale === 'YEAR') return s.getFullYear() + '\u5e74';
+                if (ganttScale === 'QUARTER') return s.getFullYear() + '\u5e74 ' + ['\u4e00','\u4e8c','\u4e09','\u56db'][Math.floor(s.getMonth() / 3)] + '\u5b63\u5ea6';
+                if (ganttScale === 'MONTH') return s.getFullYear() + '\u5e74' + p(s.getMonth() + 1) + '\u6708';
+                // WEEK
+                return s.getFullYear() + '-' + p(s.getMonth() + 1) + '-' + p(s.getDate())
+                     + '   ~   ' + e.getFullYear() + '-' + p(e.getMonth() + 1) + '-' + p(e.getDate());
             }
 
             table.on('tool(GridMain)', function (obj) {
