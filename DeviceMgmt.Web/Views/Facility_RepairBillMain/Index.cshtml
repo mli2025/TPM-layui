@@ -242,6 +242,11 @@
                 <tbody id="SubsBody"></tbody>
             </table>
 
+            <fieldset class="layui-elem-field layui-field-title" style="margin-top:14px;">
+                <legend>附件</legend>
+            </fieldset>
+            <div id="repairAttachPanel"></div>
+
             <div style="text-align:center;margin-top:18px;">
                 <button class="layui-btn" lay-submit lay-filter="submitBill" id="btnSubmit">保存</button>
                 <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
@@ -506,11 +511,13 @@
                             for (var i=0;i<subs.length;i++) appendSubRow(subs[i], mode==='view');
                             setReadonlyForm(mode==='view');
                             try { form.render(); } catch(e){}
+                            try { if (window.AttachmentWidget && id) AttachmentWidget.mount({ container: '#repairAttachPanel', businessType: 'repair', businessId: id, readonly: mode==='view' }); } catch(e){}
                         });
                     } else {
                         try { form.val('billForm', { Id:0, Status:0, OutsourcingFlag:'0', BillDate: fmt(new Date()) }); } catch(e){}
                         setReadonlyForm(false);
                         try { form.render(); } catch(e){}
+                        $('#repairAttachPanel').html('<div style="color:#999;padding:8px">保存单据后可上传附件</div>');
                     }
                 }
             });

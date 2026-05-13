@@ -144,6 +144,8 @@
         </form>
         <div style="margin:8px 0 4px;font-weight:600;">&#x4fdd;&#x517b;&#x9879;&#x76ee;&#x660e;&#x7ec6;</div>
         <table id="GridBillSub" lay-filter="GridBillSub"></table>
+        <div style="margin:14px 0 4px;font-weight:600;">附件</div>
+        <div id="maintAttachPanel"></div>
     </div>
 </script>
 
@@ -330,6 +332,7 @@
                                     { field: 'Remark', title: '\u5907\u6ce8', minWidth: 120 }
                                 ]]
                             });
+                            try { if (window.AttachmentWidget && row.Id) AttachmentWidget.mount({ container: '#maintAttachPanel', businessType: 'maintain', businessId: row.Id, readonly: readOnly }); } catch (e) {}
                         });
                     },
                     yes: function (idx) {

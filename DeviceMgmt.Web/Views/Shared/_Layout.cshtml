@@ -1,4 +1,6 @@
 ﻿@using DeviceMgmt.Repository.Domain
+@inject DeviceMgmt.Web.Services.VersionService VersionSvc
+@inject DeviceMgmt.Web.Services.SettingService AppSetting
 @{
     IgnoreBody();
     var title = ViewBag.Title as string ?? "首页";
@@ -7,6 +9,11 @@
 
     string userDisplayName = user?.Name ?? user?.Account ?? "User";
     string userInitial = !string.IsNullOrEmpty(userDisplayName) ? userDisplayName.Substring(0, 1).ToUpper() : "U";
+
+    var currentVersion = VersionSvc.Current()?.Version ?? "v1.0.0";
+    var companyName = AppSetting.GetString("companyName", "arbore");
+    var systemTitle = AppSetting.GetString("systemTitle", "arbore TPM 设备全生命周期管理系统");
+    var appSettingsJson = Newtonsoft.Json.JsonConvert.SerializeObject(AppSetting.ToClientPayload());
 
     var menuJson = Newtonsoft.Json.JsonConvert.SerializeObject(
         modules.Select(m => new
@@ -174,6 +181,10 @@
 
         <div class="flex-1"></div>
 
+        <a href="/Sys_Version/Index" target="_blank"
+           class="hidden md:inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium text-brand-800 bg-brand-50 hover:bg-brand-100 border border-brand-200"
+           title="点击查看版本记录">@currentVersion</a>
+
         <button class="btn-icon btn btn-ghost relative" title="通知（开发中）">
             <i data-lucide="bell"></i>
         </button>
@@ -204,6 +215,10 @@
                     <i data-lucide="moon" class="icon" x-show="theme === 'light'"></i>
                     <i data-lucide="sun" class="icon" x-show="theme === 'dark'"></i>
                     <span x-text="theme === 'light' ? '切换到暗色' : '切换到亮色'"></span>
+                </button>
+                <button type="button" class="dropdown-item w-full text-left" @@click.stop="openAbout">
+                    <i data-lucide="info" class="icon"></i>
+                    <span>关于本系统</span>
                 </button>
                 <div class="dropdown-divider"></div>
                 <button type="button" class="dropdown-item dropdown-item-danger w-full text-left" @@click.stop="logout">
@@ -357,6 +372,33 @@
                     <div class="flex"><dt class="w-24 text-slate-500">可见菜单</dt><dd x-text="data.moduleCount + ' 个'"></dd></div>
                 </dl>
             </template>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-default" @@click="close">关闭</button>
+        </div>
+    </div>
+</div>
+
+@* ===== 关于本系统 ===== *@
+<div id="about-modal" class="modal-mask hidden" x-data="aboutModal()" x-cloak>
+    <div class="modal" @@click.outside="close" style="width:520px;">
+        <div class="modal-header">
+            <h3 class="text-base font-semibold">关于本系统</h3>
+            <button class="btn-icon btn btn-ghost" @@click="close"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="text-center mb-4">
+                <div class="text-lg font-semibold text-brand-800">@systemTitle</div>
+                <div class="text-xs text-slate-500 mt-1">© @DateTime.Now.Year @companyName · all rights reserved</div>
+            </div>
+            <dl class="space-y-2 text-sm">
+                <div class="flex"><dt class="w-24 text-slate-500">当前版本</dt><dd class="font-semibold">@currentVersion</dd></div>
+                <div class="flex"><dt class="w-24 text-slate-500">技术栈</dt><dd>.NET 8 / ASP.NET Core MVC / Razor / Layui / Tailwind / Alpine.js / Dapper / SQL Server</dd></div>
+                <div class="flex"><dt class="w-24 text-slate-500">数据库</dt><dd>TPM (bigint IDENTITY)</dd></div>
+            </dl>
+            <div class="mt-3 text-right">
+                <a href="/Sys_Version/Index" target="_blank" class="text-brand-700 hover:underline text-sm">查看完整版本记录 →</a>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-default" @@click="close">关闭</button>
@@ -663,6 +705,13 @@
                 document.getElementById("cp-modal").classList.remove("hidden");
             },
 
+            openAbout() {
+                this.menuOpen = false;
+                this.closeTabCtx();
+                var modal = document.getElementById("about-modal");
+                if (modal) modal.classList.remove("hidden");
+            },
+
             logout() {
                 this.menuOpen = false;
                 this.closeTabCtx();
@@ -721,6 +770,12 @@
                     .done(function (res) { if (res && res.code === 200) self.data = res.data; });
             },
             close() { document.getElementById("pf-modal").classList.add("hidden"); }
+        };
+    }
+
+    function aboutModal() {
+        return {
+            close() { document.getElementById("about-modal").classList.add("hidden"); }
         };
     }
 </script>

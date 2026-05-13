@@ -21,6 +21,8 @@
     <div class='layui-col-md4 layui-col-sm6'><div class='layui-form-item'><label class='layui-form-label'>Danwei</label><div class='layui-input-block'><input type='text' name='Danwei' class='layui-input' /></div></div></div>
                 </div>
             </form>
+            <div style="margin-top:16px;font-weight:600;">附件</div>
+            <div id="spareAttachPanel" style="margin-top:6px;"></div>
         </div>
     </div>
 </div>
@@ -38,6 +40,7 @@
                     form.render();
                 }
             });
+            try { if (window.AttachmentWidget) AttachmentWidget.mount({ container: '#spareAttachPanel', businessType: 'spare', businessId: @id }); } catch (e) {}
         });
     </script>
 }

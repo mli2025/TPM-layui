@@ -84,6 +84,7 @@
                 <li lay-id="measure">计量器具</li>
                 <li lay-id="remark">备注</li>
                 <li lay-id="history">保养/点检记录</li>
+                <li lay-id="attach">附件</li>
             </ul>
             <div class="layui-tab-content" style="padding:14px 0;">
                 <div class="layui-tab-item layui-show">
@@ -127,6 +128,9 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="layui-tab-item">
+                    <div id="facilityAttachPanel"></div>
                 </div>
             </div>
         </div>
@@ -333,9 +337,11 @@
                                 });
                                 try { form.render('select'); } catch (e) {}
                                 try { form.render(); } catch (e) {}
+                                try { if (window.AttachmentWidget) AttachmentWidget.mount({ container: '#facilityAttachPanel', businessType: 'facility', businessId: row.Id, readonly: isView }); } catch (e) {}
                             }).fail(function () { toastErr('加载失败，请检查网络或服务'); });
                         } else {
                             fillForm({ Id: 0, Status: 0, EntityId: 1 });
+                            $('#facilityAttachPanel').html('<div style="color:#999;padding:8px">保存后可上传附件</div>');
                         }
 
                         // 切到保养/点检记录 tab 时再加载历史

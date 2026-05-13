@@ -47,6 +47,8 @@
         </div>
         <div style="margin:8px 0 4px;font-weight:600;">点检项目明细</div>
         <table id="GridSub" lay-filter="GridSub"></table>
+        <div style="margin:14px 0 4px;font-weight:600;">附件</div>
+        <div id="checkAttachPanel"></div>
     </div>
 </script>
 
@@ -128,6 +130,7 @@
                                     { field: 'Remark', title: '备注', minWidth: 120 }
                                 ]]
                             });
+                            try { if (window.AttachmentWidget) AttachmentWidget.mount({ container: '#checkAttachPanel', businessType: 'inspect', businessId: row.Id, readonly: true }); } catch (e) {}
                         });
                     }
                 });
