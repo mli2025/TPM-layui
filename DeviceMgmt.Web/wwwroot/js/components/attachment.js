@@ -89,6 +89,11 @@
         document.head.appendChild($style);
     }
 
+    function getTokenCookie() {
+        var m = document.cookie.match(/(?:^|; )Token=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
     var Widget = {
         mount: function (opts) {
             opts = opts || {};
@@ -115,42 +120,56 @@
                 + '  <div class="att-list"></div>'
                 + '</div>');
 
-            $el.on('click', '[data-act=del]', function () {
-                var id = $(this).data('id');
-                layui.layer.confirm('确认删除此附件?', function (idx) {
-                    $.post(URL_DELETE, { id: id }, function (r) {
-                        if (r.code === 0) { layui.layer.close(idx); reload($el, opts); layui.layer.msg('已删除'); }
-                        else layui.layer.msg(r.msg || '删除失败');
+            // 关键：layui 2.4.x 必须先 use('upload','layer') 才能拿到模块；
+            // 业务页 layui.use 不一定包含 upload，所以在组件内部自包裹。
+            layui.use(['upload', 'layer'], function () {
+                var upload = layui.upload;
+                var layer = layui.layer;
+
+                $el.off('click.att').on('click.att', '[data-act=del]', function () {
+                    var id = $(this).attr('data-id');
+                    layer.confirm('确认删除此附件?', function (idx) {
+                        $.post(URL_DELETE, { id: id }, function (r) {
+                            if (r && r.code === 0) { layer.close(idx); reload($el, opts); layer.msg('已删除'); }
+                            else layer.msg((r && r.msg) || '删除失败');
+                        });
                     });
+                }).on('click.att', '[data-act=download]', function () {
+                    window.open('/Sys_Attachment/Download?id=' + $(this).attr('data-id'));
                 });
-            });
-            $el.on('click', '[data-act=download]', function () {
-                window.open('/Sys_Attachment/Download?id=' + $(this).data('id'));
+
+                if (!opts.readonly) {
+                    upload.render({
+                        elem: '#' + domId,
+                        url: URL_UPLOAD,
+                        accept: 'file',
+                        size: 0,
+                        data: {
+                            businessType: opts.businessType,
+                            businessId: opts.businessId,
+                            category: opts.category || ''
+                        },
+                        headers: { 'Token': getTokenCookie() },
+                        before: function () { layer.load(2, { shade: 0.1 }); },
+                        done: function (res) {
+                            layer.closeAll('loading');
+                            if (res && res.code === 0) {
+                                reload($el, opts);
+                                layer.msg('上传成功', { icon: 1 });
+                            } else {
+                                layer.msg((res && res.msg) || '上传失败', { icon: 2 });
+                            }
+                        },
+                        error: function () {
+                            layer.closeAll('loading');
+                            layer.msg('上传失败（网络或权限错误）', { icon: 2 });
+                        }
+                    });
+                }
+
+                reload($el, opts);
             });
 
-            if (!opts.readonly) {
-                layui.upload.render({
-                    elem: '#' + domId,
-                    url: URL_UPLOAD,
-                    accept: 'file',
-                    data: {
-                        businessType: opts.businessType,
-                        businessId: opts.businessId,
-                        category: opts.category || ''
-                    },
-                    headers: { 'Token': layui.jquery.cookie ? layui.jquery.cookie('Token') : (function () {
-                        var m = document.cookie.match(/(?:^|; )Token=([^;]+)/);
-                        return m ? decodeURIComponent(m[1]) : '';
-                    })() },
-                    done: function (res) {
-                        if (res.code === 0) { reload($el, opts); }
-                        else layui.layer.msg(res.msg || '上传失败');
-                    },
-                    error: function (idx, msg) { layui.layer.msg('上传失败'); }
-                });
-            }
-
-            reload($el, opts);
             return { reload: function () { reload($el, opts); } };
         }
     };
