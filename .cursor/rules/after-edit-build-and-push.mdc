@@ -1,0 +1,20 @@
+---
+description: 每次改完 TPM-layui 代码后编译通过并推送到 origin/main
+alwaysApply: true
+---
+
+# 改代码后的固定流程（TPM-layui）
+
+在 `e:\TPM-V2\TPM-layui` 内对源码做了**实质性修改**后，在结束本轮助手工作前必须完成：
+
+1. **编译**：在仓库根目录执行  
+   `dotnet build DeviceMgmt.Web\DeviceMgmt.Web.csproj`  
+   若 `DeviceMgmt.Web.dll` / `DeviceMgmt.Web.exe` 被正在运行的站点占用导致复制失败，可先执行  
+   `dotnet build DeviceMgmt.App\DeviceMgmt.App.csproj`  
+   以验证业务层与仓储层编译通过，或结束占用进程后再完整编译 Web 项目。以**无 C# 编译错误**为准。
+
+2. **Git**：若有未提交改动，则 `git add`（勿纳入 `*.tar` 等大体积未跟踪产物）、`git commit`（中文或英文一句说明本次改动）、`git push origin main`。
+
+3. 若工作区本就干净且无新提交，则无需 push，但应在回复中说明已核对。
+
+用户不要求每次口头重复此流程；助手应默认执行。
