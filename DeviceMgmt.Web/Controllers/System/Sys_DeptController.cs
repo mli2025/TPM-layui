@@ -33,8 +33,15 @@ public class Sys_DeptController : BaseController
     {
         if (dept == null || string.IsNullOrWhiteSpace(dept.DeptName))
             return Json(new ResponseData { code = 400, msg = "部门名称必填" });
-        var id = _app.Save(dept);
-        return Json(new ResponseData { code = 0, data = id, msg = "ok" });
+        try
+        {
+            var id = _app.Save(dept);
+            return Json(new ResponseData { code = 0, data = id, msg = "ok" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Json(new ResponseData { code = 400, msg = ex.Message });
+        }
     }
 
     [HttpPost]

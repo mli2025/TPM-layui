@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DeviceMgmt.Web.Controllers.Facility;
 
 /// <summary>
-/// 设备点检模板列表（view-only），数据复用 Facility_TheTemplateMain，按 Type=1 过滤
+/// 设备点检模板列表：与 <see cref="Facility_TheTemplateMainController"/> 保养模板页一致，固定 Type=点检，接口全部转发至该控制器。
 /// </summary>
 public class Facility_CheckTemplateController : BaseController
 {

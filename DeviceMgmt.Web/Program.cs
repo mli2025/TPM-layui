@@ -7,14 +7,41 @@ using DeviceMgmt.App.Interface;
 using DeviceMgmt.Repository.Core;
 using DeviceMgmt.Repository.Interface;
 using Infrastructure.Cache;
+using Microsoft.Data.SqlClient;
+using DeviceMgmt.Web.Serialization;
 using Newtonsoft.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 若设置 DB_SERVER，则用 DB_* 环境变量组装连接串并覆盖 Default（Encrypt=false 时须用 False，不能用 Optional，否则仍会 TLS 握手）
+var discreteConn = BuildConnectionStringFromDbEnv();
+if (!string.IsNullOrEmpty(discreteConn))
+{
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["ConnectionStrings:Default"] = discreteConn
+    });
+}
+else if (IsRunningInContainer()
+         && !string.Equals(Environment.GetEnvironmentVariable("SKIP_SQL_ENCRYPT_PATCH"), "true", StringComparison.OrdinalIgnoreCase))
+{
+    var patched = TryPatchSqlEncryptOffForLinux(builder.Configuration["ConnectionStrings:Default"]);
+    if (!string.IsNullOrEmpty(patched))
+    {
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:Default"] = patched
+        });
+    }
+}
 
 builder.Services.AddControllersWithViews()
     .AddNewtonsoftJson(options =>
     {
         options.SerializerSettings.ContractResolver = new DefaultContractResolver();
+        // 雪花 Id 超过 JS 安全整数，必须序列化为字符串，否则编辑/查询会 not found、部门树错乱
+        options.SerializerSettings.Converters.Add(new LongAsStringJsonConverter());
+        options.SerializerSettings.Converters.Add(new NullableLongAsStringJsonConverter());
     });
 
 builder.Services.AddMemoryCache();
@@ -101,3 +128,73 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
+
+// 若存在 DB_SERVER，则用离散环境变量组装 SQL 连接串（覆盖 appsettings）。
+static string? BuildConnectionStringFromDbEnv()
+{
+    var server = Environment.GetEnvironmentVariable("DB_SERVER")?.Trim();
+    if (string.IsNullOrEmpty(server)) return null;
+
+    var port = Environment.GetEnvironmentVariable("DB_PORT")?.Trim() ?? "1433";
+    var database = Environment.GetEnvironmentVariable("DB_NAME")?.Trim() ?? "TPM";
+    var user = Environment.GetEnvironmentVariable("DB_USER")?.Trim() ?? "sa";
+    var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "";
+
+    string dataSource;
+    if (server.StartsWith("tcp:", StringComparison.OrdinalIgnoreCase))
+        dataSource = server;
+    else if (server.Contains(',', StringComparison.Ordinal))
+        dataSource = $"tcp:{server}";
+    else
+        dataSource = $"tcp:{server},{port}";
+
+    var csb = new SqlConnectionStringBuilder
+    {
+        DataSource = dataSource,
+        InitialCatalog = database,
+        UserID = user,
+        Password = password,
+    };
+
+    var enc = Environment.GetEnvironmentVariable("DB_ENCRYPT")?.Trim();
+    if (string.IsNullOrEmpty(enc)) enc = "False";
+    if (bool.TryParse(enc, out var encBool))
+        csb["Encrypt"] = encBool ? "Mandatory" : "False";
+    else
+    {
+        enc = enc.Replace('-', '_');
+        csb["Encrypt"] = enc.ToUpperInvariant() switch
+        {
+            "MANDATORY" or "TRUE" or "YES" or "1" => "Mandatory",
+            "STRICT" => "Strict",
+            "OPTIONAL" => "Optional",
+            "FALSE" or "NO" or "0" or "OFF" => "False",
+            _ => "False"
+        };
+    }
+
+    var trust = Environment.GetEnvironmentVariable("DB_TRUST_SERVER_CERTIFICATE")?.Trim();
+    if (string.IsNullOrEmpty(trust)) trust = "true";
+    csb.TrustServerCertificate = trust.Equals("true", StringComparison.OrdinalIgnoreCase) || trust == "1";
+
+    return csb.ConnectionString;
+}
+
+static bool IsRunningInContainer() =>
+    string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
+static string? TryPatchSqlEncryptOffForLinux(string? connectionString)
+{
+    if (string.IsNullOrWhiteSpace(connectionString)) return null;
+    try
+    {
+        var sb = new SqlConnectionStringBuilder(connectionString);
+        sb["Encrypt"] = "False";
+        sb.TrustServerCertificate = true;
+        return sb.ConnectionString;
+    }
+    catch
+    {
+        return null;
+    }
+}
+

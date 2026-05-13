@@ -5,14 +5,14 @@
     <div class="layui-card">
         <div class="layui-card-header">
             <strong>设备点检项目列表</strong>
-            <span style="color:#888;font-size:12px;margin-left:8px;">仅查看</span>
         </div>
         <div class="layui-card-body">
             <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
-                <div class="layui-col-md4">
+                <div class="layui-col-md6">
                     <input type="text" id="kw" class="layui-input" placeholder="输入项目关键字">
                 </div>
-                <div class="layui-col-md8" style="text-align:right;">
+                <div class="layui-col-md6" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
                 </div>
             </div>
@@ -21,17 +21,97 @@
     </div>
 </div>
 
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="tplForm">
+    <form class="layui-form" lay-filter="itemForm" style="padding:14px 16px 0 0;">
+        <input type="hidden" name="Id">
+        <input type="hidden" name="Type" value="1">
+        <div class="layui-form-item">
+            <label class="layui-form-label">项目</label>
+            <div class="layui-input-block"><input name="Project" required lay-verify="required" class="layui-input"></div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">方法</label>
+            <div class="layui-input-block"><input name="UpkeepMethod" class="layui-input"></div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">标准描述</label>
+            <div class="layui-input-block"><input name="CheckMethod" class="layui-input"></div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">控件类型</label>
+            <div class="layui-input-block">
+                <select name="ControlType">
+                    <option value="0">是否类型</option>
+                    <option value="1">数值类型</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">最小值</label>
+            <div class="layui-input-block"><input name="MinValue" type="number" step="0.01" class="layui-input"></div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">最大值</label>
+            <div class="layui-input-block"><input name="MaxValue" type="number" step="0.01" class="layui-input"></div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">状态</label>
+            <div class="layui-input-block">
+                <select name="Status">
+                    <option value="1">启用</option>
+                    <option value="0">禁用</option>
+                </select>
+            </div>
+        </div>
+    </form>
+</script>
+
 @section Script{
     <script>
         layui.use(['table', 'form', 'layer'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer;
+            var typeVal = 1;
             function ok(res) { return res && (res.code === 0 || res.code === 200); }
-            function ctlType(v) { return Number(v) === 1 ? '数值型' : '是否型'; }
+
+            function firstDefined() {
+                for (var i = 0; i < arguments.length; i++) {
+                    var v = arguments[i];
+                    if (v !== undefined && v !== null) return v;
+                }
+                return undefined;
+            }
+            function normalizeFacilityItemRow(d) {
+                if (!d || typeof d !== 'object') return d;
+                return {
+                    Id: firstDefined(d.Id, d.id),
+                    Type: firstDefined(d.Type, d.type),
+                    Project: firstDefined(d.Project, d.project),
+                    CheckMethod: firstDefined(d.CheckMethod, d.checkMethod),
+                    UpkeepMethod: firstDefined(d.UpkeepMethod, d.upkeepMethod),
+                    Remark: firstDefined(d.Remark, d.remark),
+                    Status: firstDefined(d.Status, d.status),
+                    FacilityType: firstDefined(d.FacilityType, d.facilityType, ''),
+                    ControlType: firstDefined(d.ControlType, d.controlType, 0),
+                    MaxValue: firstDefined(d.MaxValue, d.maxValue),
+                    MinValue: firstDefined(d.MinValue, d.minValue),
+                    StdMaxValue: firstDefined(d.StdMaxValue, d.stdMaxValue),
+                    StdMinValue: firstDefined(d.StdMinValue, d.stdMinValue),
+                    Maintenance_level: firstDefined(d.Maintenance_level, d.maintenance_level),
+                    Standardvalue: firstDefined(d.Standardvalue, d.standardvalue),
+                    WXFlage: firstDefined(d.WXFlage, d.wXFlage, d.wxFlage, 0)
+                };
+            }
 
             function getSearchParam() {
-                var list = [{ field: 'Type', conditional: 'eq', value: '1' }];
+                var list = [];
                 var kw = $('#kw').val();
                 if (kw) list.push({ field: 'Project', conditional: 'like', value: kw });
+                list.push({ field: 'Type', conditional: 'eq', value: typeVal + '' });
                 return list;
             }
 
@@ -39,27 +119,83 @@
                 table.render({
                     elem: '#GridMain',
                     id: 'GridMain',
-                    url: '/Facility_Item/GetMainList',
+                    url: '@Url.Action("GetMainList", "Facility_Item")',
                     method: 'post',
                     where: { page: 1, limit: 20, searchParam: getSearchParam() },
                     page: true,
-                    height: 'full-200',
+                    height: 'full-250',
+                    parseData: function (res) {
+                        var raw = res && res.data ? res.data : [];
+                        var data = [];
+                        for (var i = 0; i < raw.length; i++) data.push(normalizeFacilityItemRow(raw[i]));
+                        return {
+                            code: res ? res.code : 1,
+                            msg: (res && res.msg) || '',
+                            count: res && res.count != null ? res.count : 0,
+                            data: data
+                        };
+                    },
                     cols: [[
                         { type: 'numbers', title: '#' },
                         { field: 'Project', title: '项目', minWidth: 180 },
-                        { field: 'UpkeepMethod', title: '方法', minWidth: 200 },
+                        { field: 'UpkeepMethod', title: '方法', minWidth: 220 },
                         { field: 'CheckMethod', title: '标准描述', minWidth: 180 },
-                        { field: 'ControlType', title: '控件类型', width: 100, templet: function (d) { return ctlType(d.ControlType); } },
+                        { field: 'ControlType', title: '控件类型', width: 100, templet: function (d) { return Number(d.ControlType) === 1 ? '数值型' : '是否型'; } },
                         { field: 'MinValue', title: '最小值', width: 90 },
                         { field: 'MaxValue', title: '最大值', width: 90 },
-                        { field: 'Status', title: '状态', width: 90, templet: function (d) { return (d.Status == 1) ? '启用' : '禁用'; } }
+                        { field: 'Status', title: '状态', width: 90, templet: function (d) { var s = d.Status; return (s == 1 || s === '1') ? '启用' : '禁用'; } },
+                        { title: '操作', width: 130, toolbar: '#barRow', fixed: 'right' }
                     ]]
                 });
             }
 
+            function openEdit(data) {
+                var payload = data ? normalizeFacilityItemRow(data) : { Id: 0, Type: typeVal, Status: 1, ControlType: 0, FacilityType: '' };
+                payload.Type = typeVal;
+                var isEdit = payload.Id != null && String(payload.Id) !== '' && String(payload.Id) !== '0';
+                layer.open({
+                    type: 1,
+                    area: ['560px', '520px'],
+                    title: isEdit ? '编辑点检项目' : '新增点检项目',
+                    content: $('#tplForm').html(),
+                    btn: ['保存', '关闭'],
+                    success: function () {
+                        form.render();
+                        form.val('itemForm', payload);
+                    },
+                    yes: function (idx) {
+                        var row = form.val('itemForm');
+                        row.Type = typeVal;
+                        $.post('@Url.Action("SaveItem", "Facility_Item")', row, function (res) {
+                            if (ok(res)) {
+                                layer.close(idx);
+                                table.reload('GridMain');
+                                App.success('保存成功');
+                            } else App.error(res.msg || '保存失败');
+                        });
+                    }
+                });
+            }
+
+            $('#btnAdd').on('click', function () { openEdit(null); });
             $('#btnReload').on('click', function () { table.reload('GridMain', { where: { page: 1, limit: 20, searchParam: getSearchParam() } }); });
             $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'edit') openEdit(obj.data);
+                if (obj.event === 'del') {
+                    layer.confirm('确认删除该项目？', function (idx) {
+                        $.post('@Url.Action("DeleteItem", "Facility_Item")', { id: obj.data.Id }, function (res) {
+                            layer.close(idx);
+                            if (ok(res)) {
+                                obj.del();
+                                App.success('删除成功');
+                            } else App.error(res.msg || '删除失败');
+                        });
+                    });
+                }
+            });
 
+            form.render();
             renderTable();
         });
     </script>

@@ -75,12 +75,14 @@
         $('#btnReload').on('click', load);
         $('#btnAdd').on('click', function(){ openForm(0); });
 
+        function rowId(d){ return d && (d.Id != null ? d.Id : d.id); }
+
         table.on('tool(GridMain)', function(obj){
             var d = obj.data, e = obj.event;
-            if (e==='edit') openForm(d.Id);
+            if (e==='edit') openForm(rowId(d));
             else if (e==='del') {
                 layer.confirm('删除角色将解除所有授权关系，确认?', function(idx){
-                    $.post('@Url.Action("DeleteRole")', { id: d.Id }, function(res){
+                    $.post('@Url.Action("DeleteRole")', { id: rowId(d) }, function(res){
                         layer.close(idx);
                         if (ok(res)){ layer.msg('删除成功'); load(); } else layer.msg(res.msg||'失败',{icon:2});
                     });
@@ -88,17 +90,28 @@
             }
         });
 
-        function renderTree(selectedIds){
-            var sel = new Set(selectedIds || []);
-            // group by ParentId
+        function normalizeModules(raw){
+            return (raw || []).map(function(m){
+                return {
+                    Id: String(m.Id != null ? m.Id : m.id),
+                    ParentId: String((m.ParentId != null && m.ParentId !== '') ? m.ParentId : ((m.parentId != null && m.parentId !== '') ? m.parentId : '0')),
+                    Name: m.Name || m.name || '',
+                    Code: m.Code || m.code || ''
+                };
+            });
+        }
+
+        function renderTree(selectedIds, $layer){
+            var $tree = ($layer && $layer.length ? $layer : $('.layui-layer-content')).find('#moduleTree');
+            var sel = new Set((selectedIds || []).map(function(x){ return String(x); }));
             var byParent = {};
             allModules.forEach(function(m){
-                var p = m.ParentId || 0;
+                var p = m.ParentId || '0';
                 (byParent[p] = byParent[p] || []).push(m);
             });
             function nodeHtml(m, depth){
                 var children = byParent[m.Id] || [];
-                var checked = sel.has(m.Id) ? 'checked' : '';
+                var checked = sel.has(String(m.Id)) ? 'checked' : '';
                 var indent = (depth * 16) + 'px';
                 var hasChildren = children.length > 0;
                 var caret = hasChildren ? '<i class="layui-icon layui-icon-triangle-d" style="font-size:12px;color:#94a3b8;margin-right:4px;"></i>' : '<span style="display:inline-block;width:16px;"></span>';
@@ -109,48 +122,61 @@
                 children.forEach(function(c){ html += nodeHtml(c, depth + 1); });
                 return html;
             }
-            var top = byParent[0] || [];
-            $('#moduleTree').html(top.map(function(n){ return nodeHtml(n, 0); }).join('') || '<span style="color:#999;font-size:12px;">无可用菜单</span>');
+            var top = byParent['0'] || [];
+            $tree.html(top.map(function(n){ return nodeHtml(n, 0); }).join('') || '<span style="color:#999;font-size:12px;">无可用菜单</span>');
         }
+
+        // Layui 的 form 没有 off；雪花 Id 不能用 parseInt
+        form.on('submit(submitRole)', function(data){
+            var f = data.field;
+            var $lf = $('.layui-layer-content form[lay-filter="roleForm"]').last();
+            var moduleIds = $lf.find('#moduleTree .mod-cb:checked').map(function(){
+                var v = this.getAttribute('data-id');
+                return v ? String(v) : null;
+            }).get().filter(function(x){ return x != null && x !== ''; });
+            var idStr = (f.Id !== undefined && f.Id !== null && String(f.Id).trim() !== '') ? String(f.Id).trim() : '0';
+            var payload = {
+                Role: {
+                    Id: idStr === '0' ? 0 : idStr,
+                    Name: f.Name,
+                    Status: parseInt(f.Status||1,10)
+                },
+                ModuleIds: moduleIds
+            };
+            $.ajax({ url:'@Url.Action("SaveRole")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
+                .done(function(res){
+                    if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
+                    else layer.msg(res.msg||'失败',{icon:2});
+                });
+            return false;
+        });
 
         function openForm(id){
             layer.open({
                 type:1, area:['720px','620px'], title: id?'编辑角色':'新增角色',
                 content: $('#tplForm').html(), shadeClose:false,
-                success: function(){
-                    $('#btnCancel').on('click', function(){ layer.closeAll(); });
+                success: function(layero, index){
+                    var $L = $(layero);
+                    $L.find('#btnCancel').off('click').on('click', function(){ layer.close(index); });
                     $.get('@Url.Action("GetModules")', function(res){
-                        if (ok(res)) allModules = res.data || [];
+                        if (ok(res)) allModules = normalizeModules(res.data || []);
                         if (id){
                             $.get('@Url.Action("GetRole")', { id: id }, function(r){
                                 if (!ok(r)){ layer.msg(r.msg||'加载失败',{icon:2}); return; }
-                                var ro = r.data.role || {}, mids = r.data.moduleIds || [];
+                                var ro = r.data.role || {};
+                                var rawMids = (r.data.moduleIds != null ? r.data.moduleIds : r.data.ModuleIds) || [];
+                                var mids = [].concat(rawMids).map(function(x){ return String(x).trim(); }).filter(function(x){ return x !== ''; });
                                 try { form.val('roleForm', { Id: ro.Id, Name: ro.Name||'', Status: String(ro.Status==null?1:ro.Status) }); } catch(e){}
-                                renderTree(mids);
+                                renderTree(mids, $L);
                                 try { form.render(); } catch(e){}
                             });
                         } else {
                             try { form.val('roleForm', { Id:0, Status:'1' }); } catch(e){}
-                            renderTree([]);
+                            renderTree([], $L);
                             try { form.render(); } catch(e){}
                         }
                     });
                 }
-            });
-
-            form.off('submit(submitRole)').on('submit(submitRole)', function(data){
-                var f = data.field;
-                var moduleIds = $('#moduleTree .mod-cb:checked').map(function(){ return parseInt(this.dataset.id,10); }).get();
-                var payload = {
-                    Role: { Id: parseInt(f.Id||0,10), Name: f.Name, Status: parseInt(f.Status||1,10) },
-                    ModuleIds: moduleIds
-                };
-                $.ajax({ url:'@Url.Action("SaveRole")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
-                    .done(function(res){
-                        if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
-                        else layer.msg(res.msg||'失败',{icon:2});
-                    });
-                return false;
             });
         }
 

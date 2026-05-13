@@ -1,3 +1,4 @@
+using System.Globalization;
 using DeviceMgmt.App.Apps.System;
 using DeviceMgmt.App.Interface;
 using DeviceMgmt.App.Request;
@@ -30,7 +31,9 @@ public class Sys_RoleController : BaseController
     {
         var r = _app.Get(id);
         if (r == null) return Json(new ResponseData { code = 404, msg = "not found" });
-        return Json(new ResponseData { code = 0, data = new { role = r, moduleIds = _app.GetRoleModuleIds(id) } });
+        // 必须返回字符串数组：long[] 在 JSON 里会变成数字，前端超过 2^53-1 会失真，勾选状态对不上
+        var moduleIdStrs = _app.GetRoleModuleIds(id).Select(x => x.ToString(CultureInfo.InvariantCulture)).ToArray();
+        return Json(new ResponseData { code = 0, data = new { role = r, moduleIds = moduleIdStrs } });
     }
 
     [HttpPost]

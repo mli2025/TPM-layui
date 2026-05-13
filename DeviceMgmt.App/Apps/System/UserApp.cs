@@ -1,3 +1,5 @@
+using DeviceMgmt.App.Request;
+using DeviceMgmt.App.Response;
 using DeviceMgmt.Repository.Domain;
 using DeviceMgmt.Repository.Interface;
 using Infrastructure.DEncrypt;
@@ -6,8 +8,34 @@ namespace DeviceMgmt.App.Apps.System;
 
 public class UserApp : BaseApp<Sys_User>
 {
-    public UserApp(IUnitWork unitWork, IRepository<Sys_User> repository) : base(unitWork, repository)
+    private readonly IRepository<Sys_Dept> _deptRepo;
+
+    public UserApp(IUnitWork unitWork, IRepository<Sys_User> repository, IRepository<Sys_Dept> deptRepo)
+        : base(unitWork, repository)
     {
+        _deptRepo = deptRepo;
+    }
+
+    /// <summary>用户列表附带部门名称（Layui 表格展示用）。</summary>
+    public override TableData Getmainlist(PageReq req, long? deptId = null)
+    {
+        var filters = GetSearchCondition(req.searchParam);
+        var orderBy = BuildOrderBy(req.sfield, req.sorder);
+        var (data, total) = Repository.FindPaged(filters, req.page, req.limit, orderBy);
+        var list = data.ToList();
+        var deptMap = _deptRepo.Find(null, null, "[Id] ASC").ToDictionary(d => d.Id, d => d.DeptName ?? string.Empty);
+        var rows = list.Select(u => new
+        {
+            u.Id,
+            u.Account,
+            u.Name,
+            u.EmployeeId,
+            u.DeptId,
+            DeptName = u.DeptId != 0 && deptMap.TryGetValue(u.DeptId, out var dn) ? dn : string.Empty,
+            u.CreateDate,
+            u.Status
+        }).ToList();
+        return new TableData { code = 0, count = total, data = rows };
     }
 
     public Sys_User? GetByAccount(string account)

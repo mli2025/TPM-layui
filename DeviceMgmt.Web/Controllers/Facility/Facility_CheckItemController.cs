@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DeviceMgmt.Web.Controllers.Facility;
 
 /// <summary>
-/// 设备点检项目列表（view-only），数据复用 Facility_Item，按 Type=1 过滤
+/// 设备点检项目列表：UI 与 <see cref="Facility_ItemController"/> 保养项目页一致，固定 Type=点检，数据写入 Facility_Item。
 /// </summary>
 public class Facility_CheckItemController : BaseController
 {

@@ -97,7 +97,7 @@
                     { field:'Account', title:'账号', width:160 },
                     { field:'Name', title:'姓名', width:160 },
                     { field:'EmployeeId', title:'员工号', width:120 },
-                    { field:'DeptId', title:'部门Id', width:120 },
+                    { field:'DeptName', title:'部门', width:180 },
                     { field:'Status', title:'状态', width:100, templet:function(d){ return d.Status===1?'<span class="layui-badge layui-bg-green">启用</span>':'<span class="layui-badge layui-bg-gray">停用</span>'; } },
                     { field:'CreateDate', title:'创建时间', width:160, templet:function(d){ return d.CreateDate ? String(d.CreateDate).substring(0,16).replace('T',' ') : ''; } },
                     { fixed:'right', title:'操作', width:240, align:'center', toolbar:'#barRow' }
@@ -115,19 +115,21 @@
         $('#kw').on('keyup', function(e){ if (e.keyCode===13) load(); });
         $('#btnAdd').on('click', function(){ openForm(0); });
 
+        function rowId(d){ return d && (d.Id != null ? d.Id : d.id); }
+
         table.on('tool(GridMain)', function(obj){
             var d = obj.data, e = obj.event;
-            if (e==='edit') openForm(d.Id);
+            if (e==='edit') openForm(rowId(d));
             else if (e==='del') {
                 layer.confirm('确认删除该用户?', function(idx){
-                    $.post('@Url.Action("DeleteUser")', { id: d.Id }, function(res){
+                    $.post('@Url.Action("DeleteUser")', { id: rowId(d) }, function(res){
                         layer.close(idx);
                         if (ok(res)){ layer.msg('删除成功'); load(); } else layer.msg(res.msg||'失败',{icon:2});
                     });
                 });
             } else if (e==='reset') {
                 layer.prompt({ title:'重置密码（默认 123456）' }, function(val, idx){
-                    $.post('@Url.Action("ResetPassword")', { id: d.Id, newPassword: val || '123456' }, function(res){
+                    $.post('@Url.Action("ResetPassword")', { id: rowId(d), newPassword: val || '123456' }, function(res){
                         layer.close(idx);
                         layer.msg(res.msg || (ok(res)?'已重置':'失败'), { icon: ok(res)?1:2 });
                     });
@@ -135,28 +137,64 @@
             }
         });
 
-        function fillRoles(selected){
+        function fillRoles(selected, $layer){
+            var $box = ($layer && $layer.length ? $layer : $('.layui-layer-content')).find('#roleBox');
+            var selArr = (selected || []).map(function(x){ return String(x); });
             var html = allRoles.map(function(r){
-                var sel = selected && selected.indexOf(r.Id) >= 0 ? 'checked' : '';
-                return '<label style="margin-right:14px;display:inline-block;"><input type="checkbox" class="role-cb" value="'+r.Id+'" '+sel+' /> '+(r.Name||'')+'</label>';
+                var rid = String(r.Id);
+                var sel = selArr.indexOf(rid) >= 0 ? 'checked' : '';
+                return '<label style="margin-right:14px;display:inline-block;"><input type="checkbox" class="role-cb" value="'+rid+'" '+sel+' /> '+(r.Name||'')+'</label>';
             }).join('');
-            $('#roleBox').html(html || '<span style="color:#999;font-size:12px;">无可用角色</span>');
+            $box.html(html || '<span style="color:#999;font-size:12px;">无可用角色</span>');
         }
-        function fillDepts(currentId){
-            var $sel = $('select[name="DeptId"]').empty().append('<option value="0">-- 无 --</option>');
+        function fillDepts(currentId, $layer){
+            var $ctx = ($layer && $layer.length) ? $layer : $('.layui-layer-content');
+            var $sel = $ctx.find('select[name="DeptId"]').first().empty().append('<option value="0">-- 无 --</option>');
             allDepts.forEach(function(d){
-                var sel = String(d.Id) === String(currentId||'') ? ' selected' : '';
+                var cur = (currentId == null || currentId === '') ? '' : currentId;
+                var sel = String(d.Id) === String(cur) ? ' selected' : '';
                 $sel.append('<option value="'+d.Id+'"'+sel+'>'+(d.DeptName||'')+'</option>');
             });
             try { form.render('select','userForm'); } catch(e){}
         }
 
+        // Layui 的 form 没有 off；弹层内 select 经 render 后 data.field 常漏 DeptId，保存时从原生 select 再读一次
+        form.on('submit(submitUser)', function(data){
+            var f = data.field;
+            var $lf = $('.layui-layer-content form[lay-filter="userForm"]').last();
+            var deptRaw = $lf.find('select[name="DeptId"]').val();
+            if (deptRaw === undefined || deptRaw === null || deptRaw === '') deptRaw = f.DeptId;
+            var deptIdStr = (deptRaw !== undefined && deptRaw !== null && String(deptRaw) !== '') ? String(deptRaw) : '0';
+            var roleIds = $lf.find('#roleBox .role-cb:checked').map(function(){ return parseInt(this.value,10); }).get();
+            var idStr = (f.Id !== undefined && f.Id !== null && String(f.Id).trim() !== '') ? String(f.Id).trim() : '0';
+            var payload = {
+                User: {
+                    Id: idStr === '0' ? 0 : idStr,
+                    Account: f.Account,
+                    Name: f.Name,
+                    EmployeeId: f.EmployeeId ? parseInt(f.EmployeeId,10) : 0,
+                    DeptId: deptIdStr,
+                    Status: parseInt(f.Status||1,10),
+                    Password: ''
+                },
+                RawPassword: f.RawPassword,
+                RoleIds: roleIds
+            };
+            $.ajax({ url:'@Url.Action("SaveUser")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
+                .done(function(res){
+                    if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
+                    else layer.msg(res.msg||'失败',{icon:2});
+                });
+            return false;
+        });
+
         function openForm(id){
             layer.open({
                 type:1, area:['640px','auto'], title: id?'编辑用户':'新增用户',
                 content: $('#tplForm').html(), shadeClose:false,
-                success: function(){
-                    $('#btnCancel').on('click', function(){ layer.closeAll(); });
+                success: function(layero, index){
+                    var $L = $(layero);
+                    $L.find('#btnCancel').off('click').on('click', function(){ layer.close(index); });
                     $.when(
                         $.get('@Url.Action("GetRoles")'),
                         $.get('@Url.Action("GetDepts")')
@@ -168,42 +206,18 @@
                                 if (!ok(res)){ layer.msg(res.msg||'加载失败',{icon:2}); return; }
                                 var u = res.data.user || {}, roles = res.data.roles || [];
                                 try { form.val('userForm', { Id: u.Id, Account: u.Account||'', Name: u.Name||'', EmployeeId: u.EmployeeId||'', DeptId: u.DeptId||0, Status: String(u.Status==null?1:u.Status), RawPassword:'' }); } catch(e){}
-                                fillDepts(u.DeptId);
-                                fillRoles(roles);
+                                fillDepts(u.DeptId, $L);
+                                fillRoles(roles, $L);
                                 try { form.render(); } catch(e){}
                             });
                         } else {
                             try { form.val('userForm', { Id:0, Status:'1' }); } catch(e){}
-                            fillDepts(0);
-                            fillRoles([]);
+                            fillDepts(0, $L);
+                            fillRoles([], $L);
                             try { form.render(); } catch(e){}
                         }
                     });
                 }
-            });
-
-            form.off('submit(submitUser)').on('submit(submitUser)', function(data){
-                var f = data.field;
-                var roleIds = $('#roleBox .role-cb:checked').map(function(){ return parseInt(this.value,10); }).get();
-                var payload = {
-                    User: {
-                        Id: parseInt(f.Id||0,10),
-                        Account: f.Account,
-                        Name: f.Name,
-                        EmployeeId: f.EmployeeId ? parseInt(f.EmployeeId,10) : 0,
-                        DeptId: f.DeptId ? parseInt(f.DeptId,10) : 0,
-                        Status: parseInt(f.Status||1,10),
-                        Password: ''
-                    },
-                    RawPassword: f.RawPassword,
-                    RoleIds: roleIds
-                };
-                $.ajax({ url:'@Url.Action("SaveUser")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
-                    .done(function(res){
-                        if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
-                        else layer.msg(res.msg||'失败',{icon:2});
-                    });
-                return false;
             });
         }
 

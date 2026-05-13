@@ -96,7 +96,7 @@
             <h2 class="text-2xl font-semibold text-slate-900 mb-2">欢迎回来</h2>
             <p class="text-sm text-slate-500 mb-8">请输入账号密码登录系统</p>
 
-            <form @@submit.prevent="submit" autocomplete="off" novalidate>
+            <form x-on:submit.prevent="submit" autocomplete="off" novalidate>
                 <input type="hidden" name="returnUrl" :value="returnUrl" />
 
                 <div class="mb-4">
@@ -108,8 +108,8 @@
                                :class="errors.account ? 'input-error' : ''"
                                placeholder="请输入账号"
                                autocomplete="username"
-                               @@input="errors.account = ''"
-                               @@keydown.enter.prevent="submit" />
+                               x-on:input="errors.account = ''"
+                               x-on:keydown.enter.prevent="submit" />
                     </div>
                     <p x-show="errors.account" x-text="errors.account"
                        class="text-xs text-red-500 mt-1"></p>
@@ -124,9 +124,9 @@
                                :class="errors.password ? 'input-error' : ''"
                                placeholder="请输入密码"
                                autocomplete="current-password"
-                               @@input="errors.password = ''"
-                               @@keydown.enter.prevent="submit" />
-                        <button type="button" @@click="showPwd = !showPwd"
+                               x-on:input="errors.password = ''"
+                               x-on:keydown.enter.prevent="submit" />
+                        <button type="button" x-on:click="showPwd = !showPwd"
                                 class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
                                 tabindex="-1">
                             <i :data-lucide="showPwd ? 'eye-off' : 'eye'" class="w-4 h-4"></i>
@@ -145,7 +145,7 @@
                 <button type="button"
                         class="btn btn-primary w-full justify-center"
                         :disabled="loading"
-                        @@click.prevent="submit">
+                        x-on:click.prevent="submit">
                     <span x-show="!loading">登 录</span>
                     <span x-show="loading" class="inline-flex items-center gap-2">
                         <span class="spinner"></span> 登录中…

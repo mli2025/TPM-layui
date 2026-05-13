@@ -60,14 +60,29 @@
         function load(){
             $.get('@Url.Action("List")', function(res){
                 if (!ok(res)){ layer.msg(res.msg||'加载失败',{icon:2}); return; }
-                allDepts = res.data || [];
+                allDepts = (res.data || []).map(function(d){
+                    return {
+                        Id: String(d.Id != null ? d.Id : d.id),
+                        ParentId: String((d.ParentId != null && d.ParentId !== '') ? d.ParentId : (d.parentId != null ? d.parentId : '0')),
+                        DeptNumber: d.DeptNumber || d.deptNumber || '',
+                        DeptName: d.DeptName || d.deptName || '',
+                        Status: d.Status != null ? d.Status : d.status
+                    };
+                });
                 renderTree();
             });
         }
-        function findById(id){ for (var i=0;i<allDepts.length;i++){ if (allDepts[i].Id === id) return allDepts[i]; } return null; }
+        function findById(id){
+            var s = String(id);
+            for (var i=0;i<allDepts.length;i++){ if (allDepts[i].Id === s) return allDepts[i]; }
+            return null;
+        }
         function renderTree(){
             var byParent = {};
-            allDepts.forEach(function(d){ var p = d.ParentId||0; (byParent[p] = byParent[p] || []).push(d); });
+            allDepts.forEach(function(d){
+                var p = d.ParentId || '0';
+                (byParent[p] = byParent[p] || []).push(d);
+            });
             function nodeHtml(d, depth){
                 var children = byParent[d.Id] || [];
                 var indent = (depth*20) + 'px';
@@ -83,7 +98,7 @@
                 children.forEach(function(c){ html += nodeHtml(c, depth+1); });
                 return html;
             }
-            var top = byParent[0] || [];
+            var top = byParent['0'] || [];
             $('#deptTree').html(top.map(function(n){ return nodeHtml(n,0); }).join('') || '<div style="color:#999;text-align:center;padding:30px;">暂无数据</div>');
         }
 
@@ -91,7 +106,7 @@
         $('#btnAdd').on('click', function(){ openForm({ parentId: 0 }); });
 
         $('#deptTree').on('click', '[data-act]', function(){
-            var id = parseInt($(this).data('id'),10);
+            var id = String($(this).attr('data-id') || '');
             var act = $(this).data('act');
             if (act==='addChild') openForm({ parentId: id });
             else if (act==='edit') openForm({ id: id });
@@ -105,41 +120,43 @@
             }
         });
 
+        // Layui 的 form 没有 off；submit 用 form.on 委托一次即可，勿放在 openForm 内重复注册
+        form.on('submit(submitDept)', function(data){
+            var f = data.field;
+            var payload = {
+                Id: (f.Id !== undefined && f.Id !== null && String(f.Id).trim() !== '') ? String(f.Id).trim() : '0',
+                ParentId: (f.ParentId !== undefined && f.ParentId !== null && String(f.ParentId).trim() !== '') ? String(f.ParentId).trim() : '0',
+                DeptNumber: f.DeptNumber||'',
+                DeptName: f.DeptName||'',
+                Status: parseInt(f.Status||1,10)
+            };
+            $.ajax({ url:'@Url.Action("Save")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
+                .done(function(res){
+                    if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
+                    else layer.msg(res.msg||'失败',{icon:2});
+                });
+            return false;
+        });
+
         function openForm(opts){
             layer.open({
                 type:1, area:['560px','auto'], title: opts.id?'编辑部门':'新增部门',
                 content: $('#tplForm').html(), shadeClose:false,
-                success: function(){
-                    $('#btnCancel').on('click', function(){ layer.closeAll(); });
+                success: function(layero, index){
+                    $(layero).find('#btnCancel').off('click').on('click', function(){ layer.close(index); });
                     if (opts.id){
                         var d = findById(opts.id) || {};
-                        try { form.val('deptForm', { Id: d.Id, ParentId: d.ParentId||0, DeptNumber: d.DeptNumber||'', DeptName: d.DeptName||'', Status: String(d.Status==null?1:d.Status) }); } catch(e){}
-                        var p = findById(d.ParentId||0);
-                        $('#parentText').text(p?p.DeptName:'根部门');
+                        try { form.val('deptForm', { Id: d.Id, ParentId: d.ParentId||'0', DeptNumber: d.DeptNumber||'', DeptName: d.DeptName||'', Status: String(d.Status==null?1:d.Status) }); } catch(e){}
+                        var p = findById(d.ParentId||'0');
+                        $(layero).find('#parentText').text(p?p.DeptName:'根部门');
                     } else {
-                        try { form.val('deptForm', { Id:0, ParentId: opts.parentId||0, Status:'1' }); } catch(e){}
-                        var pp = findById(opts.parentId||0);
-                        $('#parentText').text(pp?pp.DeptName:'根部门');
+                        var pid = (opts.parentId !== undefined && opts.parentId !== null && String(opts.parentId) !== '') ? String(opts.parentId) : '0';
+                        try { form.val('deptForm', { Id:'0', ParentId: pid, Status:'1' }); } catch(e){}
+                        var pp = findById(pid);
+                        $(layero).find('#parentText').text(pp?pp.DeptName:'根部门');
                     }
                     try { form.render(); } catch(e){}
                 }
-            });
-
-            form.off('submit(submitDept)').on('submit(submitDept)', function(data){
-                var f = data.field;
-                var payload = {
-                    Id: parseInt(f.Id||0,10),
-                    ParentId: parseInt(f.ParentId||0,10),
-                    DeptNumber: f.DeptNumber||'',
-                    DeptName: f.DeptName||'',
-                    Status: parseInt(f.Status||1,10)
-                };
-                $.ajax({ url:'@Url.Action("Save")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })
-                    .done(function(res){
-                        if (ok(res)){ layer.msg('保存成功'); layer.closeAll(); load(); }
-                        else layer.msg(res.msg||'失败',{icon:2});
-                    });
-                return false;
             });
         }
 
