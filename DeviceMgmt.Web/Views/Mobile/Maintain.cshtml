@@ -104,12 +104,15 @@
             });
     }
 
+    var isArboreShell = /ArboreShell\//i.test(navigator.userAgent || '');
+
     function startScan(){
         scanModal.classList.remove('hidden');
         scanStatus.textContent = '正在启动摄像头...';
         scanStatus.classList.remove('text-red-300');
 
-        if (!window.isSecureContext) {
+        // 安卓壳 (ArboreShell) 内允许 http origin 调用 getUserMedia, 由原生授权摄像头
+        if (!window.isSecureContext && !isArboreShell) {
             scanStatus.textContent = '⚠ 摄像头需要 HTTPS 环境，可手动输入单号';
             return;
         }
@@ -117,7 +120,7 @@
             scanStatus.textContent = '当前浏览器不支持摄像头，可手动输入单号';
             return;
         }
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
             .then(function(stream){
                 scanStream = stream;
                 scanVideo.srcObject = stream;
@@ -144,8 +147,10 @@
                     }).catch(function(){});
                 }, 400);
             })
-            .catch(function(){
-                scanStatus.textContent = '摄像头启动失败 / 用户拒绝，请手动输入单号';
+            .catch(function(err){
+                var msg = err && (err.name || err.message) ? (err.name || err.message) : '';
+                scanStatus.textContent = '摄像头启动失败 (' + msg + ')，请允许权限后重试，或手动输入单号';
+                scanStatus.classList.add('text-red-300');
             });
     }
 
