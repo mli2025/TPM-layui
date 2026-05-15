@@ -105,14 +105,51 @@
     }
 
     var isArboreShell = /ArboreShell\//i.test(navigator.userAgent || '');
+    var hasNativeScan = !!(window.AndroidBridge && typeof window.AndroidBridge.scan === 'function');
+
+    // 原生扫码桥：壳进程会回调 window.__arboreScanResult(token, code, err)
+    var __scanResolvers = {};
+    window.__arboreScanResult = function(token, code, err){
+        var r = __scanResolvers[token];
+        if (!r) return;
+        delete __scanResolvers[token];
+        if (err) r.reject(new Error(err));
+        else r.resolve(code || '');
+    };
+    function nativeScan(){
+        return new Promise(function(resolve, reject){
+            var token = 's_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+            __scanResolvers[token] = { resolve: resolve, reject: reject };
+            try { window.AndroidBridge.scan(token); }
+            catch(e){ delete __scanResolvers[token]; reject(e); }
+        });
+    }
 
     function startScan(){
+        // 1) 优先走原生扫码（http origin 下 WebView 没法用 getUserMedia）
+        if (hasNativeScan){
+            nativeScan()
+                .then(function(code){
+                    code = (code || '').trim();
+                    if (!code) return;
+                    gotoByBillNo(code);
+                })
+                .catch(function(err){
+                    var msg = err && err.message ? err.message : '';
+                    if (msg === 'CANCELLED') return; // 用户主动取消，不弹层
+                    scanModal.classList.remove('hidden');
+                    scanStatus.textContent = '原生扫码失败 (' + msg + ')，可手动输入单号';
+                    scanStatus.classList.add('text-red-300');
+                });
+            return;
+        }
+
+        // 2) 浏览器 / iOS / 桌面 fallback：getUserMedia + BarcodeDetector
         scanModal.classList.remove('hidden');
         scanStatus.textContent = '正在启动摄像头...';
         scanStatus.classList.remove('text-red-300');
 
-        // 安卓壳 (ArboreShell) 内允许 http origin 调用 getUserMedia, 由原生授权摄像头
-        if (!window.isSecureContext && !isArboreShell) {
+        if (!window.isSecureContext) {
             scanStatus.textContent = '⚠ 摄像头需要 HTTPS 环境，可手动输入单号';
             return;
         }
