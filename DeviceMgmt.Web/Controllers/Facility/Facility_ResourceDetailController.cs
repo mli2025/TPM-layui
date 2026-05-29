@@ -18,18 +18,21 @@ public class Facility_ResourceDetailController : BaseController
     private readonly EmployeeApp _empApp;
     private readonly IRepository<Facility_TheTemplateMain> _tplRepo;
     private readonly IRepository<Facility_BillMain> _billRepo;
+    private readonly IRepository<Facility_ResourceDetail> _resRepo;
 
     public Facility_ResourceDetailController(
         IAuth auth,
         Facility_ResourceDetailApp app,
         EmployeeApp empApp,
         IRepository<Facility_TheTemplateMain> tplRepo,
-        IRepository<Facility_BillMain> billRepo) : base(auth)
+        IRepository<Facility_BillMain> billRepo,
+        IRepository<Facility_ResourceDetail> resRepo) : base(auth)
     {
         _app = app;
         _empApp = empApp;
         _tplRepo = tplRepo;
         _billRepo = billRepo;
+        _resRepo = resRepo;
     }
 
     public IActionResult Index() => View();
@@ -88,6 +91,24 @@ public class Facility_ResourceDetailController : BaseController
         var lastPage = (int)Math.Ceiling(total / (double)size);
         if (lastPage < 1) lastPage = 1;
         return Json(new { last_page = lastPage, last_row = total, data = result.data });
+    }
+
+    // 表头筛选下拉：返回某列去重后的值（已排序），字段必须命中白名单
+    [HttpGet]
+    public IActionResult DistinctValues([FromQuery] string field)
+    {
+        if (string.IsNullOrWhiteSpace(field) || !AllowedFields.Contains(field))
+            return Json(new ResponseData { code = 0, data = Array.Empty<string>() });
+
+        // field 来自白名单（实体属性名），不含特殊字符，安全拼接
+        var sql = $@"SELECT DISTINCT TOP 1000 V FROM
+                     (SELECT CAST([{field}] AS NVARCHAR(400)) AS V FROM [Facility_ResourceDetail]) t
+                     WHERE V IS NOT NULL AND LTRIM(RTRIM(V)) <> ''
+                     ORDER BY V";
+        var rows = _resRepo.Query<string>(sql)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+        return Json(new ResponseData { code = 0, data = rows });
     }
 
     private static string MapFilterType(string? type) => (type ?? "like").ToLowerInvariant() switch
