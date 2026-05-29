@@ -78,11 +78,14 @@ var URL_DEPTS = '/Sys_Dept/List';
     var distinctCache = {};
     function fetchDistinct(field){
         if (distinctCache[field]) return distinctCache[field];
-        var p = $.ajax({ url: URL_DISTINCT, data: { field: field }, dataType: 'json' })
-            .then(function(res){
-                var arr = (res && (res.code===0 || res.code===200) && res.data) ? res.data : [];
-                return arr.map(function(v){ return { label: String(v), value: String(v) }; });
-            }, function(){ return []; });
+        var p = new Promise(function(resolve){
+            $.ajax({ url: URL_DISTINCT, data: { field: field }, dataType: 'json' })
+                .done(function(res){
+                    var arr = (res && (res.code===0 || res.code===200) && res.data) ? res.data : [];
+                    resolve(arr.map(function(v){ return { label: String(v), value: String(v) }; }));
+                })
+                .fail(function(){ resolve([]); });
+        });
         distinctCache[field] = p;
         return p;
     }
@@ -92,7 +95,7 @@ var URL_DEPTS = '/Sys_Dept/List';
             headerFilter: "list",
             headerFilterFunc: "like",
             headerFilterParams: {
-                values: function(){ return fetchDistinct(field); },
+                valuesLookup: function(){ return fetchDistinct(field); },
                 autocomplete: true,
                 freetext: true,
                 listOnEmpty: true,
