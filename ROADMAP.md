@@ -130,9 +130,10 @@ n8n 相关配置统一进 `Sys_Setting`（webhook URL / API Key / AI agent 嵌�
 - [x] 通知中心页（站内消息 + 已读状态）；顶栏通知入口接真实数据待接
 
 ### A.4 工作流引擎
-- [ ] 新表 `Wf_Template` / `Wf_Node` / `Wf_Instance` / `Wf_ApproveLog`
-- [ ] 通用「提交/审核/批准/派发」流程，供设备转移报废、维修、维保、检验、校准、送外检复用
-- [ ] 超时升级规则
+- [x] 新表 `Wf_Template` / `Wf_Node` / `Wf_Instance` / `Wf_ApproveLog`（v2.0.0.sql 已建）
+- [x] 通用「提交/审核/批准/派发」线性流程引擎（WorkflowApp：Start/Approve/Reject/Withdraw）；流程模板配置(可视化节点编辑) + 流程审批页(发起/审批时间线)，供设备转移报废、维修、维保、检验、校准、送外检复用
+- [ ] 超时升级规则（TimeoutHours 字段已留；定时升级由 n8n 调度，本系统提供数据）
+- [ ] 业务模块挂接（在各单据保存/状态变更时调用 WorkflowApp.Start，并以审批结果驱动单据状态）
 
 ### A.5 报表引擎 & 通用能力
 - [ ] 自定义条件 + 图表（柱/饼/趋势）+ 导出（Excel/PDF/CSV）统一组件
@@ -208,7 +209,7 @@ n8n 相关配置统一进 `Sys_Setting`（webhook URL / API Key / AI agent 嵌�
 ## WP-G 安全附件管理（URS 1001-1006）【全新】
 
 - [x] `Safety_Accessory`（附件编号/所属设备/型号规格/整定压力/检定范围/最近检定日/周期/机构/状态）
-- [x] 检定计划（`Safety_CheckPlan`）；检定记录（`Safety_CheckRecord`）表已建，查询页待补
+- [x] 检定计划（`Safety_CheckPlan`）；检定记录（`Safety_CheckRecord`）查询/录入页已交付
 - [ ] 状态看板（有效期/位置/历史，超期/不合格标红）
 - [ ] 检定结果自动同步设备档案
 - [ ] 超期/不合格联动特种设备模块 → 一键生成停用/排查工单
@@ -220,7 +221,7 @@ n8n 相关配置统一进 `Sys_Setting`（webhook URL / API Key / AI agent 嵌�
 
 - [x] `Meter`（唯一编号/名称/型号/类别/精度等级/量程/使用部门/存放位置/保管人/状态/校准周期）
 - [ ] 计量台账（自定义模板，多维度分类分组）
-- [ ] 出入库管理（扫码出入库，自动更新库存）
+- [x] 出入库管理（`Meter_InOut` 入库/出库录入；扫码出入库 + 自动更新库存量待增强）
 - [x] 校准计划（计划列表/超期红色警示；按周期自动生成待接 n8n 定时）
 - [x] 校准记录（标准化电子表单：日期/执行人/规程/环境/标准器/测量数据/不确定度/结论/有效期/证书附件/复核）
 - [x] 送外检管理（主子单：申请/审批状态/服务商 + 多选送检器具清单）
@@ -258,7 +259,7 @@ n8n 相关配置统一进 `Sys_Setting`（webhook URL / API Key / AI agent 嵌�
   - `Energy_RunTime`（设备运行时长，按工段/产品）
 - [x] 实时监控仪表板（计量点最新值指标卡，数据直接读 n8n 写入的时序表）；自定义布局/曲线待增强
 - [x] 能耗多维统计（计量点/维度/时间范围查询）；同比/环比/趋势图待增强
-- [ ] 报警管理（基于 `Energy_AlarmRule` 比对 → `Energy_AlarmRecord` → 通知引擎推送）
+- [x] 报警管理（`Energy_AlarmRule` 规则配置 + `Energy_AlarmRecord` 记录列表/处置）；阈值比对与推送由 n8n 调度写入
 
 ---
 

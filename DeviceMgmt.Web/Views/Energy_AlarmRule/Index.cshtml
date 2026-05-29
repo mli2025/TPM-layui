@@ -1,0 +1,88 @@
+@{
+    ViewData["Title"] = "能源报警规则";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>报警规则</strong><span style="color:#94a3b8;font-size:12px;margin-left:8px;">阈值越限由 n8n 比对计量点时序数据后写入报警记录</span></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增规则</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="theForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>计量点</label><div class="layui-input-inline"><select name="PointId" id="fld_point" lay-search lay-verify="required"></select></div></div>
+                <div class="layui-inline"><label class="layui-form-label">阈值</label><div class="layui-input-inline"><input type="number" step="any" name="Threshold" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">报警级别</label><div class="layui-input-inline"><select name="AlarmLevel">
+                    <option value="">--</option><option value="info">提示</option><option value="warn">警告</option><option value="critical">严重</option>
+                </select></div></div>
+                <div class="layui-inline"><label class="layui-form-label">状态</label><div class="layui-input-inline" style="padding-top:8px;">
+                    <input type="radio" name="Status" value="1" title="启用" checked />
+                    <input type="radio" name="Status" value="0" title="停用" />
+                </div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">通知方式</label><div class="layui-input-inline"><input type="text" name="NotifyWay" class="layui-input" placeholder="如 app/sms/email"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">通知人</label><div class="layui-input-inline"><input type="text" name="NotifyUser" class="layui-input"></div></div>
+            </div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="submitForm">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_SAVE='@Url.Action("Save")',URL_DEL='@Url.Action("Delete")',URL_POINTS='@Url.Action("GetPoints")';
+layui.use(['table','form','layer'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer;
+    var points=[],pointMap={};
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    var LV={info:'提示',warn:'警告',critical:'严重'};
+    function loadPoints(cb){$.get(URL_POINTS,function(res){if(ok(res)){points=res.data||[];pointMap={};points.forEach(function(e){pointMap[String(e.Id)]=e.PointCode;});}if(cb)cb();});}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',page:true,height:'full-160',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'PointId',title:'计量点',width:160,templet:function(d){return pointMap[String(d.PointId)]||d.PointId;}},
+        {field:'Threshold',title:'阈值',width:120},
+        {field:'AlarmLevel',title:'级别',width:100,templet:function(d){return LV[d.AlarmLevel]||d.AlarmLevel||'';}},
+        {field:'NotifyWay',title:'通知方式',width:130},
+        {field:'NotifyUser',title:'通知人',width:130},
+        {field:'Status',title:'状态',width:90,templet:function(d){return d.Status===1?'<span class="layui-badge layui-bg-green">启用</span>':'<span class="layui-badge layui-bg-gray">停用</span>';}},
+        {title:'操作',width:150,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain');});
+    $('#btnAdd').on('click',function(){openForm({});});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='edit')openForm(obj.data);
+        else if(obj.event==='del'){layer.confirm('确认删除该规则?',function(idx){$.post(URL_DEL,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){obj.del();layer.msg('已删除',{icon:1});}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    form.on('submit(submitForm)',function(data){var f=data.field;
+        var payload={Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,PointId:f.PointId||0,Threshold:f.Threshold!==''?f.Threshold:null,AlarmLevel:f.AlarmLevel||null,NotifyWay:f.NotifyWay||null,NotifyUser:f.NotifyUser||null,Status:parseInt(f.Status||1,10)};
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+    function openForm(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑规则':'新增规则',content:$('#tplForm').html(),success:function(layero,idx){
+        var opt='<option value="">-- 请选择 --</option>';points.forEach(function(e){opt+='<option value="'+e.Id+'">'+e.PointCode+(e.MediaType?(' / '+e.MediaType):'')+'</option>';});
+        $(layero).find('#fld_point').html(opt);
+        try{form.val('theForm',{Id:row.Id||0,PointId:row.PointId!=null?String(row.PointId):'',Threshold:row.Threshold!=null?row.Threshold:'',AlarmLevel:row.AlarmLevel||'',NotifyWay:row.NotifyWay||'',NotifyUser:row.NotifyUser||'',Status:row.Status!=null?String(row.Status):'1'});form.render();}catch(e){}
+        $(layero).find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
+    }});}
+    loadPoints(function(){render();});
+});
+</script>
+}

@@ -1,0 +1,85 @@
+@{
+    ViewData["Title"] = "计量器具出入库";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>出入库记录</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="theForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>计量器具</label><div class="layui-input-inline"><select name="MeterId" id="fld_meter" lay-search lay-verify="required"></select></div></div>
+                <div class="layui-inline"><label class="layui-form-label">类型</label><div class="layui-input-inline" style="padding-top:8px;">
+                    <input type="radio" name="IoType" value="1" title="入库" checked />
+                    <input type="radio" name="IoType" value="0" title="出库" />
+                </div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">时间</label><div class="layui-input-inline"><input type="text" name="IoTime" id="fld_time" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">经办人</label><div class="layui-input-inline"><input type="text" name="Operator" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">备注</label><div class="layui-input-block"><textarea name="Remark" class="layui-textarea"></textarea></div>
+            </div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="submitForm">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_SAVE='@Url.Action("Save")',URL_DEL='@Url.Action("Delete")',URL_METERS='@Url.Action("GetMeters")';
+layui.use(['table','form','layer','laydate'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate;
+    var meters=[],meterMap={};
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,16):'';}
+    function loadMeters(cb){$.get(URL_METERS,function(res){if(ok(res)){meters=res.data||[];meterMap={};meters.forEach(function(e){meterMap[String(e.Id)]=e.MeterCode;});}if(cb)cb();});}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',page:true,height:'full-160',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'MeterId',title:'计量器具',width:160,templet:function(d){return meterMap[String(d.MeterId)]||d.MeterId;}},
+        {field:'IoType',title:'类型',width:90,templet:function(d){return d.IoType===1?'<span class="layui-badge layui-bg-green">入库</span>':'<span class="layui-badge layui-bg-orange">出库</span>';}},
+        {field:'IoTime',title:'时间',width:160,templet:function(d){return dt(d.IoTime);}},
+        {field:'Operator',title:'经办人',width:120},
+        {field:'Remark',title:'备注',minWidth:160},
+        {title:'操作',width:150,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain');});
+    $('#btnAdd').on('click',function(){openForm({});});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='edit')openForm(obj.data);
+        else if(obj.event==='del'){layer.confirm('确认删除该记录?',function(idx){$.post(URL_DEL,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){obj.del();layer.msg('已删除',{icon:1});}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    form.on('submit(submitForm)',function(data){var f=data.field;
+        var payload={Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,MeterId:f.MeterId||0,IoType:parseInt(f.IoType||1,10),IoTime:f.IoTime||null,Operator:f.Operator||null,Remark:f.Remark||null};
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+    function openForm(row){row=row||{};layer.open({type:1,area:['640px','auto'],title:row.Id?'编辑':'新增',content:$('#tplForm').html(),success:function(layero,idx){
+        var opt='<option value="">-- 请选择 --</option>';meters.forEach(function(e){opt+='<option value="'+e.Id+'">'+e.MeterCode+(e.Name?(' / '+e.Name):'')+'</option>';});
+        $(layero).find('#fld_meter').html(opt);
+        laydate.render({elem:$(layero).find('#fld_time')[0],type:'datetime'});
+        try{form.val('theForm',{Id:row.Id||0,MeterId:row.MeterId!=null?String(row.MeterId):'',IoType:row.IoType!=null?String(row.IoType):'1',IoTime:row.IoTime?dt(row.IoTime):'',Operator:row.Operator||'',Remark:row.Remark||''});form.render();}catch(e){}
+        $(layero).find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
+    }});}
+    loadMeters(function(){render();});
+});
+</script>
+}

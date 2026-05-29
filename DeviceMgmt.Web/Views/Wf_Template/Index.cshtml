@@ -1,0 +1,106 @@
+@{
+    ViewData["Title"] = "流程模板";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>工作流模板</strong><span style="color:#94a3b8;font-size:12px;margin-left:8px;">线性审批：按节点顺序流转，供各业务模块复用</span></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增流程</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑/节点</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="theForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>流程编码</label><div class="layui-input-inline"><input type="text" name="Code" class="layui-input" lay-verify="required"></div></div>
+                <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>流程名称</label><div class="layui-input-inline"><input type="text" name="Name" class="layui-input" lay-verify="required"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">适用模块</label><div class="layui-input-inline"><input type="text" name="Module" class="layui-input" placeholder="如 facility/repair"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">状态</label><div class="layui-input-inline" style="padding-top:8px;">
+                    <input type="radio" name="Status" value="1" title="启用" checked />
+                    <input type="radio" name="Status" value="0" title="停用" />
+                </div></div>
+            </div>
+            <fieldset class="layui-elem-field layui-field-title"><legend>审批节点（按顺序）</legend></fieldset>
+            <div id="nodeBox"></div>
+            <div style="margin:6px 0;"><button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="btnAddNode"><i class="layui-icon layui-icon-add-1"></i> 添加节点</button></div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="submitForm">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_GET='@Url.Action("GetTemplate")',URL_SAVE='@Url.Action("SaveTemplate")',URL_DEL='@Url.Action("DeleteTemplate")';
+layui.use(['table','form','layer'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer;
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+    var NT={submit:'提交',review:'审核',approve:'批准',dispatch:'派发'};
+    function nodeRow(n){n=n||{};
+        return '<div class="wf-node" style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">'
+         +'<input type="text" class="layui-input nd-name" placeholder="节点名称" value="'+esc(n.NodeName)+'" style="flex:2;">'
+         +'<select class="layui-select nd-type" style="flex:1;height:38px;">'
+            +['submit','review','approve','dispatch'].map(function(t){return '<option value="'+t+'"'+(n.NodeType===t?' selected':'')+'>'+NT[t]+'</option>';}).join('')
+         +'</select>'
+         +'<input type="text" class="layui-input nd-role" placeholder="审批角色(可空)" value="'+esc(n.ApproveRole)+'" style="flex:2;">'
+         +'<button type="button" class="layui-btn layui-btn-xs layui-btn-danger nd-del">删</button>'
+         +'</div>';
+    }
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',page:false,height:'full-160',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'Code',title:'流程编码',width:160},
+        {field:'Name',title:'流程名称',width:200},
+        {field:'Module',title:'适用模块',width:140},
+        {field:'Status',title:'状态',width:90,templet:function(d){return d.Status===1?'<span class="layui-badge layui-bg-green">启用</span>':'<span class="layui-badge layui-bg-gray">停用</span>';}},
+        {title:'操作',width:170,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain');});
+    $('#btnAdd').on('click',function(){openForm(0);});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='edit')openForm(obj.data.Id);
+        else if(obj.event==='del'){layer.confirm('删除流程将一并删除其节点，确认?',function(idx){$.post(URL_DEL,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){layer.msg('已删除',{icon:1});table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    form.on('submit(submitForm)',function(data){var f=data.field;
+        var $lf=$('.layui-layer-content form[lay-filter="theForm"]').last();
+        var nodes=$lf.find('.wf-node').map(function(){var $r=$(this);return {NodeName:$r.find('.nd-name').val(),NodeType:$r.find('.nd-type').val(),ApproveRole:$r.find('.nd-role').val()||null};}).get().filter(function(n){return n.NodeName&&n.NodeName.trim()!=='';});
+        var payload={Template:{Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,Code:(f.Code||'').trim(),Name:(f.Name||'').trim(),Module:f.Module||null,Status:parseInt(f.Status||1,10)},Nodes:nodes};
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+    function bindNodeBox($L){
+        $L.find('#btnAddNode').off('click').on('click',function(){$L.find('#nodeBox').append(nodeRow({NodeType:'approve'}));});
+        $L.find('#nodeBox').off('click','.nd-del').on('click','.nd-del',function(){$(this).closest('.wf-node').remove();});
+    }
+    function openForm(id){layer.open({type:1,area:['760px','620px'],title:id?'编辑流程':'新增流程',content:$('#tplForm').html(),success:function(layero,idx){
+        var $L=$(layero);
+        $L.find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
+        bindNodeBox($L);
+        if(id){$.get(URL_GET,{id:id},function(r){if(!ok(r)){layer.msg(r.msg||'加载失败',{icon:2});return;}var t=r.data.template||{};var ns=r.data.nodes||[];
+            try{form.val('theForm',{Id:t.Id||0,Code:t.Code||'',Name:t.Name||'',Module:t.Module||'',Status:t.Status!=null?String(t.Status):'1'});}catch(e){}
+            $L.find('#nodeBox').html(ns.map(nodeRow).join(''));
+            try{form.render();}catch(e){}
+        });}
+        else{try{form.val('theForm',{Id:0,Status:'1'});}catch(e){}
+            $L.find('#nodeBox').html(nodeRow({NodeName:'提交',NodeType:'submit'})+nodeRow({NodeName:'审核',NodeType:'review'})+nodeRow({NodeName:'批准',NodeType:'approve'}));
+            try{form.render();}catch(e){}
+        }
+    }});}
+    render();
+});
+</script>
+}

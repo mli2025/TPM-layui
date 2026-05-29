@@ -25,6 +25,12 @@ public class Meter_CalibPlanApp : BaseApp<Meter_CalibPlan>
         : base(unitWork, repository) { }
 }
 
+public class Meter_InOutApp : BaseApp<Meter_InOut>
+{
+    public Meter_InOutApp(IUnitWork unitWork, IRepository<Meter_InOut> repository)
+        : base(unitWork, repository) { }
+}
+
 public class Meter_CalibRecordApp : BaseApp<Meter_CalibRecord>
 {
     public Meter_CalibRecordApp(IUnitWork unitWork, IRepository<Meter_CalibRecord> repository)

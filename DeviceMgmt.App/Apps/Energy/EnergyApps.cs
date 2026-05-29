@@ -42,3 +42,19 @@ public class Energy_SummaryApp : BaseApp<Energy_Summary>
     public Energy_SummaryApp(IUnitWork unitWork, IRepository<Energy_Summary> repository)
         : base(unitWork, repository) { }
 }
+
+public class Energy_AlarmRuleApp : BaseApp<Energy_AlarmRule>
+{
+    public Energy_AlarmRuleApp(IUnitWork unitWork, IRepository<Energy_AlarmRule> repository)
+        : base(unitWork, repository) { }
+}
+
+public class Energy_AlarmRecordApp : BaseApp<Energy_AlarmRecord>
+{
+    public Energy_AlarmRecordApp(IUnitWork unitWork, IRepository<Energy_AlarmRecord> repository)
+        : base(unitWork, repository) { }
+
+    /// <summary>处置报警记录（标记已处理）</summary>
+    public void Handle(long id)
+        => Repository.ExecuteSql("UPDATE [Energy_AlarmRecord] SET [HandleStatus]=1 WHERE [Id]=@id", new { id });
+}

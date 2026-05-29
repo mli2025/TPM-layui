@@ -24,3 +24,9 @@ public class Safety_CheckPlanApp : BaseApp<Safety_CheckPlan>
     public Safety_CheckPlanApp(IUnitWork unitWork, IRepository<Safety_CheckPlan> repository)
         : base(unitWork, repository) { }
 }
+
+public class Safety_CheckRecordApp : BaseApp<Safety_CheckRecord>
+{
+    public Safety_CheckRecordApp(IUnitWork unitWork, IRepository<Safety_CheckRecord> repository)
+        : base(unitWork, repository) { }
+}

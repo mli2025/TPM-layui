@@ -1,0 +1,122 @@
+@{
+    ViewData["Title"] = "流程审批";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>流程实例 / 我的审批</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md3">
+                    <select id="fltStatus" lay-filter="fltStatus">
+                        <option value="0">进行中</option>
+                        <option value="">全部</option>
+                        <option value="1">已完成</option>
+                        <option value="2">已驳回</option>
+                        <option value="3">已撤回</option>
+                    </select>
+                </div>
+                <div class="layui-col-md9" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnStart"><i class="layui-icon layui-icon-add-1"></i> 发起流程</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail">详情/审批</a>
+</script>
+<script type="text/html" id="tplStart">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="startForm">
+            <div class="layui-form-item"><label class="layui-form-label"><span style="color:#e53935;">*</span>流程模板</label><div class="layui-input-block"><select name="TemplateId" id="fld_tpl" lay-search lay-verify="required"></select></div></div>
+            <div class="layui-form-item"><label class="layui-form-label">业务类型</label><div class="layui-input-block"><input type="text" name="BizType" class="layui-input" placeholder="如 Facility_RepairBillMain"></div></div>
+            <div class="layui-form-item"><label class="layui-form-label">业务记录Id</label><div class="layui-input-block"><input type="number" name="BizId" class="layui-input" placeholder="关联业务记录主键，可填 0 测试"></div></div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="submitStart">发起</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancelStart">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_DETAIL='@Url.Action("GetDetail")',URL_TPLS='@Url.Action("GetTemplates")',URL_START='@Url.Action("Start")',URL_APPROVE='@Url.Action("Approve")',URL_REJECT='@Url.Action("Reject")',URL_WITHDRAW='@Url.Action("Withdraw")';
+layui.use(['table','form','layer'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer;
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,19):'';}
+    var ST={0:'进行中',1:'已完成',2:'已驳回',3:'已撤回'},STC={0:'layui-bg-blue',1:'layui-bg-green',2:'layui-bg-red',3:'layui-bg-gray'};
+    function render(){var st=$('#fltStatus').val();table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',where:(st!==''&&st!=null)?{status:st}:{},page:false,height:'full-180',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'Id',title:'实例#',width:80},
+        {field:'BizType',title:'业务类型',width:200},
+        {field:'BizId',title:'业务Id',width:100},
+        {field:'CurrentNode',title:'当前节点',width:120},
+        {field:'InitiatorName',title:'发起人',width:110},
+        {field:'StartTime',title:'发起时间',width:165,templet:function(d){return dt(d.StartTime);}},
+        {field:'Status',title:'状态',width:100,templet:function(d){return '<span class="layui-badge '+(STC[d.Status]||'layui-bg-gray')+'">'+(ST[d.Status]||d.Status)+'</span>';}},
+        {title:'操作',width:130,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){render();});
+    form.on('select(fltStatus)',function(){render();});
+    $('#btnStart').on('click',function(){openStart();});
+
+    table.on('tool(GridMain)',function(obj){ if(obj.event==='detail') openDetail(obj.data.Id); });
+
+    function openStart(){
+        layer.open({type:1,area:['520px','auto'],title:'发起流程',content:$('#tplStart').html(),success:function(layero,idx){
+            var $L=$(layero);
+            $.get(URL_TPLS,function(res){var o='<option value="">-- 请选择 --</option>';if(ok(res))(res.data||[]).forEach(function(t){o+='<option value="'+t.Id+'">'+esc(t.Name)+' ('+esc(t.Code)+')</option>';});$L.find('#fld_tpl').html(o);try{form.render('select');}catch(e){}});
+            $L.find('#btnCancelStart').off('click').on('click',function(){layer.close(idx);});
+        }});
+    }
+    form.on('submit(submitStart)',function(data){var f=data.field;
+        var payload={TemplateId:f.TemplateId||0,BizType:f.BizType||'manual',BizId:f.BizId?f.BizId:0};
+        $.ajax({url:URL_START,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('已发起',{icon:1});layer.closeAll();render();}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+
+    function openDetail(id){
+        $.get(URL_DETAIL,{id:id},function(res){
+            if(!ok(res)){layer.msg(res.msg||'加载失败',{icon:2});return;}
+            var inst=res.data.instance||{},logs=res.data.logs||[],tpl=res.data.template||{},nodes=res.data.nodes||[];
+            var nodeNames=nodes.map(function(n){var cur=(n.NodeKey===inst.CurrentNode);return '<span class="layui-badge '+(cur?'layui-bg-blue':'layui-bg-gray')+'" style="margin-right:4px;">'+esc(n.NodeName||n.NodeKey)+'</span>';}).join(' → ');
+            var timeline=logs.length? logs.map(function(l){
+                var c=l.Result==='reject'?'#e53935':'#1F4D3B';
+                return '<div style="border-left:2px solid '+c+';padding:4px 0 10px 12px;margin-left:6px;">'
+                 +'<div style="font-weight:600;">'+esc(l.ApproverName||'')+' · '+(l.Result==='reject'?'<span style="color:#e53935;">驳回</span>':'<span style="color:#1F4D3B;">同意</span>')+'</div>'
+                 +'<div style="font-size:12px;color:#94a3b8;">'+dt(l.ApproveTime)+' · 节点 '+esc(l.NodeKey||'')+'</div>'
+                 +(l.Opinion?'<div style="font-size:13px;margin-top:2px;">'+esc(l.Opinion)+'</div>':'')
+                 +'</div>';
+            }).join(''):'<div style="color:#94a3b8;">暂无审批记录</div>';
+            var running=inst.Status===0;
+            var html='<div style="padding:14px;">'
+             +'<div style="margin-bottom:8px;"><b>'+esc(tpl.Name||'')+'</b> <span style="color:#94a3b8;font-size:12px;">'+esc(inst.BizType||'')+' #'+esc(inst.BizId)+'</span></div>'
+             +'<div style="margin-bottom:10px;">'+nodeNames+'</div>'
+             +'<fieldset class="layui-elem-field layui-field-title"><legend>审批时间线</legend></fieldset>'
+             +'<div style="max-height:240px;overflow:auto;">'+timeline+'</div>';
+            if(running){
+                html+='<fieldset class="layui-elem-field layui-field-title"><legend>处理</legend></fieldset>'
+                 +'<textarea id="wfOpinion" class="layui-textarea" placeholder="审批意见(可空)"></textarea>'
+                 +'<div style="text-align:center;margin-top:10px;">'
+                 +'<button class="layui-btn" id="wfAgree">同意</button>'
+                 +'<button class="layui-btn layui-btn-danger" id="wfReject">驳回</button>'
+                 +'<button class="layui-btn layui-btn-primary" id="wfWithdraw">撤回</button>'
+                 +'</div>';
+            }
+            html+='</div>';
+            layer.open({type:1,area:['620px','640px'],title:'流程详情',content:html,success:function(layero){
+                var $L=$(layero);
+                function act(url){var op=$L.find('#wfOpinion').val();$.post(url,{id:id,opinion:op},function(r){if(ok(r)){layer.msg('操作成功',{icon:1});layer.closeAll();render();}else layer.msg(r.msg||'失败',{icon:2});});}
+                $L.find('#wfAgree').on('click',function(){act(URL_APPROVE);});
+                $L.find('#wfReject').on('click',function(){layer.confirm('确认驳回该流程?',function(ix){layer.close(ix);act(URL_REJECT);});});
+                $L.find('#wfWithdraw').on('click',function(){layer.confirm('确认撤回(仅发起人)?',function(ix){layer.close(ix);$.post(URL_WITHDRAW,{id:id},function(r){if(ok(r)){layer.msg('已撤回',{icon:1});layer.closeAll();render();}else layer.msg(r.msg||'失败',{icon:2});});});});
+            }});
+        });
+    }
+    render();
+});
+</script>
+}

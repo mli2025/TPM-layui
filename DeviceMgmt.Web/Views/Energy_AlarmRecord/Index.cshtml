@@ -1,0 +1,50 @@
+@{
+    ViewData["Title"] = "能源报警记录";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>报警记录</strong><span style="color:#94a3b8;font-size:12px;margin-left:8px;">由 n8n 阈值比对写入，可在此处置</span></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    {{# if(d.HandleStatus!==1){ }}
+    <a class="layui-btn layui-btn-xs" lay-event="handle">标记已处理</a>
+    {{# } else { }}
+    <span style="color:#94a3b8;">已处理</span>
+    {{# } }}
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_HANDLE='@Url.Action("Handle")',URL_POINTS='@Url.Action("GetPoints")';
+layui.use(['table','layer'],function(){
+    var table=layui.table,layer=layui.layer;
+    var pointMap={};
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,19):'';}
+    var LV={info:'提示',warn:'警告',critical:'严重'},LVC={info:'layui-bg-blue',warn:'layui-bg-orange',critical:'layui-bg-red'};
+    function loadPoints(cb){$.get(URL_POINTS,function(res){if(ok(res)){(res.data||[]).forEach(function(e){pointMap[String(e.Id)]=e.PointCode;});}if(cb)cb();});}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',page:true,height:'full-160',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'PointId',title:'计量点',width:160,templet:function(d){return pointMap[String(d.PointId)]||d.PointId;}},
+        {field:'AlarmTime',title:'报警时间',width:170,templet:function(d){return dt(d.AlarmTime);}},
+        {field:'AlarmLevel',title:'级别',width:100,templet:function(d){return '<span class="layui-badge '+(LVC[d.AlarmLevel]||'layui-bg-gray')+'">'+(LV[d.AlarmLevel]||d.AlarmLevel||'')+'</span>';}},
+        {field:'AlarmValue',title:'报警值',width:120},
+        {field:'HandleStatus',title:'处置',width:100,templet:function(d){return d.HandleStatus===1?'<span class="layui-badge layui-bg-green">已处理</span>':'<span class="layui-badge layui-bg-gray">未处理</span>';}},
+        {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain');});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='handle'){layer.confirm('确认标记为已处理?',function(idx){$.post(URL_HANDLE,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){layer.msg('已处理',{icon:1});table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    loadPoints(function(){render();});
+});
+</script>
+}

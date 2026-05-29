@@ -1,0 +1,88 @@
+@{
+    ViewData["Title"] = "安全附件检定记录";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>检定记录</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增记录</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="theForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>安全附件</label><div class="layui-input-inline"><select name="AccId" id="fld_acc" lay-search lay-verify="required"></select></div></div>
+                <div class="layui-inline"><label class="layui-form-label">检定结论</label><div class="layui-input-inline"><input type="text" name="CheckResult" class="layui-input" placeholder="合格/不合格"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">送检日期</label><div class="layui-input-inline"><input type="text" name="SendDate" id="fld_send" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">取回日期</label><div class="layui-input-inline"><input type="text" name="TakeDate" id="fld_take" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">下次检定日</label><div class="layui-input-inline"><input type="text" name="NextCheckDate" id="fld_next" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">备注</label><div class="layui-input-block"><textarea name="Remark" class="layui-textarea"></textarea></div>
+            </div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="submitForm">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_SAVE='@Url.Action("Save")',URL_DEL='@Url.Action("Delete")',URL_ACCS='@Url.Action("GetAccessories")';
+layui.use(['table','form','layer','laydate'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate;
+    var accs=[],accMap={};
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,10):'';}
+    function loadAccs(cb){$.get(URL_ACCS,function(res){if(ok(res)){accs=res.data||[];accMap={};accs.forEach(function(e){accMap[String(e.Id)]=e.AccCode;});}if(cb)cb();});}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',page:true,height:'full-160',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'AccId',title:'安全附件',width:160,templet:function(d){return accMap[String(d.AccId)]||d.AccId;}},
+        {field:'SendDate',title:'送检日期',width:120,templet:function(d){return dt(d.SendDate);}},
+        {field:'TakeDate',title:'取回日期',width:120,templet:function(d){return dt(d.TakeDate);}},
+        {field:'CheckResult',title:'结论',width:100},
+        {field:'NextCheckDate',title:'下次检定日',width:120,templet:function(d){return dt(d.NextCheckDate);}},
+        {field:'Remark',title:'备注',minWidth:140},
+        {title:'操作',width:150,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain');});
+    $('#btnAdd').on('click',function(){openForm({});});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='edit')openForm(obj.data);
+        else if(obj.event==='del'){layer.confirm('确认删除该记录?',function(idx){$.post(URL_DEL,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){obj.del();layer.msg('已删除',{icon:1});}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    form.on('submit(submitForm)',function(data){var f=data.field;
+        var payload={Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,AccId:f.AccId||0,SendDate:f.SendDate||null,TakeDate:f.TakeDate||null,CheckResult:f.CheckResult||null,NextCheckDate:f.NextCheckDate||null,Remark:f.Remark||null};
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+    function openForm(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑记录':'新增记录',content:$('#tplForm').html(),success:function(layero,idx){
+        var opt='<option value="">-- 请选择 --</option>';accs.forEach(function(e){opt+='<option value="'+e.Id+'">'+e.AccCode+(e.Model?(' / '+e.Model):'')+'</option>';});
+        $(layero).find('#fld_acc').html(opt);
+        laydate.render({elem:$(layero).find('#fld_send')[0],type:'date'});
+        laydate.render({elem:$(layero).find('#fld_take')[0],type:'date'});
+        laydate.render({elem:$(layero).find('#fld_next')[0],type:'date'});
+        try{form.val('theForm',{Id:row.Id||0,AccId:row.AccId!=null?String(row.AccId):'',SendDate:row.SendDate?dt(row.SendDate):'',TakeDate:row.TakeDate?dt(row.TakeDate):'',CheckResult:row.CheckResult||'',NextCheckDate:row.NextCheckDate?dt(row.NextCheckDate):'',Remark:row.Remark||''});form.render();}catch(e){}
+        $(layero).find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
+    }});}
+    loadAccs(function(){render();});
+});
+</script>
+}
