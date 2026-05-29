@@ -1,0 +1,102 @@
+@{
+    ViewData["Title"] = "校准记录";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>计量器具校准记录</strong><span style="color:#94a3b8;font-size:12px;margin-left:8px;">复核确认后方可生效（GMP）</span></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增记录</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    {{# if(d.IsEffective){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-disabled">已生效</a>
+    {{# } else { }}
+    <a class="layui-btn layui-btn-xs" lay-event="review">复核生效</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="theForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>计量器具</label><div class="layui-input-inline"><select name="MeterId" id="fld_meter" lay-search lay-verify="required"></select></div></div>
+                <div class="layui-inline"><label class="layui-form-label">校准日期</label><div class="layui-input-inline"><input type="text" name="CalibDate" id="fld_date" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">执行人</label><div class="layui-input-inline"><input type="text" name="Executor" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">依据规程</label><div class="layui-input-inline"><input type="text" name="Regulation" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">环境条件</label><div class="layui-input-inline"><input type="text" name="EnvCondition" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">标准器</label><div class="layui-input-inline"><input type="text" name="StdDevice" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">不确定度</label><div class="layui-input-inline"><input type="text" name="Uncertainty" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">结论</label><div class="layui-input-inline"><input type="text" name="Conclusion" class="layui-input" placeholder="合格/不合格/限用"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">有效期</label><div class="layui-input-inline"><input type="text" name="ValidDate" id="fld_valid" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">证书附件</label><div class="layui-input-inline"><input type="text" name="CertFile" class="layui-input" placeholder="路径/链接"></div></div>
+            </div>
+            <div class="layui-form-item"><label class="layui-form-label">测量数据</label><div class="layui-input-block"><textarea name="MeasureData" class="layui-textarea" placeholder="测量点/示值/误差…"></textarea></div></div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="submitForm">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_SAVE='@Url.Action("Save")',URL_DEL='@Url.Action("Delete")',URL_REVIEW='@Url.Action("Review")',URL_METERS='@Url.Action("GetMeters")';
+layui.use(['table','form','layer','laydate'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate;
+    var meters=[],meterMap={};
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,10):'';}
+    function loadMeters(cb){$.get(URL_METERS,function(res){if(ok(res)){meters=res.data||[];meterMap={};meters.forEach(function(e){meterMap[String(e.Id)]=e.MeterCode+(e.Name?(' '+e.Name):'');});}if(cb)cb();});}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',page:true,height:'full-160',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'MeterId',title:'计量器具',minWidth:170,templet:function(d){return meterMap[String(d.MeterId)]||d.MeterId;}},
+        {field:'CalibDate',title:'校准日期',width:110,templet:function(d){return dt(d.CalibDate);}},
+        {field:'Executor',title:'执行人',width:100},
+        {field:'Conclusion',title:'结论',width:100},
+        {field:'ValidDate',title:'有效期',width:110,templet:function(d){return dt(d.ValidDate);}},
+        {field:'Reviewer',title:'复核人',width:100},
+        {field:'IsEffective',title:'生效',width:90,templet:function(d){return d.IsEffective?'<span class="layui-badge layui-bg-green">已生效</span>':'<span class="layui-badge layui-bg-gray">待复核</span>';}},
+        {title:'操作',width:220,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain');});
+    $('#btnAdd').on('click',function(){openForm({});});
+    table.on('tool(GridMain)',function(obj){
+        var d=obj.data;
+        if(obj.event==='edit')openForm(d);
+        else if(obj.event==='review'){layer.confirm('确认复核生效该记录? 生效后建议不再修改。',function(idx){$.post(URL_REVIEW,{id:d.Id},function(res){layer.close(idx);if(ok(res)){layer.msg('已复核生效',{icon:1});table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});});}
+        else if(obj.event==='del'){layer.confirm('确认删除该记录?',function(idx){$.post(URL_DEL,{id:d.Id},function(res){layer.close(idx);if(ok(res)){obj.del();layer.msg('已删除',{icon:1});}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    form.on('submit(submitForm)',function(data){var f=data.field;
+        var payload={Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,MeterId:f.MeterId||0,CalibDate:f.CalibDate||null,Executor:f.Executor||null,Regulation:f.Regulation||null,EnvCondition:f.EnvCondition||null,StdDevice:f.StdDevice||null,MeasureData:f.MeasureData||null,Uncertainty:f.Uncertainty||null,Conclusion:f.Conclusion||null,ValidDate:f.ValidDate||null,CertFile:f.CertFile||null};
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+    function openForm(row){row=row||{};layer.open({type:1,area:['720px','auto'],title:row.Id?'编辑记录':'新增记录',content:$('#tplForm').html(),success:function(layero,idx){
+        var opt='<option value="">-- 请选择 --</option>';meters.forEach(function(e){opt+='<option value="'+e.Id+'">'+e.MeterCode+(e.Name?(' / '+e.Name):'')+'</option>';});
+        $(layero).find('#fld_meter').html(opt);
+        laydate.render({elem:$(layero).find('#fld_date')[0],type:'date'});
+        laydate.render({elem:$(layero).find('#fld_valid')[0],type:'date'});
+        try{form.val('theForm',{Id:row.Id||0,MeterId:row.MeterId!=null?String(row.MeterId):'',CalibDate:row.CalibDate?dt(row.CalibDate):'',Executor:row.Executor||'',Regulation:row.Regulation||'',EnvCondition:row.EnvCondition||'',StdDevice:row.StdDevice||'',Uncertainty:row.Uncertainty||'',Conclusion:row.Conclusion||'',ValidDate:row.ValidDate?dt(row.ValidDate):'',CertFile:row.CertFile||'',MeasureData:row.MeasureData||''});form.render();}catch(e){}
+        $(layero).find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
+    }});}
+    loadMeters(function(){render();});
+});
+</script>
+}

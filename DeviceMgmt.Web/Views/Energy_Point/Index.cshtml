@@ -1,0 +1,104 @@
+@{
+    ViewData["Title"] = "计量点配置";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>能源计量点配置</strong><span style="color:#94a3b8;font-size:12px;margin-left:8px;">采集由 n8n 写入时序表</span></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md3"><input type="text" id="kwCode" class="layui-input" placeholder="计量点编号"></div>
+                <div class="layui-col-md3">
+                    <select id="fltMedia">
+                        <option value="">-- 介质(全部) --</option>
+                        <option value="电">电</option>
+                        <option value="水">水</option>
+                        <option value="蒸汽">蒸汽</option>
+                    </select>
+                </div>
+                <div class="layui-col-md6" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-search"></i> 查询</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="theForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>计量点编号</label><div class="layui-input-inline"><input type="text" name="PointCode" class="layui-input" lay-verify="required"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">介质类型</label><div class="layui-input-inline"><select name="MediaType"><option value="">--</option><option value="电">电</option><option value="水">水</option><option value="蒸汽">蒸汽</option></select></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">仪表型号</label><div class="layui-input-inline"><input type="text" name="MeterModel" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">采集协议</label><div class="layui-input-inline"><input type="text" name="Protocol" class="layui-input" placeholder="OPC/Modbus"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">采集频率(秒)</label><div class="layui-input-inline"><input type="number" name="SampleRate" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">所属部门</label><div class="layui-input-inline"><select name="DeptId" id="fld_dept" lay-search></select></div></div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">状态</label>
+                <div class="layui-input-block">
+                    <input type="radio" name="Status" value="1" title="启用" checked />
+                    <input type="radio" name="Status" value="0" title="停用" />
+                </div>
+            </div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="submitForm">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_SAVE='@Url.Action("Save")',URL_DEL='@Url.Action("Delete")',URL_DEPTS='@Url.Action("GetDepts")';
+layui.use(['table','form','layer'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer;
+    var depts=[],deptMap={};
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function loadDepts(cb){$.get(URL_DEPTS,function(res){if(ok(res)){depts=res.data||[];deptMap={};depts.forEach(function(d){deptMap[String(d.Id)]=d.DeptName;});}if(cb)cb();});}
+    function getWhere(){var l=[];var c=$('#kwCode').val(),m=$('#fltMedia').val();
+        if(c)l.push({field:'PointCode',conditional:'like',value:c});
+        if(m)l.push({field:'MediaType',conditional:'eq',value:m});
+        return {page:1,limit:20,searchParam:l};}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',where:getWhere(),page:true,height:'full-180',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'PointCode',title:'计量点编号',width:150},
+        {field:'MediaType',title:'介质',width:90},
+        {field:'MeterModel',title:'仪表型号',width:140},
+        {field:'Protocol',title:'协议',width:110},
+        {field:'SampleRate',title:'频率(秒)',width:100,align:'center'},
+        {field:'DeptId',title:'部门',width:130,templet:function(d){return deptMap[String(d.DeptId)]||'';}},
+        {field:'Status',title:'状态',width:90,templet:function(d){return d.Status===1?'<span class="layui-badge layui-bg-green">启用</span>':'<span class="layui-badge layui-bg-gray">停用</span>';}},
+        {title:'操作',width:150,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain',{where:getWhere()});});
+    form.on('select(fltMedia)',function(){$('#btnReload').click();});
+    $('#btnAdd').on('click',function(){openForm({});});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='edit')openForm(obj.data);
+        else if(obj.event==='del'){layer.confirm('确认删除「'+obj.data.PointCode+'」?',function(idx){$.post(URL_DEL,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){obj.del();layer.msg('已删除',{icon:1});}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    form.on('submit(submitForm)',function(data){var f=data.field;
+        var payload={Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,PointCode:(f.PointCode||'').trim(),MediaType:f.MediaType||null,MeterModel:f.MeterModel||null,Protocol:f.Protocol||null,SampleRate:f.SampleRate?parseInt(f.SampleRate,10):null,DeptId:f.DeptId||null,Status:parseInt(f.Status||1,10)};
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+    function openForm(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑计量点':'新增计量点',content:$('#tplForm').html(),success:function(layero,idx){
+        var opt='<option value="">-- 请选择 --</option>';depts.forEach(function(d){opt+='<option value="'+d.Id+'">'+d.DeptName+'</option>';});
+        $(layero).find('#fld_dept').html(opt);
+        try{form.val('theForm',{Id:row.Id||0,PointCode:row.PointCode||'',MediaType:row.MediaType||'',MeterModel:row.MeterModel||'',Protocol:row.Protocol||'',SampleRate:row.SampleRate!=null?row.SampleRate:'',DeptId:row.DeptId!=null?String(row.DeptId):'',Status:row.Status!=null?String(row.Status):'1'});form.render();}catch(e){}
+        $(layero).find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
+    }});}
+    loadDepts(function(){render();});
+});
+</script>
+}

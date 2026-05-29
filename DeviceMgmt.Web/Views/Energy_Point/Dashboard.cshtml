@@ -1,0 +1,48 @@
+@{
+    ViewData["Title"] = "能源实时监控";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>能源实时监控</strong>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px;">数据来自 n8n 采集写入的时序表（最新值）</span>
+            <button class="layui-btn layui-btn-xs layui-btn-primary" id="btnRefresh" style="float:right;margin-top:4px;"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+        </div>
+        <div class="layui-card-body">
+            <div id="cards" class="layui-row layui-col-space10"></div>
+            <div id="empty" style="display:none;color:#94a3b8;padding:40px;text-align:center;">暂无启用的计量点或采集数据</div>
+        </div>
+    </div>
+</div>
+@section Script{
+<script>
+var URL_DASH='@Url.Action("GetDashboard")';
+layui.use(['layer'],function(){
+    var layer=layui.layer;
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,19):'-';}
+    var COLOR={'电':'#1F4D3B','水':'#2563eb','蒸汽':'#b45309'};
+    function load(){
+        $.get(URL_DASH,function(res){
+            if(!ok(res)){layer.msg(res.msg||'加载失败',{icon:2});return;}
+            var rows=res.data||[];
+            if(rows.length===0){$('#cards').html('');$('#empty').show();return;}
+            $('#empty').hide();
+            var html=rows.map(function(p){
+                var c=COLOR[p.MediaType]||'#475569';
+                return '<div class="layui-col-md3" style="margin-bottom:10px;">'
+                 +'<div style="border:1px solid #e2e8f0;border-left:4px solid '+c+';border-radius:6px;padding:14px;background:#fff;">'
+                 +'<div style="font-size:13px;color:#64748b;">'+(p.PointCode||'')+' <span style="float:right;color:'+c+';">'+(p.MediaType||'')+'</span></div>'
+                 +'<div style="font-size:26px;font-weight:700;margin:8px 0;color:'+c+';">'+(p.InstValue!=null?p.InstValue:'--')+'</div>'
+                 +'<div style="font-size:12px;color:#94a3b8;">累计: '+(p.AccuValue!=null?p.AccuValue:'--')+'</div>'
+                 +'<div style="font-size:12px;color:#94a3b8;">更新: '+dt(p.Ts)+'</div>'
+                 +'</div></div>';
+            }).join('');
+            $('#cards').html(html);
+        });
+    }
+    $('#btnRefresh').on('click',load);
+    load();
+});
+</script>
+}

@@ -1,0 +1,121 @@
+@{
+    ViewData["Title"] = "计量器具档案";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>计量器具档案</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md3"><input type="text" id="kwCode" class="layui-input" placeholder="器具编号"></div>
+                <div class="layui-col-md3"><input type="text" id="kwCat" class="layui-input" placeholder="类别"></div>
+                <div class="layui-col-md3">
+                    <select id="fltStatus">
+                        <option value="">-- 状态(全部) --</option>
+                        <option value="1">在用</option>
+                        <option value="2">送检</option>
+                        <option value="3">封存</option>
+                        <option value="4">报废</option>
+                    </select>
+                </div>
+                <div class="layui-col-md3" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-search"></i> 查询</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="theForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>器具编号</label><div class="layui-input-inline"><input type="text" name="MeterCode" class="layui-input" lay-verify="required"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">名称</label><div class="layui-input-inline"><input type="text" name="Name" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">型号</label><div class="layui-input-inline"><input type="text" name="Model" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">类别</label><div class="layui-input-inline"><input type="text" name="Category" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">精度等级</label><div class="layui-input-inline"><input type="text" name="Accuracy" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">量程</label><div class="layui-input-inline"><input type="text" name="Range" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">使用部门</label><div class="layui-input-inline"><select name="DeptId" id="fld_dept" lay-search></select></div></div>
+                <div class="layui-inline"><label class="layui-form-label">校准周期(天)</label><div class="layui-input-inline"><input type="number" name="CalibCycle" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">存放位置</label><div class="layui-input-inline"><input type="text" name="Location" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">保管人</label><div class="layui-input-inline"><input type="text" name="Keeper" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">状态</label>
+                <div class="layui-input-block">
+                    <input type="radio" name="Status" value="1" title="在用" checked />
+                    <input type="radio" name="Status" value="2" title="送检" />
+                    <input type="radio" name="Status" value="3" title="封存" />
+                    <input type="radio" name="Status" value="4" title="报废" />
+                </div>
+            </div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="submitForm">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_SAVE='@Url.Action("Save")',URL_DEL='@Url.Action("Delete")',URL_DEPTS='@Url.Action("GetDepts")';
+layui.use(['table','form','layer'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer;
+    var depts=[],deptMap={};
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    var ST={1:'在用',2:'送检',3:'封存',4:'报废'},STC={1:'layui-bg-green',2:'layui-bg-blue',3:'layui-bg-gray',4:'layui-bg-black'};
+    function loadDepts(cb){$.get(URL_DEPTS,function(res){if(ok(res)){depts=res.data||[];deptMap={};depts.forEach(function(d){deptMap[String(d.Id)]=d.DeptName;});}if(cb)cb();});}
+    function getWhere(){var l=[];var c=$('#kwCode').val(),k=$('#kwCat').val(),s=$('#fltStatus').val();
+        if(c)l.push({field:'MeterCode',conditional:'like',value:c});
+        if(k)l.push({field:'Category',conditional:'like',value:k});
+        if(s!==''&&s!=null)l.push({field:'Status',conditional:'eq',value:s});
+        return {page:1,limit:20,searchParam:l};}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',where:getWhere(),page:true,height:'full-180',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'MeterCode',title:'器具编号',width:130},
+        {field:'Name',title:'名称',width:140},
+        {field:'Model',title:'型号',width:120},
+        {field:'Category',title:'类别',width:100},
+        {field:'Accuracy',title:'精度',width:90},
+        {field:'Range',title:'量程',width:110},
+        {field:'DeptId',title:'使用部门',width:120,templet:function(d){return deptMap[String(d.DeptId)]||'';}},
+        {field:'Keeper',title:'保管人',width:100},
+        {field:'CalibCycle',title:'周期(天)',width:90,align:'center'},
+        {field:'Status',title:'状态',width:80,templet:function(d){return '<span class="layui-badge '+(STC[d.Status]||'layui-bg-gray')+'">'+(ST[d.Status]||d.Status)+'</span>';}},
+        {title:'操作',width:150,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain',{where:getWhere()});});
+    form.on('select(fltStatus)',function(){$('#btnReload').click();});
+    $('#btnAdd').on('click',function(){openForm({});});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='edit')openForm(obj.data);
+        else if(obj.event==='del'){layer.confirm('确认删除「'+obj.data.MeterCode+'」?',function(idx){$.post(URL_DEL,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){obj.del();layer.msg('已删除',{icon:1});}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    form.on('submit(submitForm)',function(data){var f=data.field;
+        var payload={Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,MeterCode:(f.MeterCode||'').trim(),Name:f.Name||null,Model:f.Model||null,Category:f.Category||null,Accuracy:f.Accuracy||null,Range:f.Range||null,DeptId:f.DeptId||null,Location:f.Location||null,Keeper:f.Keeper||null,CalibCycle:f.CalibCycle?parseInt(f.CalibCycle,10):null,Status:parseInt(f.Status||1,10)};
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+    function openForm(row){row=row||{};layer.open({type:1,area:['720px','auto'],title:row.Id?'编辑器具':'新增器具',content:$('#tplForm').html(),success:function(layero,idx){
+        var opt='<option value="">-- 请选择 --</option>';depts.forEach(function(d){opt+='<option value="'+d.Id+'">'+d.DeptName+'</option>';});
+        $(layero).find('#fld_dept').html(opt);
+        try{form.val('theForm',{Id:row.Id||0,MeterCode:row.MeterCode||'',Name:row.Name||'',Model:row.Model||'',Category:row.Category||'',Accuracy:row.Accuracy||'',Range:row.Range||'',DeptId:row.DeptId!=null?String(row.DeptId):'',Location:row.Location||'',Keeper:row.Keeper||'',CalibCycle:row.CalibCycle!=null?row.CalibCycle:'',Status:row.Status!=null?String(row.Status):'1'});form.render();}catch(e){}
+        $(layero).find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
+    }});}
+    loadDepts(function(){render();});
+});
+</script>
+}

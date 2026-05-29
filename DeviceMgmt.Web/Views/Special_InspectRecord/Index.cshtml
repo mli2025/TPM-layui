@@ -1,0 +1,83 @@
+@{
+    ViewData["Title"] = "检验记录";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>特种设备检验记录</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增记录</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="theForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>特种设备</label><div class="layui-input-inline"><select name="EquipId" id="fld_equip" lay-search lay-verify="required"></select></div></div>
+                <div class="layui-inline"><label class="layui-form-label">检验日期</label><div class="layui-input-inline"><input type="text" name="InspectDate" id="fld_date" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">检验机构</label><div class="layui-input-inline"><input type="text" name="InspectOrg" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">结论</label><div class="layui-input-inline"><input type="text" name="Conclusion" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item"><label class="layui-form-label">整改通知</label><div class="layui-input-block"><input type="text" name="Rectification" class="layui-input"></div></div>
+            <div class="layui-form-item"><label class="layui-form-label">复检记录</label><div class="layui-input-block"><input type="text" name="ReInspect" class="layui-input"></div></div>
+            <div class="layui-form-item"><label class="layui-form-label">报告文件</label><div class="layui-input-block"><input type="text" name="ReportFile" class="layui-input" placeholder="文件路径/链接"></div></div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="submitForm">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_SAVE='@Url.Action("Save")',URL_DEL='@Url.Action("Delete")',URL_EQUIPS='@Url.Action("GetEquips")';
+layui.use(['table','form','layer','laydate'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate;
+    var equips=[],equipMap={};
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,10):'';}
+    function loadEquips(cb){$.get(URL_EQUIPS,function(res){if(ok(res)){equips=res.data||[];equipMap={};equips.forEach(function(e){equipMap[String(e.Id)]=e.EquipCode;});}if(cb)cb();});}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',page:true,height:'full-160',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'EquipId',title:'特种设备',width:150,templet:function(d){return equipMap[String(d.EquipId)]||d.EquipId;}},
+        {field:'InspectDate',title:'检验日期',width:120,templet:function(d){return dt(d.InspectDate);}},
+        {field:'InspectOrg',title:'检验机构',minWidth:160},
+        {field:'Conclusion',title:'结论',width:120},
+        {field:'Rectification',title:'整改通知',minWidth:140},
+        {field:'ReInspect',title:'复检记录',minWidth:140},
+        {title:'操作',width:150,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain');});
+    $('#btnAdd').on('click',function(){openForm({});});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='edit')openForm(obj.data);
+        else if(obj.event==='del'){layer.confirm('确认删除该记录?',function(idx){$.post(URL_DEL,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){obj.del();layer.msg('已删除',{icon:1});}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    form.on('submit(submitForm)',function(data){var f=data.field;
+        var payload={Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,EquipId:f.EquipId||0,InspectDate:f.InspectDate||null,InspectOrg:f.InspectOrg||null,Conclusion:f.Conclusion||null,Rectification:f.Rectification||null,ReInspect:f.ReInspect||null,ReportFile:f.ReportFile||null};
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+    function openForm(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑记录':'新增记录',content:$('#tplForm').html(),success:function(layero,idx){
+        var opt='<option value="">-- 请选择 --</option>';equips.forEach(function(e){opt+='<option value="'+e.Id+'">'+e.EquipCode+(e.Category?(' / '+e.Category):'')+'</option>';});
+        $(layero).find('#fld_equip').html(opt);
+        laydate.render({elem:$(layero).find('#fld_date')[0],type:'date'});
+        try{form.val('theForm',{Id:row.Id||0,EquipId:row.EquipId!=null?String(row.EquipId):'',InspectDate:row.InspectDate?dt(row.InspectDate):'',InspectOrg:row.InspectOrg||'',Conclusion:row.Conclusion||'',Rectification:row.Rectification||'',ReInspect:row.ReInspect||'',ReportFile:row.ReportFile||''});form.render();}catch(e){}
+        $(layero).find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
+    }});}
+    loadEquips(function(){render();});
+});
+</script>
+}

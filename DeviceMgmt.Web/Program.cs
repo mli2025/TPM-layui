@@ -2,6 +2,10 @@ using DeviceMgmt.App.Apps.Basic;
 using DeviceMgmt.App.Apps.System;
 using DeviceMgmt.App.Apps.Facility;
 using DeviceMgmt.App.Apps.Spare;
+using DeviceMgmt.App.Apps.Special;
+using DeviceMgmt.App.Apps.Safety;
+using DeviceMgmt.App.Apps.Meter;
+using DeviceMgmt.App.Apps.Energy;
 using DeviceMgmt.App.Interface;
 using DeviceMgmt.Repository.Core;
 using DeviceMgmt.Repository.Interface;
@@ -91,7 +95,22 @@ try
     builder.Services.AddScoped<UserGroupApp>();
     builder.Services.AddScoped<OperationLogApp>();
     builder.Services.AddScoped<NotifyApp>();
+    builder.Services.AddScoped<LoginLogApp>();
+    builder.Services.AddScoped<AccountLockApp>();
     builder.Services.AddScoped<IAuth, AuthApp>();
+
+    // 特种设备 / 安全附件 / 计量器具 / 能源（URS 全新模块）
+    builder.Services.AddScoped<Special_EquipmentApp>();
+    builder.Services.AddScoped<Special_InspectPlanApp>();
+    builder.Services.AddScoped<Special_InspectRecordApp>();
+    builder.Services.AddScoped<Safety_AccessoryApp>();
+    builder.Services.AddScoped<Safety_CheckPlanApp>();
+    builder.Services.AddScoped<MeterApp>();
+    builder.Services.AddScoped<Meter_CalibPlanApp>();
+    builder.Services.AddScoped<Meter_CalibRecordApp>();
+    builder.Services.AddScoped<Meter_SendOutApp>();
+    builder.Services.AddScoped<Energy_PointApp>();
+    builder.Services.AddScoped<Energy_SummaryApp>();
     builder.Services.AddSingleton<SettingService>();
     builder.Services.AddScoped<AttachmentService>();
     builder.Services.AddScoped<VersionService>();

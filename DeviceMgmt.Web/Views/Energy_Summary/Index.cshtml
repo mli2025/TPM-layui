@@ -1,0 +1,60 @@
+@{
+    ViewData["Title"] = "能耗统计";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>能耗多维统计</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md3"><select id="fltPoint" lay-search><option value="">-- 计量点(全部) --</option></select></div>
+                <div class="layui-col-md2">
+                    <select id="fltDim">
+                        <option value="">-- 维度(全部) --</option>
+                        <option value="hour">时</option>
+                        <option value="day">日</option>
+                        <option value="month">月</option>
+                        <option value="year">年</option>
+                    </select>
+                </div>
+                <div class="layui-col-md3"><input type="text" id="dtStart" class="layui-input" placeholder="起始日期"></div>
+                <div class="layui-col-md3"><input type="text" id="dtEnd" class="layui-input" placeholder="结束日期"></div>
+                <div class="layui-col-md1" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-search"></i></button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_POINTS='@Url.Action("GetPoints")';
+layui.use(['table','form','layer','laydate'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate;
+    var points=[],pointMap={};
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,19):'';}
+    var DIM={hour:'时',day:'日',month:'月',year:'年'};
+    laydate.render({elem:'#dtStart',type:'date'});
+    laydate.render({elem:'#dtEnd',type:'date'});
+    function loadPoints(cb){$.get(URL_POINTS,function(res){if(ok(res)){points=res.data||[];pointMap={};var o='<option value="">-- 计量点(全部) --</option>';points.forEach(function(p){pointMap[String(p.Id)]=p.PointCode;o+='<option value="'+p.Id+'">'+p.PointCode+(p.MediaType?(' / '+p.MediaType):'')+'</option>';});$('#fltPoint').html(o);try{form.render('select');}catch(e){}}if(cb)cb();});}
+    function getWhere(){var l=[];var p=$('#fltPoint').val(),d=$('#fltDim').val(),s=$('#dtStart').val(),e=$('#dtEnd').val();
+        if(p)l.push({field:'PointId',conditional:'eq',value:p});
+        if(d)l.push({field:'Dimension',conditional:'eq',value:d});
+        if(s)l.push({field:'StatDate',conditional:'ge',value:s});
+        if(e)l.push({field:'StatDate',conditional:'le',value:e});
+        return {page:1,limit:30,searchParam:l};}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',where:getWhere(),page:true,height:'full-180',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'PointId',title:'计量点',width:160,templet:function(d){return pointMap[String(d.PointId)]||d.PointId;}},
+        {field:'Dimension',title:'维度',width:90,templet:function(d){return DIM[d.Dimension]||d.Dimension||'';}},
+        {field:'StatDate',title:'统计时间',width:170,templet:function(d){return dt(d.StatDate);}},
+        {field:'SummaryValue',title:'能耗值',width:140,align:'right'},
+        {field:'DeptId',title:'部门Id',width:100}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain',{where:getWhere()});});
+    form.on('select(fltDim)',function(){$('#btnReload').click();});
+    loadPoints(function(){render();});
+});
+</script>
+}

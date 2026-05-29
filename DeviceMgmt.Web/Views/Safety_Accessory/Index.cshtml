@@ -1,0 +1,109 @@
+@{
+    ViewData["Title"] = "安全附件台账";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>安全附件台账</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md3"><input type="text" id="kwCode" class="layui-input" placeholder="附件编号"></div>
+                <div class="layui-col-md3">
+                    <select id="fltStatus">
+                        <option value="">-- 状态(全部) --</option>
+                        <option value="1">合格</option>
+                        <option value="0">禁用</option>
+                        <option value="2">待更换</option>
+                    </select>
+                </div>
+                <div class="layui-col-md6" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-search"></i> 查询</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="theForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>附件编号</label><div class="layui-input-inline"><input type="text" name="AccCode" class="layui-input" lay-verify="required"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">型号规格</label><div class="layui-input-inline"><input type="text" name="Model" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">整定压力</label><div class="layui-input-inline"><input type="text" name="SetPressure" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">检定范围</label><div class="layui-input-inline"><input type="text" name="CheckRange" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">最近检定日</label><div class="layui-input-inline"><input type="text" name="LastCheckDate" id="fld_last" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">检定周期(天)</label><div class="layui-input-inline"><input type="number" name="CheckCycle" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">检定机构</label><div class="layui-input-inline"><input type="text" name="CheckOrg" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">所属设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">状态</label>
+                <div class="layui-input-block">
+                    <input type="radio" name="Status" value="1" title="合格" checked />
+                    <input type="radio" name="Status" value="0" title="禁用" />
+                    <input type="radio" name="Status" value="2" title="待更换" />
+                </div>
+            </div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="submitForm">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_SAVE='@Url.Action("Save")',URL_DEL='@Url.Action("Delete")';
+layui.use(['table','form','layer','laydate'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate;
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,10):'';}
+    var ST={0:'禁用',1:'合格',2:'待更换'};
+    function getWhere(){var l=[];var c=$('#kwCode').val(),s=$('#fltStatus').val();
+        if(c)l.push({field:'AccCode',conditional:'like',value:c});
+        if(s!==''&&s!=null)l.push({field:'Status',conditional:'eq',value:s});
+        return {page:1,limit:20,searchParam:l};}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',where:getWhere(),page:true,height:'full-180',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'AccCode',title:'附件编号',width:150},
+        {field:'Model',title:'型号规格',width:140},
+        {field:'SetPressure',title:'整定压力',width:110},
+        {field:'CheckRange',title:'检定范围',width:130},
+        {field:'LastCheckDate',title:'最近检定',width:120,templet:function(d){return dt(d.LastCheckDate);}},
+        {field:'CheckCycle',title:'周期(天)',width:90,align:'center'},
+        {field:'CheckOrg',title:'检定机构',minWidth:140},
+        {field:'Status',title:'状态',width:90,templet:function(d){var c=d.Status===1?'layui-bg-green':(d.Status===2?'layui-bg-orange':'layui-bg-gray');return '<span class="layui-badge '+c+'">'+(ST[d.Status]||d.Status)+'</span>';}},
+        {title:'操作',width:150,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain',{where:getWhere()});});
+    form.on('select(fltStatus)',function(){$('#btnReload').click();});
+    $('#btnAdd').on('click',function(){openForm({});});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='edit')openForm(obj.data);
+        else if(obj.event==='del'){layer.confirm('确认删除「'+obj.data.AccCode+'」?',function(idx){$.post(URL_DEL,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){obj.del();layer.msg('已删除',{icon:1});}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    form.on('submit(submitForm)',function(data){var f=data.field;
+        var payload={Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,AccCode:(f.AccCode||'').trim(),Model:f.Model||null,SetPressure:f.SetPressure||null,CheckRange:f.CheckRange||null,LastCheckDate:f.LastCheckDate||null,CheckCycle:f.CheckCycle?parseInt(f.CheckCycle,10):null,CheckOrg:f.CheckOrg||null,FacilityId:f.FacilityId?f.FacilityId:null,Status:parseInt(f.Status||1,10)};
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+    function openForm(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑安全附件':'新增安全附件',content:$('#tplForm').html(),success:function(layero,idx){
+        laydate.render({elem:$(layero).find('#fld_last')[0],type:'date'});
+        try{form.val('theForm',{Id:row.Id||0,AccCode:row.AccCode||'',Model:row.Model||'',SetPressure:row.SetPressure||'',CheckRange:row.CheckRange||'',LastCheckDate:row.LastCheckDate?dt(row.LastCheckDate):'',CheckCycle:row.CheckCycle!=null?row.CheckCycle:'',CheckOrg:row.CheckOrg||'',FacilityId:row.FacilityId!=null?row.FacilityId:'',Status:row.Status!=null?String(row.Status):'1'});form.render();}catch(e){}
+        $(layero).find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
+    }});}
+    render();
+});
+</script>
+}

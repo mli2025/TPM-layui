@@ -1,0 +1,55 @@
+@{
+    ViewData["Title"] = "登录日志";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>登录日志</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md2"><input type="text" id="kwAccount" class="layui-input" placeholder="账号"></div>
+                <div class="layui-col-md2">
+                    <select id="fltSuccess">
+                        <option value="">-- 结果(全部) --</option>
+                        <option value="1">成功</option>
+                        <option value="0">失败</option>
+                    </select>
+                </div>
+                <div class="layui-col-md3"><input type="text" id="dtStart" class="layui-input" placeholder="起始时间"></div>
+                <div class="layui-col-md3"><input type="text" id="dtEnd" class="layui-input" placeholder="结束时间"></div>
+                <div class="layui-col-md2" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-search"></i> 查询</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")';
+layui.use(['table','form','layer','laydate'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate;
+    function dt(v){return v?String(v).replace('T',' ').substring(0,19):'';}
+    laydate.render({elem:'#dtStart',type:'datetime'});
+    laydate.render({elem:'#dtEnd',type:'datetime'});
+    function getWhere(){var l=[];var a=$('#kwAccount').val(),s=$('#fltSuccess').val(),ds=$('#dtStart').val(),de=$('#dtEnd').val();
+        if(a)l.push({field:'Account',conditional:'like',value:a});
+        if(s!==''&&s!=null)l.push({field:'Success',conditional:'eq',value:s});
+        if(ds)l.push({field:'LoginTime',conditional:'ge',value:ds});
+        if(de)l.push({field:'LoginTime',conditional:'le',value:de});
+        return {page:1,limit:20,searchParam:l};}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',where:getWhere(),page:true,height:'full-180',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'LoginTime',title:'登录时间',width:170,templet:function(d){return dt(d.LoginTime);}},
+        {field:'Account',title:'账号',width:140},
+        {field:'IpAddress',title:'IP',width:140},
+        {field:'Success',title:'结果',width:90,templet:function(d){return d.Success?'<span class="layui-badge layui-bg-green">成功</span>':'<span class="layui-badge">失败</span>';}},
+        {field:'FailReason',title:'失败原因',width:200},
+        {field:'UserAgent',title:'UserAgent',minWidth:240}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain',{where:getWhere()});});
+    form.on('select(fltSuccess)',function(){$('#btnReload').click();});
+    render();
+});
+</script>
+}

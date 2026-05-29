@@ -1,0 +1,61 @@
+@{
+    ViewData["Title"] = "账户锁定";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>账户锁定管理</strong><span style="color:#94a3b8;font-size:12px;margin-left:8px;">连续登录失败达阈值自动锁定，仅管理员可解锁</span></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md3"><input type="text" id="kwAccount" class="layui-input" placeholder="账号"></div>
+                <div class="layui-col-md3">
+                    <select id="fltLocked">
+                        <option value="">-- 状态(全部) --</option>
+                        <option value="1">已锁定</option>
+                        <option value="0">正常</option>
+                    </select>
+                </div>
+                <div class="layui-col-md6" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-search"></i> 查询</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    {{# if(d.IsLocked){ }}
+    <a class="layui-btn layui-btn-xs" lay-event="unlock">解锁</a>
+    {{# } else { }}
+    <span style="color:#94a3b8;">—</span>
+    {{# } }}
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_UNLOCK='@Url.Action("Unlock")';
+layui.use(['table','form','layer'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer;
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,19):'';}
+    function getWhere(){var l=[];var a=$('#kwAccount').val(),s=$('#fltLocked').val();
+        if(a)l.push({field:'Account',conditional:'like',value:a});
+        if(s!==''&&s!=null)l.push({field:'IsLocked',conditional:'eq',value:s});
+        return {page:1,limit:20,searchParam:l};}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',where:getWhere(),page:true,height:'full-180',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'Account',title:'账号',width:160},
+        {field:'FailCount',title:'失败次数',width:100,align:'center'},
+        {field:'IsLocked',title:'状态',width:100,templet:function(d){return d.IsLocked?'<span class="layui-badge layui-bg-red">已锁定</span>':'<span class="layui-badge layui-bg-green">正常</span>';}},
+        {field:'LockedAt',title:'锁定时间',width:170,templet:function(d){return dt(d.LockedAt);}},
+        {field:'UnlockedAt',title:'解锁时间',width:170,templet:function(d){return dt(d.UnlockedAt);}},
+        {field:'UnlockedBy',title:'解锁人',width:120},
+        {title:'操作',width:120,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    $('#btnReload').on('click',function(){table.reload('GridMain',{where:getWhere()});});
+    form.on('select(fltLocked)',function(){$('#btnReload').click();});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='unlock'){layer.confirm('确认解锁账号「'+(obj.data.Account||'')+'」?',function(idx){$.post(URL_UNLOCK,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){layer.msg('已解锁',{icon:1});table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    render();
+});
+</script>
+}

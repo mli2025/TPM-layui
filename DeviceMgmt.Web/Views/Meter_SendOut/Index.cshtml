@@ -1,0 +1,108 @@
+@{
+    ViewData["Title"] = "送外检管理";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>计量器具送外检</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增送检单</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="theForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">申请单号</label><div class="layui-input-inline"><input type="text" name="ApplyNo" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">送检日期</label><div class="layui-input-inline"><input type="text" name="SendDate" id="fld_date" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">服务商</label><div class="layui-input-inline"><input type="text" name="ServiceOrg" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">申请人</label><div class="layui-input-inline"><input type="text" name="Applicant" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">审批状态</label>
+                <div class="layui-input-block">
+                    <input type="radio" name="ApproveStatus" value="0" title="待审批" checked />
+                    <input type="radio" name="ApproveStatus" value="1" title="已审批" />
+                    <input type="radio" name="ApproveStatus" value="2" title="已送出" />
+                </div>
+            </div>
+            <fieldset class="layui-elem-field layui-field-title"><legend>送检器具清单</legend></fieldset>
+            <div style="margin-bottom:6px;"><input type="text" id="meterFilter" class="layui-input" placeholder="按编号/名称过滤"></div>
+            <div id="meterList" style="height:220px;overflow:auto;border:1px solid #e2e8f0;border-radius:4px;padding:8px;"></div>
+            <div style="text-align:center;margin-top:12px;">
+                <button class="layui-btn" lay-submit lay-filter="submitForm">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+@section Script{
+<script>
+var URL_LIST='@Url.Action("GetMainList")',URL_GET='@Url.Action("GetMain")',URL_SAVE='@Url.Action("SaveMain")',URL_DEL='@Url.Action("Delete")',URL_METERS='@Url.Action("GetMeters")';
+layui.use(['table','form','layer','laydate'],function(){
+    var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate;
+    var meters=[];
+    function ok(r){return r&&(r.code===0||r.code===200);}
+    function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+    function dt(v){return v?String(v).replace('T',' ').substring(0,10):'';}
+    var AP={0:'待审批',1:'已审批',2:'已送出'};
+    function loadMeters(cb){$.get(URL_METERS,function(res){if(ok(res))meters=res.data||[];if(cb)cb();});}
+    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',page:true,height:'full-160',cols:[[
+        {type:'numbers',title:'#'},
+        {field:'ApplyNo',title:'申请单号',width:160},
+        {field:'SendDate',title:'送检日期',width:120,templet:function(d){return dt(d.SendDate);}},
+        {field:'ServiceOrg',title:'服务商',minWidth:180},
+        {field:'Applicant',title:'申请人',width:110},
+        {field:'ApproveStatus',title:'审批状态',width:110,templet:function(d){var c=d.ApproveStatus===1?'layui-bg-blue':(d.ApproveStatus===2?'layui-bg-green':'layui-bg-gray');return '<span class="layui-badge '+c+'">'+(AP[d.ApproveStatus]||d.ApproveStatus)+'</span>';}},
+        {title:'操作',width:150,toolbar:'#barRow',fixed:'right'}
+    ]]});}
+    function renderMeters($layer,selected,kw){
+        var $box=$layer.find('#meterList');var sel=new Set((selected||[]).map(String));kw=(kw||'').toLowerCase();
+        var html=meters.filter(function(m){if(!kw)return true;return (m.MeterCode||'').toLowerCase().indexOf(kw)>=0||(m.Name||'').toLowerCase().indexOf(kw)>=0;}).map(function(m){
+            var ck=sel.has(String(m.Id))?'checked':'';
+            return '<div style="padding:3px 0;"><label><input type="checkbox" class="mtr-cb" data-id="'+m.Id+'" '+ck+' /> '+esc(m.MeterCode)+' <span style="color:#94a3b8;font-size:12px;">'+esc(m.Name||'')+'</span></label></div>';
+        }).join('');
+        $box.html(html||'<span style="color:#999;font-size:12px;">无器具</span>');
+    }
+    $('#btnReload').on('click',function(){table.reload('GridMain');});
+    $('#btnAdd').on('click',function(){openForm(0);});
+    table.on('tool(GridMain)',function(obj){
+        if(obj.event==='edit')openForm(obj.data.Id);
+        else if(obj.event==='del'){layer.confirm('确认删除该送检单?',function(idx){$.post(URL_DEL,{id:obj.data.Id},function(res){layer.close(idx);if(ok(res)){obj.del();layer.msg('已删除',{icon:1});}else layer.msg(res.msg||'失败',{icon:2});});});}
+    });
+    form.on('submit(submitForm)',function(data){var f=data.field;
+        var $lf=$('.layui-layer-content form[lay-filter="theForm"]').last();
+        var meterIds=$lf.find('#meterList .mtr-cb:checked').map(function(){return String(this.getAttribute('data-id'));}).get();
+        var payload={Main:{Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,ApplyNo:f.ApplyNo||null,SendDate:f.SendDate||null,ServiceOrg:f.ServiceOrg||null,Applicant:f.Applicant||null,ApproveStatus:parseInt(f.ApproveStatus||0,10)},MeterIds:meterIds};
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        return false;});
+    function openForm(id){layer.open({type:1,area:['720px','620px'],title:id?'编辑送检单':'新增送检单',content:$('#tplForm').html(),success:function(layero,idx){
+        var $L=$(layero);
+        laydate.render({elem:$L.find('#fld_date')[0],type:'date'});
+        $L.find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
+        $L.find('#meterFilter').off('input').on('input',function(){
+            var cur=$L.find('#meterList .mtr-cb:checked').map(function(){return String(this.getAttribute('data-id'));}).get();
+            renderMeters($L,cur,this.value);
+        });
+        if(id){$.get(URL_GET,{id:id},function(r){if(!ok(r)){layer.msg(r.msg||'加载失败',{icon:2});return;}var m=r.data.main||{};var mids=[].concat(r.data.meterIds||[]).map(String);
+            try{form.val('theForm',{Id:m.Id||0,ApplyNo:m.ApplyNo||'',SendDate:m.SendDate?dt(m.SendDate):'',ServiceOrg:m.ServiceOrg||'',Applicant:m.Applicant||'',ApproveStatus:m.ApproveStatus!=null?String(m.ApproveStatus):'0'});form.render();}catch(e){}
+            renderMeters($L,mids,'');});
+        }else{try{form.val('theForm',{Id:0,ApproveStatus:'0'});form.render();}catch(e){}renderMeters($L,[],'');}
+    }});}
+    loadMeters(function(){render();});
+});
+</script>
+}
