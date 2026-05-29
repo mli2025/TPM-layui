@@ -36,6 +36,71 @@ public class Facility_ResourceDetailController : BaseController
     public IActionResult Index_view() => View();
     public IActionResult ViewList(long id) { ViewBag.Id = id; return View(); }
 
+    // ---- Tabulator 试点（Tailwind + Excel 式表头筛选/排序/服务端分页），不影响原 layui 页 ----
+
+    // 实体真实列名白名单（防止前端传入任意字段拼入 SQL）
+    private static readonly HashSet<string> AllowedFields =
+        new(typeof(Facility_ResourceDetail).GetProperties().Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
+
+    public IActionResult Grid() => View();
+
+    [HttpPost]
+    public IActionResult GridData()
+    {
+        string Get(string key)
+        {
+            if (Request.HasFormContentType && Request.Form.ContainsKey(key)) return Request.Form[key].ToString();
+            return Request.Query[key].ToString();
+        }
+
+        var size = int.TryParse(Get("size"), out var sz) && sz > 0 ? sz : 20;
+        var page = int.TryParse(Get("page"), out var pg) && pg > 0 ? pg : 1;
+
+        var req = new PageReq { page = page, limit = size, searchParam = new List<searchParam>() };
+
+        // 排序：sort[0][field] / sort[0][dir]
+        var sortField = Get("sort[0][field]");
+        if (!string.IsNullOrWhiteSpace(sortField) && AllowedFields.Contains(sortField))
+        {
+            req.sfield = sortField;
+            var dir = Get("sort[0][dir]");
+            req.sorder = string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
+        }
+
+        // 筛选：filter[i][field] / filter[i][type] / filter[i][value]
+        for (var i = 0; i < 50; i++)
+        {
+            var field = Get($"filter[{i}][field]");
+            if (string.IsNullOrWhiteSpace(field)) break;
+            var value = Get($"filter[{i}][value]");
+            if (string.IsNullOrWhiteSpace(value)) continue;
+            if (!AllowedFields.Contains(field)) continue;
+            req.searchParam!.Add(new searchParam
+            {
+                field = field,
+                conditional = MapFilterType(Get($"filter[{i}][type]")),
+                value = value
+            });
+        }
+
+        var result = _app.Getmainlist(req);
+        var total = result.count;
+        var lastPage = (int)Math.Ceiling(total / (double)size);
+        if (lastPage < 1) lastPage = 1;
+        return Json(new { last_page = lastPage, last_row = total, data = result.data });
+    }
+
+    private static string MapFilterType(string? type) => (type ?? "like").ToLowerInvariant() switch
+    {
+        "=" or "==" => "=",
+        "!=" or "<>" => "<>",
+        ">" => ">",
+        ">=" => ">=",
+        "<" => "<",
+        "<=" => "<=",
+        _ => "like"
+    };
+
     [HttpPost]
     public IActionResult GetMainList([FromForm] PageReq req)
     {

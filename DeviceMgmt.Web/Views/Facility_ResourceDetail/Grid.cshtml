@@ -1,0 +1,155 @@
+@{
+    ViewData["Title"] = "设备台账（Tabulator 试点）";
+}
+@section Style{
+    <link href="~/lib/tabulator/css/tabulator_simple.min.css" rel="stylesheet" />
+    <style>
+        /* 品牌色微调，贴合 AppShell */
+        .tabulator { font-size: 13px; border: 1px solid #e2e8f0; border-radius: 8px; }
+        .tabulator .tabulator-header { background: #f1f7f4; }
+        .tabulator .tabulator-header .tabulator-col { background: #f1f7f4; }
+        .tabulator .tabulator-header .tabulator-col-title { font-weight: 600; color: #235840; }
+        .tabulator-row.tabulator-row-even { background: #fafdfb; }
+        .tabulator .tabulator-row.tabulator-selectable:hover { background: #def0e5; cursor: pointer; }
+        .tabulator .tabulator-header .tabulator-header-filter input,
+        .tabulator .tabulator-header .tabulator-header-filter select { border:1px solid #cbd5e1; border-radius:4px; padding:2px 4px; }
+        .grid-badge { display:inline-block; padding:1px 8px; border-radius:9999px; color:#fff; font-size:12px; }
+        .modal-mask { position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:1000; display:none; }
+        .modal-mask.show { display:flex; align-items:center; justify-content:center; }
+        .modal-card { background:#fff; width:760px; max-width:94vw; max-height:86vh; overflow:auto; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+    </style>
+}
+
+<div class="px-1">
+    <div class="flex items-center justify-between mb-2">
+        <div>
+            <h2 class="text-base font-semibold text-brand-800">设备台账 · Tabulator 试点</h2>
+            <p class="text-xs text-slate-400 mt-0.5">点击列头排序；表头输入框 / 下拉即时筛选（服务端分页，2 万级数据可用）；点击行查看详情</p>
+        </div>
+        <div class="flex gap-2">
+            <button id="btnReload" class="px-3 py-1.5 text-sm rounded-md bg-brand-700 text-white hover:bg-brand-800">刷新</button>
+            <button id="btnClear" class="px-3 py-1.5 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50">清除筛选</button>
+            <button id="btnExport" class="px-3 py-1.5 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50">导出当前页 CSV</button>
+        </div>
+    </div>
+
+    <div id="grid"></div>
+</div>
+
+<!-- 只读详情弹窗 -->
+<div id="detailMask" class="modal-mask">
+    <div class="modal-card">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+            <h3 class="text-sm font-semibold text-brand-800" id="dt_title">设备详情</h3>
+            <button id="dt_close" class="text-slate-400 hover:text-slate-700 text-xl leading-none">&times;</button>
+        </div>
+        <div id="dt_body" class="p-5 grid grid-cols-2 gap-x-6 gap-y-2 text-sm"></div>
+    </div>
+</div>
+
+@section Script{
+<script src="~/lib/tabulator/tabulator.min.js"></script>
+<script>
+var URL_DATA = '@Url.Action("GridData")';
+var URL_INFO = '@Url.Action("GetMainInfo")';
+var URL_DEPTS = '/Sys_Dept/List';
+
+(function(){
+    var token = (window.App && App.getCookie) ? (App.getCookie('Token') || '') : '';
+    var STATUS = { '0':'运行', '1':'闲置', '2':'停机', '3':'报废' };
+    var STATUS_BG = { '0':'#16a34a', '1':'#f7b500', '2':'#94a3b8', '3':'#475569' };
+
+    function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+    function fmtDate(v){ return v ? String(v).replace('T',' ').substring(0,10) : ''; }
+    function fmtDateTime(v){ return v ? String(v).replace('T',' ').substring(0,19) : ''; }
+
+    // 先取部门，构造 {id:name} 与下拉值，再初始化表格
+    $.get(URL_DEPTS, function(res){
+        var deptMap = {}, deptValues = {};
+        if (res && (res.code===0 || res.code===200) && res.data){
+            res.data.forEach(function(d){ deptMap[String(d.Id)] = d.DeptName || ''; deptValues[String(d.Id)] = d.DeptName || ''; });
+        }
+        initTable(deptMap, deptValues);
+    }).fail(function(){ initTable({}, {}); });
+
+    function deptFormatter(deptMap){
+        return function(cell){ var v = cell.getValue(); return v==null?'':(deptMap[String(v)] || v); };
+    }
+    function statusFormatter(cell){
+        var v = cell.getValue(); if (v==null) return '';
+        var k = String(v);
+        return '<span class="grid-badge" style="background:'+(STATUS_BG[k]||'#999')+'">'+(STATUS[k]||k)+'</span>';
+    }
+    function dateFormatter(cell){ return fmtDate(cell.getValue()); }
+
+    var table;
+    function initTable(deptMap, deptValues){
+        table = new Tabulator("#grid", {
+            ajaxURL: URL_DATA,
+            ajaxConfig: { method: "POST", headers: { "X-Requested-With": "XMLHttpRequest", "Token": token } },
+            ajaxContentType: "form",
+            height: "calc(100vh - 210px)",
+            layout: "fitDataFill",
+            placeholder: "暂无数据",
+            pagination: true,
+            paginationMode: "remote",
+            paginationSize: 20,
+            paginationSizeSelector: [20, 50, 100, 200],
+            paginationCounter: "rows",
+            sortMode: "remote",
+            filterMode: "remote",
+            // 服务端返回 { last_page, last_row, data }
+            columns: [
+                { title: "设备编码", field: "FacilityCode", width: 140, frozen: true, headerFilter: "input" },
+                { title: "设备名称", field: "FacilityName", minWidth: 160, frozen: true, headerFilter: "input" },
+                { title: "型号", field: "Model", width: 130, headerFilter: "input" },
+                { title: "设备类型", field: "FacilityType", width: 120, headerFilter: "input" },
+                { title: "厂内编号", field: "ManufactureNumber", width: 130, headerFilter: "input" },
+                { title: "序列号", field: "SerialNumber", width: 130, headerFilter: "input" },
+                { title: "制造商", field: "Manufacturer", width: 130, headerFilter: "input" },
+                { title: "安装位置", field: "Location", width: 130, headerFilter: "input" },
+                { title: "工作中心", field: "DeptId", width: 120, formatter: deptFormatter(deptMap),
+                  headerFilter: "list", headerFilterFunc: "=",
+                  headerFilterParams: { values: Object.assign({ "": "全部" }, deptValues), clearable: true } },
+                { title: "购置日期", field: "PurchaseDate", width: 110, formatter: dateFormatter, headerFilter: false },
+                { title: "资产编号", field: "AssetNumber", width: 130, headerFilter: "input" },
+                { title: "状态", field: "Status", width: 90, hozAlign: "center", formatter: statusFormatter,
+                  headerFilter: "list", headerFilterFunc: "=",
+                  headerFilterParams: { values: { "": "全部", "0": "运行", "1": "闲置", "2": "停机", "3": "报废" }, clearable: true } }
+            ]
+        });
+
+        table.on("rowClick", function(e, row){ openDetail(row.getData(), deptMap); });
+    }
+
+    $('#btnReload').on('click', function(){ if (table) table.replaceData(); });
+    $('#btnClear').on('click', function(){ if (table) table.clearHeaderFilter(); });
+    $('#btnExport').on('click', function(){ if (table) table.download("csv", "设备台账.csv", { bom: true }); });
+
+    // ---- 详情弹窗 ----
+    function openDetail(row, deptMap){
+        $('#dt_title').text('设备详情 - ' + (row.FacilityName || row.FacilityCode || ''));
+        // 用列表行数据直出（已含主要字段）；如需更全可调 URL_INFO
+        var fields = [
+            ['设备编码', row.FacilityCode], ['设备名称', row.FacilityName],
+            ['型号', row.Model], ['设备类型', row.FacilityType],
+            ['厂内编号', row.ManufactureNumber], ['序列号', row.SerialNumber],
+            ['制造商', row.Manufacturer], ['供应商', row.Supplier],
+            ['安装位置', row.Location], ['工作中心', deptMap[String(row.DeptId)] || row.DeptId],
+            ['资产编号', row.AssetNumber], ['状态', STATUS[String(row.Status)] || row.Status],
+            ['购置日期', fmtDate(row.PurchaseDate)], ['购置价格', row.PurchasePrice],
+            ['下次点检日', fmtDate(row.NextCheckDate)], ['保管人', row.Keeper],
+            ['备注', row.Remark]
+        ];
+        var html = fields.map(function(f){
+            return '<div class="flex"><span class="text-slate-400 w-24 shrink-0">'+esc(f[0])+'</span>'
+                 + '<span class="text-slate-700 break-all">'+esc(f[1]==null?'':f[1])+'</span></div>';
+        }).join('');
+        $('#dt_body').html(html);
+        $('#detailMask').addClass('show');
+    }
+    $('#dt_close').on('click', function(){ $('#detailMask').removeClass('show'); });
+    $('#detailMask').on('click', function(e){ if (e.target === this) $(this).removeClass('show'); });
+})();
+</script>
+}
