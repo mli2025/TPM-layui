@@ -88,6 +88,9 @@ try
     builder.Services.AddScoped<UserApp>();
     builder.Services.AddScoped<RoleApp>();
     builder.Services.AddScoped<DeptApp>();
+    builder.Services.AddScoped<UserGroupApp>();
+    builder.Services.AddScoped<OperationLogApp>();
+    builder.Services.AddScoped<NotifyApp>();
     builder.Services.AddScoped<IAuth, AuthApp>();
     builder.Services.AddSingleton<SettingService>();
     builder.Services.AddScoped<AttachmentService>();

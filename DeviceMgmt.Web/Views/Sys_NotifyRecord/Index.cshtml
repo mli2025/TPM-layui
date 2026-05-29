@@ -1,0 +1,127 @@
+@{
+    ViewData["Title"] = "通知中心";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>通知中心</strong>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px;">站内消息（多渠道分发由通知引擎处理）</span>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md3">
+                    <select id="fltRead">
+                        <option value="">-- 状态(全部) --</option>
+                        <option value="0">未读</option>
+                        <option value="1">已读</option>
+                    </select>
+                </div>
+                <div class="layui-col-md3">
+                    <input type="text" id="kwTitle" class="layui-input" placeholder="标题模糊搜索">
+                </div>
+                <div class="layui-col-md6" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-search"></i> 查询</button>
+                    <button class="layui-btn layui-btn-sm" id="btnAllRead"><i class="layui-icon layui-icon-ok"></i> 全部已读</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="view">查看</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+@section Script{
+    <script>
+        var URL_LIST = '@Url.Action("GetMainList")';
+        var URL_READ = '@Url.Action("MarkRead")';
+        var URL_ALLREAD = '@Url.Action("MarkAllRead")';
+        var URL_DEL = '@Url.Action("Delete")';
+
+        layui.use(['table', 'form', 'layer'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer;
+            function ok(r) { return r && (r.code === 0 || r.code === 200); }
+            function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+            function getWhere() {
+                var list = [];
+                var rd = $('#fltRead').val();
+                var t = $('#kwTitle').val();
+                if (rd !== '' && rd != null) list.push({ field: 'IsRead', conditional: 'eq', value: rd });
+                if (t) list.push({ field: 'Title', conditional: 'like', value: t });
+                return { page: 1, limit: 20, searchParam: list };
+            }
+
+            function readCell(d) {
+                return d.IsRead ? '<span class="layui-badge layui-bg-gray">已读</span>'
+                                : '<span class="layui-badge layui-bg-blue">未读</span>';
+            }
+            function timeCell(d) {
+                if (!d.SendTime) return '';
+                return String(d.SendTime).replace('T', ' ').substring(0, 19);
+            }
+            function titleCell(d) {
+                var w = d.IsRead ? '400' : '700';
+                return '<span style="font-weight:' + w + ';">' + esc(d.Title) + '</span>';
+            }
+
+            function renderList() {
+                table.render({
+                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post',
+                    where: getWhere(), page: true, height: 'full-180',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'IsRead', title: '状态', width: 80, templet: readCell },
+                        { field: 'Title', title: '标题', minWidth: 220, templet: titleCell },
+                        { field: 'EventType', title: '事件类型', width: 150 },
+                        { field: 'Channel', title: '渠道', width: 100 },
+                        { field: 'SendTime', title: '发送时间', width: 165, templet: timeCell, sort: true },
+                        { title: '操作', width: 150, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+
+            $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
+            $('#kwTitle').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
+            form.on('select(fltRead)', function () { $('#btnReload').click(); });
+
+            $('#btnAllRead').on('click', function () {
+                layer.confirm('将全部未读标记为已读?', function (idx) {
+                    $.post(URL_ALLREAD, {}, function (res) {
+                        layer.close(idx);
+                        if (ok(res)) { layer.msg('已全部标记已读', { icon: 1 }); table.reload('GridMain'); }
+                        else layer.msg(res.msg || '操作失败', { icon: 2 });
+                    });
+                });
+            });
+
+            table.on('tool(GridMain)', function (obj) {
+                var d = obj.data;
+                if (obj.event === 'view') {
+                    var html = '<div style="padding:14px;">'
+                        + '<h3 style="margin:0 0 8px;">' + esc(d.Title) + '</h3>'
+                        + '<div style="color:#94a3b8;font-size:12px;margin-bottom:12px;">' + timeCell(d) + ' · ' + esc(d.EventType || '') + '</div>'
+                        + '<div style="white-space:pre-wrap;line-height:1.7;">' + esc(d.Content) + '</div>'
+                        + '</div>';
+                    layer.open({ type: 1, title: '消息详情', area: ['560px', '420px'], content: html });
+                    if (!d.IsRead) {
+                        $.post(URL_READ, { id: d.Id }, function (res) { if (ok(res)) table.reload('GridMain'); });
+                    }
+                } else if (obj.event === 'del') {
+                    layer.confirm('确认删除该消息?', function (idx) {
+                        $.post(URL_DEL, { id: d.Id }, function (res) {
+                            layer.close(idx);
+                            if (ok(res)) { obj.del(); layer.msg('已删除', { icon: 1 }); }
+                            else layer.msg(res.msg || '删除失败', { icon: 2 });
+                        });
+                    });
+                }
+            });
+
+            renderList();
+        });
+    </script>
+}

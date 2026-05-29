@@ -1,0 +1,227 @@
+@{
+    ViewData["Title"] = "用户组管理";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>用户组管理</strong>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px;">组成员的权限 = 角色权限 ∪ 各用户组权限（并集叠加）</span>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增用户组</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑 / 授权</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="tplForm">
+    <div style="padding:14px;">
+        <form class="layui-form" lay-filter="groupForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label"><span style="color:#e53935;">*</span>组名称</label>
+                    <div class="layui-input-inline"><input type="text" name="Name" class="layui-input" required lay-verify="required" /></div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-inline" style="padding-top:8px;">
+                        <input type="radio" name="Status" value="1" title="启用" checked />
+                        <input type="radio" name="Status" value="0" title="停用" />
+                    </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">描述</label>
+                <div class="layui-input-block"><input type="text" name="Descr" class="layui-input" /></div>
+            </div>
+            <div class="layui-row layui-col-space10">
+                <div class="layui-col-md6">
+                    <fieldset class="layui-elem-field layui-field-title"><legend>菜单授权</legend></fieldset>
+                    <div id="moduleTree" style="height:300px;overflow:auto;border:1px solid #e2e8f0;border-radius:4px;padding:8px;"></div>
+                </div>
+                <div class="layui-col-md6">
+                    <fieldset class="layui-elem-field layui-field-title"><legend>组成员</legend></fieldset>
+                    <div style="margin-bottom:6px;"><input type="text" id="userFilter" class="layui-input" placeholder="按账号/姓名过滤"></div>
+                    <div id="userList" style="height:262px;overflow:auto;border:1px solid #e2e8f0;border-radius:4px;padding:8px;"></div>
+                </div>
+            </div>
+            <div style="text-align:center;margin-top:14px;">
+                <button class="layui-btn" lay-submit lay-filter="submitGroup">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="btnCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+@section Script{
+    <script>
+        var URL_LIST = '@Url.Action("GetMainList")';
+        var URL_GET = '@Url.Action("GetGroup")';
+        var URL_SAVE = '@Url.Action("SaveGroup")';
+        var URL_DEL = '@Url.Action("DeleteGroup")';
+        var URL_MODULES = '@Url.Action("GetModules")';
+        var URL_USERS = '@Url.Action("GetUsers")';
+
+        layui.use(['table', 'form', 'layer'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer;
+            var allModules = [], allUsers = [];
+            function ok(r) { return r && (r.code === 0 || r.code === 200); }
+            function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+            function load() {
+                table.render({
+                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post',
+                    page: true, limit: 20, height: 'full-160',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'Name', title: '组名称', width: 200 },
+                        { field: 'Descr', title: '描述', minWidth: 260 },
+                        { field: 'Status', title: '状态', width: 90, templet: function (d) { return d.Status === 1 ? '<span class="layui-badge layui-bg-green">启用</span>' : '<span class="layui-badge layui-bg-gray">停用</span>'; } },
+                        { fixed: 'right', title: '操作', width: 190, align: 'center', toolbar: '#barRow' }
+                    ]]
+                });
+            }
+            $('#btnReload').on('click', load);
+            $('#btnAdd').on('click', function () { openForm(0); });
+
+            table.on('tool(GridMain)', function (obj) {
+                var d = obj.data;
+                if (obj.event === 'edit') openForm(d.Id);
+                else if (obj.event === 'del') {
+                    layer.confirm('删除用户组将解除成员与授权关系，确认?', function (idx) {
+                        $.post(URL_DEL, { id: d.Id }, function (res) {
+                            layer.close(idx);
+                            if (ok(res)) { layer.msg('删除成功', { icon: 1 }); load(); }
+                            else layer.msg(res.msg || '失败', { icon: 2 });
+                        });
+                    });
+                }
+            });
+
+            function normalizeModules(raw) {
+                return (raw || []).map(function (m) {
+                    return {
+                        Id: String(m.Id != null ? m.Id : m.id),
+                        ParentId: String((m.ParentId != null && m.ParentId !== '') ? m.ParentId : ((m.parentId != null && m.parentId !== '') ? m.parentId : '0')),
+                        Name: m.Name || m.name || '',
+                        Code: m.Code || m.code || ''
+                    };
+                });
+            }
+
+            function renderTree(selectedIds, $layer) {
+                var $tree = $layer.find('#moduleTree');
+                var sel = new Set((selectedIds || []).map(function (x) { return String(x); }));
+                var byParent = {};
+                allModules.forEach(function (m) { var p = m.ParentId || '0'; (byParent[p] = byParent[p] || []).push(m); });
+                function nodeHtml(m, depth) {
+                    var children = byParent[m.Id] || [];
+                    var checked = sel.has(String(m.Id)) ? 'checked' : '';
+                    var indent = (depth * 16) + 'px';
+                    var html = '<div style="padding:3px 0;padding-left:' + indent + ';">'
+                        + '<label><input type="checkbox" class="mod-cb" data-id="' + m.Id + '" ' + checked + ' /> ' + esc(m.Name) + ' <span style="color:#94a3b8;font-size:12px;">(' + esc(m.Code) + ')</span></label></div>';
+                    children.forEach(function (c) { html += nodeHtml(c, depth + 1); });
+                    return html;
+                }
+                var top = byParent['0'] || [];
+                $tree.html(top.map(function (n) { return nodeHtml(n, 0); }).join('') || '<span style="color:#999;font-size:12px;">无可用菜单</span>');
+            }
+
+            function renderUsers(selectedIds, $layer, kw) {
+                var $box = $layer.find('#userList');
+                var sel = new Set((selectedIds || []).map(function (x) { return String(x); }));
+                kw = (kw || '').toLowerCase();
+                var html = allUsers.filter(function (u) {
+                    if (!kw) return true;
+                    return (u.Account || '').toLowerCase().indexOf(kw) >= 0 || (u.Name || '').toLowerCase().indexOf(kw) >= 0;
+                }).map(function (u) {
+                    var checked = sel.has(String(u.Id)) ? 'checked' : '';
+                    return '<div style="padding:3px 0;"><label><input type="checkbox" class="usr-cb" data-id="' + u.Id + '" ' + checked + ' /> ' + esc(u.Account) + ' <span style="color:#94a3b8;font-size:12px;">' + esc(u.Name || '') + '</span></label></div>';
+                }).join('');
+                $box.html(html || '<span style="color:#999;font-size:12px;">无用户</span>');
+            }
+
+            form.on('submit(submitGroup)', function (data) {
+                var f = data.field;
+                var $lf = $('.layui-layer-content form[lay-filter="groupForm"]').last();
+                var moduleIds = $lf.find('#moduleTree .mod-cb:checked').map(function () { return String(this.getAttribute('data-id')); }).get();
+                var userIds = $lf.find('#userList .usr-cb:checked').map(function () { return String(this.getAttribute('data-id')); }).get();
+                var idStr = (f.Id && String(f.Id).trim() !== '') ? String(f.Id).trim() : '0';
+                var payload = {
+                    Group: { Id: idStr === '0' ? 0 : idStr, Name: f.Name, Descr: f.Descr || '', Status: parseInt(f.Status || 1, 10) },
+                    ModuleIds: moduleIds,
+                    UserIds: userIds
+                };
+                $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) })
+                    .done(function (res) {
+                        if (ok(res)) { layer.msg('保存成功', { icon: 1 }); layer.closeAll(); load(); }
+                        else layer.msg(res.msg || '失败', { icon: 2 });
+                    });
+                return false;
+            });
+
+            function openForm(id) {
+                layer.open({
+                    type: 1, area: ['860px', '640px'], title: id ? '编辑用户组' : '新增用户组',
+                    content: $('#tplForm').html(), shadeClose: false,
+                    success: function (layero, index) {
+                        var $L = $(layero);
+                        $L.find('#btnCancel').off('click').on('click', function () { layer.close(index); });
+
+                        function afterData(selModules, selUsers, group) {
+                            renderTree(selModules, $L);
+                            renderUsers(selUsers, $L, '');
+                            $L.find('#userFilter').off('input').on('input', function () {
+                                var cur = $L.find('#userList .usr-cb:checked').map(function () { return String(this.getAttribute('data-id')); }).get();
+                                renderUsers(cur, $L, this.value);
+                            });
+                            try {
+                                form.val('groupForm', {
+                                    Id: group ? group.Id : 0,
+                                    Name: group ? (group.Name || '') : '',
+                                    Descr: group ? (group.Descr || '') : '',
+                                    Status: group ? String(group.Status == null ? 1 : group.Status) : '1'
+                                });
+                                form.render();
+                            } catch (e) {}
+                        }
+
+                        function ensureRefs(cb) {
+                            var need = (allModules.length === 0 ? 1 : 0) + (allUsers.length === 0 ? 1 : 0);
+                            if (need === 0) { cb(); return; }
+                            var done = 0; function tick() { if (++done >= need) cb(); }
+                            if (allModules.length === 0) $.get(URL_MODULES, function (r) { if (ok(r)) allModules = normalizeModules(r.data || []); tick(); }); 
+                            if (allUsers.length === 0) $.get(URL_USERS, function (r) { if (ok(r)) allUsers = r.data || []; tick(); });
+                        }
+
+                        ensureRefs(function () {
+                            if (id) {
+                                $.get(URL_GET, { id: id }, function (r) {
+                                    if (!ok(r)) { layer.msg(r.msg || '加载失败', { icon: 2 }); return; }
+                                    var mids = [].concat(r.data.moduleIds || []).map(String);
+                                    var uids = [].concat(r.data.userIds || []).map(String);
+                                    afterData(mids, uids, r.data.group || {});
+                                });
+                            } else {
+                                afterData([], [], null);
+                            }
+                        });
+                    }
+                });
+            }
+
+            load();
+        });
+    </script>
+}

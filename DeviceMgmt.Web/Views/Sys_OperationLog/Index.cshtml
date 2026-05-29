@@ -1,0 +1,146 @@
+@{
+    ViewData["Title"] = "审计日志";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>审计日志</strong>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px;">关键业务操作的结构化追踪记录（只读）</span>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md2">
+                    <input type="text" id="kwAccount" class="layui-input" placeholder="操作账号">
+                </div>
+                <div class="layui-col-md2">
+                    <input type="text" id="kwModule" class="layui-input" placeholder="模块">
+                </div>
+                <div class="layui-col-md2">
+                    <input type="text" id="kwAction" class="layui-input" placeholder="动作">
+                </div>
+                <div class="layui-col-md2">
+                    <select id="fltSuccess">
+                        <option value="">-- 结果(全部) --</option>
+                        <option value="1">成功</option>
+                        <option value="0">失败</option>
+                    </select>
+                </div>
+                <div class="layui-col-md2">
+                    <input type="text" id="dtStart" class="layui-input" placeholder="起始时间">
+                </div>
+                <div class="layui-col-md2">
+                    <input type="text" id="dtEnd" class="layui-input" placeholder="结束时间">
+                </div>
+            </div>
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-search"></i> 查询</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnClear"><i class="layui-icon layui-icon-refresh-3"></i> 重置</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail">详情</a>
+</script>
+
+@section Script{
+    <script>
+        var URL_LIST   = '@Url.Action("GetMainList")';
+        var URL_DETAIL = '@Url.Action("GetDetail")';
+
+        layui.use(['table', 'form', 'layer', 'laydate'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate;
+            function ok(r) { return r && (r.code === 0 || r.code === 200); }
+            function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+            laydate.render({ elem: '#dtStart', type: 'datetime' });
+            laydate.render({ elem: '#dtEnd', type: 'datetime' });
+
+            function getWhere() {
+                var list = [];
+                var acc = $('#kwAccount').val();
+                var mod = $('#kwModule').val();
+                var act = $('#kwAction').val();
+                var su  = $('#fltSuccess').val();
+                var ds  = $('#dtStart').val();
+                var de  = $('#dtEnd').val();
+                if (acc) list.push({ field: 'UserAccount', conditional: 'like', value: acc });
+                if (mod) list.push({ field: 'Module', conditional: 'like', value: mod });
+                if (act) list.push({ field: 'Action', conditional: 'like', value: act });
+                if (su !== '' && su != null) list.push({ field: 'Success', conditional: 'eq', value: su });
+                if (ds) list.push({ field: 'CreateDate', conditional: 'ge', value: ds });
+                if (de) list.push({ field: 'CreateDate', conditional: 'le', value: de });
+                return { page: 1, limit: 20, searchParam: list };
+            }
+
+            function successCell(d) {
+                return d.Success ? '<span class="layui-badge layui-bg-green">成功</span>'
+                                 : '<span class="layui-badge">失败</span>';
+            }
+            function timeCell(d) {
+                if (!d.CreateDate) return '';
+                return String(d.CreateDate).replace('T', ' ').substring(0, 19);
+            }
+
+            function renderList() {
+                table.render({
+                    elem: '#GridMain',
+                    id: 'GridMain',
+                    url: URL_LIST,
+                    method: 'post',
+                    where: getWhere(),
+                    page: true,
+                    height: 'full-220',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'CreateDate', title: '时间', width: 165, templet: timeCell, sort: true },
+                        { field: 'UserAccount', title: '账号', width: 110 },
+                        { field: 'Module', title: '模块', width: 130 },
+                        { field: 'Action', title: '动作', width: 150 },
+                        { field: 'Description', title: '描述', minWidth: 220 },
+                        { field: 'Success', title: '结果', width: 80, templet: successCell },
+                        { field: 'IpAddress', title: 'IP', width: 130 },
+                        { field: 'DurationMs', title: '耗时(ms)', width: 95, align: 'right' },
+                        { title: '操作', width: 90, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+
+            $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
+            $('#btnClear').on('click', function () {
+                $('#kwAccount,#kwModule,#kwAction,#dtStart,#dtEnd').val('');
+                $('#fltSuccess').val(''); form.render('select');
+                table.reload('GridMain', { where: getWhere() });
+            });
+            form.on('select(fltSuccess)', function(){ $('#btnReload').click(); });
+
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'detail') {
+                    $.get(URL_DETAIL, { id: obj.data.Id }, function (res) {
+                        if (!ok(res)) { layer.msg(res.msg || '加载失败', { icon: 2 }); return; }
+                        var d = res.data || {};
+                        var rows = [
+                            ['时间', timeCell(d)], ['账号', d.UserAccount], ['用户Id', d.UserId],
+                            ['模块', d.Module], ['动作', d.Action], ['对象类型', d.TargetType],
+                            ['对象Id', d.TargetId], ['结果', d.Success ? '成功' : '失败'],
+                            ['耗时(ms)', d.DurationMs], ['IP', d.IpAddress], ['UserAgent', d.UserAgent],
+                            ['描述', d.Description], ['错误信息', d.ErrorMessage]
+                        ];
+                        var html = '<table class="layui-table" style="margin:0;"><tbody>';
+                        rows.forEach(function (r) {
+                            html += '<tr><td style="width:110px;background:#f8fafc;font-weight:600;">' + r[0] + '</td><td>' + esc(r[1]) + '</td></tr>';
+                        });
+                        html += '</tbody></table>';
+                        layer.open({ type: 1, title: '审计详情', area: ['640px', '560px'], content: '<div style="padding:10px;">' + html + '</div>' });
+                    });
+                }
+            });
+
+            renderList();
+        });
+    </script>
+}
