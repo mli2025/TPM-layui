@@ -21,6 +21,9 @@ public class MobileController : BaseController
     private readonly IRepository<Facility_RepairBillSub> _repairSubRepo;
     private readonly IRepository<Facility_ResourceDetail> _deviceRepo;
     private readonly IRepository<Basic_Employee> _empRepo;
+    private readonly IRepository<Meter> _meterRepo;
+    private readonly IRepository<Special_Equipment> _specialRepo;
+    private readonly IRepository<Safety_Accessory> _safetyRepo;
     private readonly IWebHostEnvironment _env;
 
     public MobileController(
@@ -33,6 +36,9 @@ public class MobileController : BaseController
         IRepository<Facility_RepairBillSub> repairSubRepo,
         IRepository<Facility_ResourceDetail> deviceRepo,
         IRepository<Basic_Employee> empRepo,
+        IRepository<Meter> meterRepo,
+        IRepository<Special_Equipment> specialRepo,
+        IRepository<Safety_Accessory> safetyRepo,
         IWebHostEnvironment env) : base(auth)
     {
         _billApp = billApp;
@@ -43,6 +49,9 @@ public class MobileController : BaseController
         _repairSubRepo = repairSubRepo;
         _deviceRepo = deviceRepo;
         _empRepo = empRepo;
+        _meterRepo = meterRepo;
+        _specialRepo = specialRepo;
+        _safetyRepo = safetyRepo;
         _env = env;
     }
 
@@ -117,6 +126,16 @@ public class MobileController : BaseController
         ViewBag.HideTabBar = true;
         ViewBag.Id = id;
         return View("RepairDetail");
+    }
+
+    [HttpGet("asset")]
+    public IActionResult Asset()
+    {
+        ViewBag.PageTitle = "扫码查档案";
+        ViewBag.ActiveTab = "home";
+        ViewBag.ShowBack = true;
+        ViewBag.HideTabBar = true;
+        return View("Asset");
     }
 
     /* ============== APIs ============== */
@@ -323,6 +342,28 @@ public class MobileController : BaseController
         }
         var url = "/" + relDir + "/" + fileName;
         return Json(new ResponseData { code = 0, data = new { url, size = file.Length, name = file.FileName }, msg = "ok" });
+    }
+
+    /// <summary>扫码/输入编码查档案：依次匹配 计量器具 / 特种设备 / 安全附件</summary>
+    [HttpGet("api/asset/by-code")]
+    public IActionResult ApiAssetByCode([FromQuery] string code)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return Json(new ResponseData { code = 400, msg = "code 为空" });
+        var c = code.Trim();
+
+        var meter = _meterRepo.Find("[MeterCode]=@c", new { c }, "[Id] DESC").FirstOrDefault();
+        if (meter != null)
+            return Json(new ResponseData { code = 0, data = new { type = "meter", item = meter } });
+
+        var special = _specialRepo.Find("[EquipCode]=@c", new { c }, "[Id] DESC").FirstOrDefault();
+        if (special != null)
+            return Json(new ResponseData { code = 0, data = new { type = "special", item = special } });
+
+        var safety = _safetyRepo.Find("[AccCode]=@c", new { c }, "[Id] DESC").FirstOrDefault();
+        if (safety != null)
+            return Json(new ResponseData { code = 0, data = new { type = "safety", item = safety } });
+
+        return Json(new ResponseData { code = 404, msg = "未找到编码: " + c });
     }
 
     [HttpGet("api/maintain/by-billno")]

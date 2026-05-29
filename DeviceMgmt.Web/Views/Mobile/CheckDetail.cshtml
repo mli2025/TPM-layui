@@ -19,33 +19,76 @@
             <div class="text-center text-slate-400 text-xs py-4">加载中...</div>
         </div>
     </div>
+
+    <div class="m-card p-3">
+        <label class="text-xs text-slate-500">整体结论</label>
+        <div class="flex gap-2 mt-2" x-data="{ ok: '1' }">
+            <button class="m-btn flex-1" :class="ok==='1' ? 'primary' : ''" @@click="ok='1'; document.getElementById('isOK').value='1'">正常</button>
+            <button class="m-btn flex-1" :class="ok==='0' ? 'danger' : ''" @@click="ok='0'; document.getElementById('isOK').value='0'">异常</button>
+        </div>
+        <input type="hidden" id="isOK" value="1" />
+        <label class="text-xs text-slate-500 mt-3 block">备注</label>
+        <textarea id="remark" class="m-textarea mt-1" rows="2"></textarea>
+    </div>
+
+    <div class="flex gap-2">
+        <button class="m-btn flex-1" id="btnAccept">接单</button>
+        <button class="m-btn primary flex-1" id="btnSubmit">提交完成</button>
+    </div>
 </div>
 
 @section Script {
 <script>
 (function(){
     var id = parseInt(document.getElementById('root').dataset.id, 10);
-    var statusMap = { 0:'新建',2:'进行中',3:'已完成',4:'已审核' };
+    var statusMap = { 0:'新建',1:'待接单',2:'进行中',3:'已完成',4:'已审核' };
     function fmt(s){ return s ? String(s).substring(0,16).replace('T',' ') : ''; }
-    M.ajax({ url:'/m/api/maintain/detail?id=' + id, contentType:false }).then(function(res){
-        if (!M.ok(res)){ M.toast(res.msg||'加载失败','err'); return; }
-        var m = res.data.main || {}, subs = res.data.subs || [];
-        document.getElementById('billNo').textContent = m.BillNo || '-';
-        document.getElementById('facility').textContent = m.FacilityID || '-';
-        document.getElementById('begin').textContent = fmt(m.BeginDate);
-        document.getElementById('end').textContent = fmt(m.EndDate);
-        document.getElementById('status').textContent = statusMap[m.Status==null?0:m.Status] || m.Status || '-';
-        document.getElementById('subs').innerHTML = subs.length === 0
-            ? '<div class="m-card p-3 text-xs text-slate-400 text-center">无点检项</div>'
-            : subs.map(function(s){
-                return '<div class="m-card p-3">'
-                    + '<div class="text-sm font-medium">' + (s.Project||'-') + '</div>'
-                    + (s.CheckMethod ? '<div class="text-xs text-slate-500 mt-1">检查方法: ' + s.CheckMethod + '</div>' : '')
-                    + (s.Result ? '<div class="text-xs text-brand-700 mt-1">结果: ' + s.Result + '</div>' : '')
-                    + (s.Remark ? '<div class="text-xs text-slate-500 mt-1">备注: ' + s.Remark + '</div>' : '')
-                    + '</div>';
-            }).join('');
+    function load(){
+        M.ajax({ url:'/m/api/maintain/detail?id=' + id, contentType:false }).then(function(res){
+            if (!M.ok(res)){ M.toast(res.msg||'加载失败','err'); return; }
+            var m = res.data.main || {}, subs = res.data.subs || [];
+            document.getElementById('billNo').textContent = m.BillNo || '-';
+            document.getElementById('facility').textContent = m.FacilityID || '-';
+            document.getElementById('begin').textContent = fmt(m.BeginDate);
+            document.getElementById('end').textContent = fmt(m.EndDate);
+            document.getElementById('status').textContent = statusMap[m.Status==null?0:m.Status] || m.Status || '-';
+            document.getElementById('remark').value = m.Remark || '';
+
+            document.getElementById('subs').innerHTML = subs.length === 0
+                ? '<div class="m-card p-3 text-xs text-slate-400 text-center">无点检项</div>'
+                : subs.map(function(s){
+                    return '<div class="m-card p-3" data-id="' + s.Id + '">'
+                        + '<div class="text-sm font-medium">' + (s.Project||'-') + '</div>'
+                        + (s.CheckMethod ? '<div class="text-xs text-slate-500 mt-1">检查方法: ' + s.CheckMethod + '</div>' : '')
+                        + '<label class="text-xs text-slate-500 mt-2 block">结果</label>'
+                        + '<input class="m-input mt-1 s-result" value="' + (s.Result||'') + '" />'
+                        + '<label class="text-xs text-slate-500 mt-2 block">备注</label>'
+                        + '<input class="m-input mt-1 s-remark" value="' + (s.Remark||'') + '" />'
+                        + '</div>';
+                }).join('');
+        });
+    }
+    document.getElementById('btnAccept').addEventListener('click', function(){
+        var f = new FormData(); f.append('id', id);
+        M.ajax({ url:'/m/api/maintain/dispatch', method:'POST', data: f, contentType: false }).then(function(res){
+            if (M.ok(res)){ M.toast('接单成功'); load(); } else M.toast(res.msg||'操作失败','err');
+        });
     });
+    document.getElementById('btnSubmit').addEventListener('click', function(){
+        var items = Array.prototype.map.call(document.querySelectorAll('#subs > div[data-id]'), function(div){
+            return {
+                Id: parseInt(div.dataset.id, 10),
+                Result: div.querySelector('.s-result').value,
+                Remark: div.querySelector('.s-remark').value
+            };
+        });
+        var payload = { Id: id, IsOK: parseInt(document.getElementById('isOK').value, 10), Remark: document.getElementById('remark').value, Items: items };
+        M.ajax({ url:'/m/api/maintain/submit', method:'POST', data: JSON.stringify(payload), contentType:'application/json' }).then(function(res){
+            if (M.ok(res)){ M.toast('提交成功'); setTimeout(function(){ history.back(); }, 800); }
+            else M.toast(res.msg||'提交失败','err');
+        });
+    });
+    load();
 })();
 </script>
 }

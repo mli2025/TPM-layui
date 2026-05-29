@@ -1,0 +1,145 @@
+@{
+    Layout = "_LayoutMobile";
+}
+<div class="p-3 space-y-3">
+    <div class="m-card p-3">
+        <label class="text-xs text-slate-500">设备/器具编码</label>
+        <div class="flex gap-2 mt-1">
+            <input id="code" class="m-input flex-1" placeholder="输入或扫描编码" autocomplete="off" />
+            <button class="m-btn primary px-3" id="btnScan" type="button">
+                <i data-lucide="scan-line" class="w-4 h-4 inline-block align-text-bottom"></i> 扫码
+            </button>
+        </div>
+        <button class="m-btn w-full mt-2" id="btnQuery">查询档案</button>
+        <div class="text-[11px] text-slate-400 mt-2">支持：计量器具 / 特种设备 / 安全附件</div>
+    </div>
+    <div id="result"></div>
+</div>
+
+<!-- 扫码弹层 -->
+<div id="scanModal" class="fixed inset-0 bg-black/80 z-50 hidden flex flex-col">
+    <div class="flex items-center justify-between p-3 text-white">
+        <span class="text-sm">扫描设备/器具编码</span>
+        <button id="btnScanClose" class="text-white text-2xl leading-none">×</button>
+    </div>
+    <div class="relative flex-1 flex items-center justify-center">
+        <video id="scanVideo" class="w-full h-full object-cover" playsinline muted></video>
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="w-64 h-64 border-2 border-emerald-400 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
+        </div>
+    </div>
+    <div class="p-3 bg-black/70 text-white text-xs">
+        <div id="scanStatus" class="text-center mb-2 text-slate-300">将条码/二维码对准取景框</div>
+        <div class="flex gap-2">
+            <input id="scanManual" class="m-input flex-1 text-slate-700" placeholder="或手动输入编码..." />
+            <button id="btnScanSubmit" class="m-btn primary">查询</button>
+        </div>
+    </div>
+</div>
+
+@section Script {
+<script>
+(function(){
+    var TYPE = { meter:'计量器具', special:'特种设备', safety:'安全附件' };
+    function fmt(s){ return s ? String(s).substring(0,10).replace('T',' ') : ''; }
+    function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+    function row(k,v){ if(v==null||v==='') return ''; return '<div class="flex justify-between py-1 border-b border-slate-100 text-xs"><span class="text-slate-400">'+k+'</span><span class="text-slate-700 text-right">'+esc(v)+'</span></div>'; }
+
+    function render(type, it){
+        var title='', body='';
+        if (type==='meter'){
+            title = (it.Name||'') + ' (' + (it.MeterCode||'') + ')';
+            body = row('编码',it.MeterCode)+row('名称',it.Name)+row('规格型号',it.Model)+row('类别',it.Category)+row('准确度',it.Accuracy)+row('量程',it.Range)+row('保管人',it.Keeper)+row('校准周期(月)',it.CalibCycle);
+        } else if (type==='special'){
+            title = (it.EquipCode||'');
+            body = row('编码',it.EquipCode)+row('类别',it.Category)+row('注册证号',it.RegisterNo)+row('使用证号',it.UseCertNo)+row('设计寿命',it.DesignLife)+row('安全级别',it.SafetyLevel)+row('下次检验日',fmt(it.NextInspectDate))+row('检验机构',it.InspectOrg);
+        } else if (type==='safety'){
+            title = (it.AccCode||'');
+            body = row('编码',it.AccCode)+row('型号',it.Model)+row('整定压力',it.SetPressure)+row('检定范围',it.CheckRange)+row('上次检定日',fmt(it.LastCheckDate))+row('检定周期(月)',it.CheckCycle)+row('检定机构',it.CheckOrg);
+        }
+        document.getElementById('result').innerHTML =
+            '<div class="m-card p-3">'
+          + '<div class="flex items-center gap-2"><span class="m-badge audited">'+(TYPE[type]||type)+'</span><span class="font-medium truncate">'+esc(title)+'</span></div>'
+          + '<div class="mt-2">'+body+'</div>'
+          + '</div>';
+    }
+
+    function query(code){
+        code = (code||'').trim();
+        if (!code){ M.toast('请输入编码','warn'); return; }
+        document.getElementById('result').innerHTML = '<div class="text-center text-slate-400 text-xs py-4">查询中...</div>';
+        M.ajax({ url:'/m/api/asset/by-code?code=' + encodeURIComponent(code), method:'GET', contentType:false })
+            .then(function(res){
+                if (M.ok(res) && res.data){ render(res.data.type, res.data.item || {}); }
+                else { document.getElementById('result').innerHTML = '<div class="m-card p-3 text-center text-xs text-red-500">'+(res.msg||'未找到')+'</div>'; }
+            });
+    }
+
+    document.getElementById('btnQuery').addEventListener('click', function(){ query(document.getElementById('code').value); });
+    document.getElementById('code').addEventListener('keyup', function(e){ if (e.key==='Enter') query(this.value); });
+
+    // ---------------- 扫码 ----------------
+    var scanModal = document.getElementById('scanModal');
+    var scanVideo = document.getElementById('scanVideo');
+    var scanStatus = document.getElementById('scanStatus');
+    var scanStream = null, scanTimer = null, detector = null;
+
+    function gotCode(code){
+        code = (code||'').trim();
+        if (!code) return;
+        closeScan();
+        document.getElementById('code').value = code;
+        query(code);
+    }
+    function startScan(){
+        if (window.ArboreShell && window.ArboreShell.hasNativeScan) {
+            window.ArboreShell.scan().then(function(code){ gotCode(code); })
+                .catch(function(err){
+                    var msg = err && err.message ? err.message : '';
+                    if (msg === 'CANCELLED') return;
+                    scanModal.classList.remove('hidden');
+                    scanStatus.textContent = '原生扫码失败 (' + msg + ')，可手动输入';
+                    scanStatus.classList.add('text-red-300');
+                });
+            return;
+        }
+        scanModal.classList.remove('hidden');
+        scanStatus.textContent = '正在启动摄像头...';
+        scanStatus.classList.remove('text-red-300');
+        if (!window.isSecureContext){ scanStatus.textContent = '⚠ 摄像头需要 HTTPS 环境，可手动输入'; return; }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ scanStatus.textContent = '当前浏览器不支持摄像头，可手动输入'; return; }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+            .then(function(stream){
+                scanStream = stream; scanVideo.srcObject = stream; scanVideo.play();
+                scanStatus.textContent = '请将二维码 / 条码对准取景框';
+                if ('BarcodeDetector' in window){ try { detector = new window.BarcodeDetector({ formats: ['qr_code','code_128','code_39','ean_13','data_matrix'] }); } catch(e){ detector = null; } }
+                if (!detector){ scanStatus.textContent = '浏览器不支持自动识别，请手动输入'; return; }
+                scanTimer = setInterval(function(){
+                    if (!scanVideo.videoWidth) return;
+                    detector.detect(scanVideo).then(function(codes){
+                        if (codes && codes.length){ var raw = (codes[0].rawValue || '').trim(); if (raw){ scanStatus.textContent = '识别成功: ' + raw; gotCode(raw); } }
+                    }).catch(function(){});
+                }, 400);
+            })
+            .catch(function(err){
+                var msg = err && (err.name || err.message) ? (err.name || err.message) : '';
+                scanStatus.textContent = '摄像头启动失败 (' + msg + ')，请允许权限后重试，或手动输入';
+                scanStatus.classList.add('text-red-300');
+            });
+    }
+    function closeScan(){
+        scanModal.classList.add('hidden');
+        if (scanTimer){ clearInterval(scanTimer); scanTimer = null; }
+        if (scanStream){ try { scanStream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} scanStream = null; }
+        document.getElementById('scanManual').value = '';
+    }
+    document.getElementById('btnScan').addEventListener('click', startScan);
+    document.getElementById('btnScanClose').addEventListener('click', closeScan);
+    document.getElementById('btnScanSubmit').addEventListener('click', function(){ gotCode(document.getElementById('scanManual').value); });
+
+    // 支持 URL ?code= 直接查询
+    var c0 = new URL(location.href).searchParams.get('code');
+    if (c0){ document.getElementById('code').value = c0; query(c0); }
+})();
+</script>
+}
