@@ -2,9 +2,12 @@
     ViewData["Title"] = "设备台账";
 }
 @section Style{
+    <link href="~/js/soul-table/soulTable.css" rel="stylesheet" />
     <style>
         .ms-edit .layui-form-label{ width:130px; }
         .ms-edit .layui-input-block { margin-left: 130px; }
+        /* soul-table 表头筛选图标更明显 */
+        .layui-table-view .soul-table-tool { color:#1F4D3B; }
     </style>
 }
 <div class="layui-fluid" style="padding:12px;">
@@ -147,8 +150,17 @@
         var URL_TPL_OPTS       = '@Url.Action("GetTemplateOptions")';
         var URL_HISTORY        = '@Url.Action("GetFacilityHistory")';
 
-        layui.use(['table', 'form', 'layer', 'laydate', 'element'], function () {
-            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, element = layui.element;
+        // 注册 soul-table 扩展模块（表头去重下拉筛选/列显隐/拖拽/固定列/导出）
+        layui.config({ base: '/js/soul-table/' }).extend({
+            excel: 'excel',
+            tableMerge: 'tableMerge',
+            tableChild: 'tableChild',
+            tableFilter: 'tableFilter',
+            soulTable: 'soulTable'
+        });
+
+        layui.use(['table', 'form', 'layer', 'laydate', 'element', 'soulTable'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, element = layui.element, soulTable = layui.soulTable;
             function ok(res) { return res && (res.code === 0 || res.code === 200); }
             function toast(msg) { layer.msg(msg || ''); }
             function toastOk(msg) { layer.msg(msg || '操作成功', { icon: 1 }); }
@@ -156,6 +168,7 @@
             function fmtDate(s) { return s ? (s + '').replace('T',' ').substring(0,10) : ''; }
             function fmtDt(s) { return s ? (s + '').replace('T',' ').substring(0,19) : ''; }
 
+            // 顶部粗筛条件（用于服务端预过滤，缩小前端一次性加载的数据量）
             function getWhere() {
                 var list = [];
                 var kw = ($('#kw').val()||'').trim();
@@ -165,35 +178,66 @@
                 if (kw) list.push({ field: kwField, conditional: 'like', value: kw });
                 if (dept !== '' && dept !== null && dept !== undefined) list.push({ field: 'DeptId', conditional: '=', value: dept });
                 if (status !== '' && status !== null && status !== undefined) list.push({ field: 'Status', conditional: '=', value: status });
-                return { page: 1, limit: 20, searchParam: list };
+                // 前端模式：一次性取回全部匹配行，soul-table 才能给出"全部不重复值"的下拉筛选
+                return { page: 1, limit: 100000, searchParam: list };
             }
 
-            function renderList() {
-                table.render({
-                    elem: '#GridMain',
-                    id: 'GridMain',
-                    url: URL_LIST,
-                    method: 'post',
-                    where: getWhere(),
-                    page: true,
-                    height: 'full-200',
-                    cols: [[
-                        { type: 'numbers', title: '#', width: 50, fixed:'left' },
-                        { field: 'FacilityCode', title: '设备编码', width: 140, fixed:'left' },
-                        { field: 'FacilityName', title: '设备名称', minWidth: 160, fixed:'left' },
-                        { field: 'Model', title: '设备型号', width: 130 },
-                        { field: 'FacilityType', title: '设备类型', width: 120 },
-                        { field: 'ManufactureNumber', title: '厂家厂内编号', width: 140 },
-                        { field: 'SerialNumber', title: '序列号', width: 140 },
-                        { field: 'Manufacturer', title: '制造商', width: 130 },
-                        { field: 'Location', title: '安装位置', width: 140 },
-                        { field: 'DeptId', title: '工作中心', width: 110, templet: function(d){ return deptName(d.DeptId); } },
-                        { field: 'PurchaseDate', title: '购置日期', width: 110, templet: function(d){ return fmtDate(d.PurchaseDate); } },
-                        { field: 'AssetNumber', title: '资产编号', width: 130 },
-                        { field: 'Status', title: '状态', width: 90, templet:'#statusTpl' },
-                        { title: '操作', width: 280, toolbar: '#barRow', fixed: 'right' }
-                    ]]
+            function buildCols() {
+                return [[
+                    { type: 'numbers', title: '#', width: 50, fixed:'left' },
+                    { field: 'FacilityCode', title: '设备编码', width: 140, fixed:'left', sort: true, filter: true },
+                    { field: 'FacilityName', title: '设备名称', minWidth: 160, fixed:'left', sort: true, filter: true },
+                    { field: 'Model', title: '设备型号', width: 130, sort: true, filter: true },
+                    { field: 'FacilityType', title: '设备类型', width: 120, sort: true, filter: true },
+                    { field: 'ManufactureNumber', title: '厂家厂内编号', width: 140, sort: true, filter: true },
+                    { field: 'SerialNumber', title: '序列号', width: 140, sort: true, filter: true },
+                    { field: 'Manufacturer', title: '制造商', width: 130, sort: true, filter: true },
+                    { field: 'Location', title: '安装位置', width: 140, sort: true, filter: true },
+                    { field: 'DeptName', title: '工作中心', width: 120, sort: true, filter: true, templet: function(d){ return d.DeptName || deptName(d.DeptId); } },
+                    { field: 'PurchaseDate', title: '购置日期', width: 110, sort: true, filter: true, templet: function(d){ return fmtDate(d.PurchaseDate); } },
+                    { field: 'AssetNumber', title: '资产编号', width: 130, sort: true, filter: true },
+                    { field: 'StatusName', title: '状态', width: 90, sort: true, filter: true, templet:'#statusTpl' },
+                    { title: '操作', width: 280, toolbar: '#barRow', fixed: 'right' }
+                ]];
+            }
+
+            // 把编码型字段预先转成可读文本，供 soul-table 去重下拉显示中文
+            var __STATUS_MAP__ = {0:'运行',1:'闲置',2:'停机',3:'报废'};
+            function decorate(rows) {
+                (rows || []).forEach(function(r){
+                    r.DeptName = deptName(r.DeptId);
+                    var s = r.Status == null ? 0 : r.Status;
+                    r.StatusName = __STATUS_MAP__[s] || s;
+                    if (r.PurchaseDate) r.PurchaseDate = fmtDate(r.PurchaseDate);
                 });
+                return rows || [];
+            }
+
+            function renderList() { loadData(); }
+
+            function loadData() {
+                var loadIdx = layer.load(2);
+                $.post(URL_LIST, getWhere(), function (res) {
+                    layer.close(loadIdx);
+                    var rows = ok(res) ? decorate(res.data || []) : [];
+                    table.render({
+                        elem: '#GridMain',
+                        id: 'GridMain',
+                        data: rows,
+                        page: true,
+                        limit: 20,
+                        limits: [20, 50, 100, 200],
+                        height: 'full-200',
+                        even: true,
+                        drag: true,
+                        autoColumnWidth: false,
+                        filter: { cache: true, bottom: false },
+                        cols: buildCols(),
+                        done: function () {
+                            try { soulTable.render(this); } catch (e) { console.error('soulTable render error', e); }
+                        }
+                    });
+                }).fail(function(){ layer.close(loadIdx); toastErr('数据加载失败'); });
             }
 
             var __DEPTS__ = [];
@@ -359,7 +403,7 @@
                             if (ok(res)) {
                                 layer.close(idx);
                                 toastOk('保存成功');
-                                table.reload('GridMain');
+                                loadData();
                             } else toastErr(res && res.msg || '保存失败');
                         });
                     }
@@ -431,13 +475,11 @@
 
             // -------------- 事件 --------------
             $('#btnAdd').on('click', function () { openDialog('add'); });
-            $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
+            $('#btnReload').on('click', function () { loadData(); });
             $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
-            $('#fltDept').on('change', function(){ table.reload('GridMain', { where: getWhere() }); });
-            $('#fltStatus').on('change', function(){ table.reload('GridMain', { where: getWhere() }); });
-            // form.render select 后的回调，需用 form.on
-            form.on('select(fltDept)', function(){ table.reload('GridMain', { where: getWhere() }); });
-            form.on('select(fltStatus)', function(){ table.reload('GridMain', { where: getWhere() }); });
+            // form.render select 后的回调，需用 form.on（前端模式：重新拉取数据）
+            form.on('select(fltDept)', function(){ loadData(); });
+            form.on('select(fltStatus)', function(){ loadData(); });
 
             $('#btnExport').on('click', function () {
                 var $f = $('<form method="post" action="' + URL_EXPORT + '"></form>');
