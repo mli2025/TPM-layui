@@ -55,6 +55,10 @@
     </div>
 </div>
 
+<script type="text/html" id="tableToolbar">
+    <span style="color:#8a8f99;font-size:12px;">提示：点击列头漏斗可按"去重值/条件"筛选（绿色=已筛选）；右上角齿轮可显示/隐藏列；拖动列头可调整顺序。</span>
+</script>
+
 <script type="text/html" id="barRow">
     <a class="layui-btn layui-btn-xs" lay-event="view">查看</a>
     <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
@@ -231,7 +235,11 @@
                         even: true,
                         drag: true,
                         autoColumnWidth: false,
-                        filter: { cache: true, bottom: false },
+                        // 列显隐用 layui 原生顶部工具栏的 filter(齿轮) 面板，放在表格上方且自动生效
+                        toolbar: '#tableToolbar',
+                        defaultToolbar: ['filter'],
+                        // 每列下拉只保留：去重筛选(data) + 条件筛选(condition)
+                        filter: { cache: true, bottom: false, items: ['data', 'condition'] },
                         cols: buildCols(),
                         done: function () {
                             try { soulTable.render(this); } catch (e) { console.error('soulTable render error', e); }
