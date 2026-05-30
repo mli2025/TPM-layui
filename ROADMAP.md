@@ -42,8 +42,9 @@
 | 数据库 | SQL Server `TPM` | `db-schema-v2.sql`（bigint IDENTITY，含种子） |
 | 数据库连接 | `appsettings.Development.json` | 已 .gitignore；公开仓不会泄露 |
 | 认证 | Token + Cookie + 模块按钮权限 | `AuthApp` + `Sys_User/Role/Module/ModuleButtons` |
-| 前端 CSS | **Tailwind CSS 3.x** | 替换 layui，所有视图重写样式 |
-| 前端 JS | **AlpineJS** | 替换 jQuery（仅保留 ajax 必要时） |
+| 前端 CSS | **Tailwind CSS 3.x** | 仅 AppShell/登录等壳层；业务页保留 layui |
+| 前端 JS | **AlpineJS** | 仅壳层；业务页仍用 layui + jQuery |
+| 业务表格 | **Layui 2.9.13 + layui-soul-table + `SoulGrid` 封装** | 去重下拉筛选/固定列/列显隐/排序/前端导出(所见即所得)；高频档案页用前端全量模式（2026-05-30 定）|
 | 图标 | **Lucide** | 替换 font-awesome |
 | 字体 | **Inter** + 系统中文回退 | |
 | 主色 | **`#1F4D3B`** 森林绿 | 对齐 arbore logo |
@@ -86,6 +87,33 @@
 - [x] **P0.7 业务页过渡**：`_LayoutInner.cshtml` iframe 兼容层，旧 layui 视图零改动可跑
 
 退出条件全部满足：编译 0 错 0 警、登录可用、AppShell 三区渲染、用户菜单可用、折叠/主题持久化、业务页 iframe 加载。
+
+---
+
+## UI · 业务表格统一升级（soul-table / SoulGrid 组件）（2026-05-30）
+
+> 路线：用户验证 Tabulator 试点不满意后，回退 **Layui 2.9.13 + layui-soul-table**，在原生表格上叠加现代能力，并抽出公共组件分批铺开（非"一次性全套"）。
+
+**基础设施（已完成 ✓）**
+- [x] Layui 核心降级 2.13.7 → **2.9.13**（兼容 soul-table 筛选，避免 ≥2.11.6 卡死）
+- [x] `wwwroot/js/soul-table/`：soulTable / tableFilter / excel / tableChild / tableMerge + css
+- [x] 布局 `_LayoutInner.cshtml` 用 `{/}` 绝对路径全局注册 soul-table 模块 + 全局加载 `soulTable.css`
+- [x] **公共组件 `wwwroot/js/components/soul-grid.js`**：`SoulGrid.render/export/loadAll/fmtThousand/fmtDate`，默认套用去重筛选(data)+条件筛选(condition)/列显隐齿轮/拖拽/固定列/前端导出/`cache:false`
+- [x] 通用列表脚本 `NomalListPage.js` 增加 **`SoulFront` 开关**（前端全量 + soul-table 完整体验）；默认关闭，对其余页面零回归，不无谓加载 excel.js
+
+**已接入页面（去重下拉/固定列/列显隐/排序/前端导出/中文列名/数字千分位）**
+- [x] 设备台账 `Facility_ResourceDetail`（前端模式 + 日期范围筛选 + 部门/状态转中文）
+- [x] 备件主数据 `Basic_Spare`（NomalListPage `SoulFront` 接入；单价千分位）
+- [x] 库存查询 `Spare_NowQuan`（库存/安全库存千分位 + 库存合计行）
+- [x] 计量器具 `Meter`（部门/状态转中文）
+- [x] 特种设备 `Special_Equipment`（超期红字保留）
+- [x] 安全附件 `Safety_Accessory`
+
+**待铺开（按模块分批，大数据表保留服务端分页、慎用前端模式）**
+- [ ] 保养项目/模板/工单列表（`Facility_Item` / `Facility_TheTemplateMain` / `Facility_BillMain`）
+- [ ] 维修工单列表 `Facility_RepairBillMain`、备件出入库 `Spare_InvoiceMain`
+- [ ] 系统管理（用户/角色/部门/菜单）列表
+- [ ] 日志/点检历史/状态履历等大数据表（保留服务端分页，去重下拉受限或不启用）
 
 ---
 
