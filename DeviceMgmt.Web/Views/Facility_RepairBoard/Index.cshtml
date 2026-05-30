@@ -1,0 +1,44 @@
+@{
+    ViewData["Title"] = "维修故障看板";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-row layui-col-space12">
+        <div class="layui-col-md3"><div class="layui-card"><div class="layui-card-body" style="text-align:center;"><div style="font-size:13px;color:#64748b;">总工单</div><div id="cTotal" style="font-size:30px;font-weight:700;color:#1F4D3B;">-</div></div></div></div>
+        <div class="layui-col-md3"><div class="layui-card"><div class="layui-card-body" style="text-align:center;"><div style="font-size:13px;color:#64748b;">本月新增</div><div id="cMonth" style="font-size:30px;font-weight:700;color:#2563eb;">-</div></div></div></div>
+        <div class="layui-col-md3"><div class="layui-card"><div class="layui-card-body" style="text-align:center;"><div style="font-size:13px;color:#64748b;">外委工单</div><div id="cOut" style="font-size:30px;font-weight:700;color:#f59e0b;">-</div></div></div></div>
+        <div class="layui-col-md3"><div class="layui-card"><div class="layui-card-body" style="text-align:center;"><div style="font-size:13px;color:#64748b;">故障类别数</div><div id="cCat" style="font-size:30px;font-weight:700;color:#dc2626;">-</div></div></div></div>
+    </div>
+    <div class="layui-row layui-col-space12">
+        <div class="layui-col-md6"><div class="layui-card"><div class="layui-card-header">按状态分布</div><div class="layui-card-body"><div id="chStatus" style="height:300px;"></div></div></div></div>
+        <div class="layui-col-md6"><div class="layui-card"><div class="layui-card-header">按故障类别</div><div class="layui-card-body"><div id="chCat" style="height:300px;"></div></div></div></div>
+    </div>
+    <div class="layui-row layui-col-space12">
+        <div class="layui-col-md6"><div class="layui-card"><div class="layui-card-header">近12月工单趋势</div><div class="layui-card-body"><div id="chTrend" style="height:300px;"></div></div></div></div>
+        <div class="layui-col-md6"><div class="layui-card"><div class="layui-card-header">平均修复时长 MTTR（小时）</div><div class="layui-card-body"><div id="chMttr" style="height:300px;"></div></div></div></div>
+    </div>
+</div>
+@section Script{
+<script src="~/lib/layui/echarts.min.js"></script>
+<script>
+    var U_BOARD='@Url.Action("Board")',U_TREND='@Url.Action("Trend")',U_MTTR='@Url.Action("MTTR")';
+    var STATUS_MAP={0:'待派工',1:'已派工',2:'维修中',3:'已完成',4:'已确认',5:'已关闭'};
+    layui.use(['layer'],function(){
+        var $=layui.$;
+        function chart(id){return (typeof echarts!=='undefined')?echarts.init(document.getElementById(id)):null;}
+        $.get(U_BOARD,function(res){
+            var d=(res&&res.data)||{};
+            $('#cTotal').text((d.total&&d.total.c)||0);
+            $('#cMonth').text((d.month&&d.month.c)||0);
+            $('#cOut').text((d.outsrc&&d.outsrc.c)||0);
+            $('#cCat').text((d.byCategory||[]).length);
+            var sc=chart('chStatus');
+            if(sc){sc.setOption({tooltip:{trigger:'item'},series:[{type:'pie',radius:['40%','70%'],data:(d.byStatus||[]).map(function(x){return{name:STATUS_MAP[x.k]||('状态'+x.k),value:x.c};})}]});}
+            var cc=chart('chCat');
+            if(cc){var cats=d.byCategory||[];cc.setOption({tooltip:{},xAxis:{type:'category',data:cats.map(function(x){return x.k;}),axisLabel:{interval:0,rotate:30}},yAxis:{type:'value'},series:[{type:'bar',data:cats.map(function(x){return x.c;}),itemStyle:{color:'#1F4D3B'}}]});}
+        });
+        $.get(U_TREND,function(res){var rows=(res&&res.data)||[];var c=chart('chTrend');if(c){c.setOption({tooltip:{trigger:'axis'},xAxis:{type:'category',data:rows.map(function(x){return x.ym;})},yAxis:{type:'value'},series:[{type:'line',smooth:true,areaStyle:{},data:rows.map(function(x){return x.c;}),itemStyle:{color:'#2563eb'}}]});}});
+        $.get(U_MTTR,function(res){var rows=(res&&res.data)||[];var c=chart('chMttr');if(c){c.setOption({tooltip:{},xAxis:{type:'category',data:rows.map(function(x){return x.k;}),axisLabel:{interval:0,rotate:30}},yAxis:{type:'value'},series:[{type:'bar',data:rows.map(function(x){return x.mttrHours!=null?Number(x.mttrHours).toFixed(1):0;}),itemStyle:{color:'#f59e0b'}}]});}});
+        window.addEventListener('resize',function(){['chStatus','chCat','chTrend','chMttr'].forEach(function(id){var el=document.getElementById(id);if(el&&echarts){var ins=echarts.getInstanceByDom(el);if(ins)ins.resize();}});});
+    });
+</script>
+}

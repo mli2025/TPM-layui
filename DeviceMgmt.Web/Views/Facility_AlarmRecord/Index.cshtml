@@ -1,0 +1,62 @@
+@{
+    ViewData["Title"] = "报警记录";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>报警记录</strong>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px;">记录可由采集/n8n 写入，也可手工登记</span>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">手工登记</button>
+        </div>
+        <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    {{# if(d.Handled != 1){ }}<a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="handle">处理</a>{{# } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="lvlTpl">
+    {{# var m={'提示':'#2563eb','警告':'#f59e0b','严重':'#dc2626'};var c=m[d.Level]||'#64748b';}}
+    <span style="color:{{=c}};font-weight:600;">{{=d.Level||''}}</span>
+</script>
+<script type="text/html" id="hdlTpl">
+    {{# if(d.Handled==1){ }}<span class="layui-badge layui-bg-green">已处理</span>{{# }else{ }}<span class="layui-badge layui-bg-orange">未处理</span>{{# } }}
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;"><form class="layui-form" lay-filter="f">
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">指标</label><div class="layui-input-inline"><input type="text" name="MetricName" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">数值</label><div class="layui-input-inline"><input type="number" step="0.01" name="MetricValue" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">级别</label><div class="layui-input-inline" style="width:110px;"><select name="Level"><option value="提示">提示</option><option value="警告">警告</option><option value="严重">严重</option></select></div></div>
+        </div>
+        <div style="text-align:center;margin-top:10px;"><button class="layui-btn" lay-submit lay-filter="save">保存</button><button class="layui-btn layui-btn-primary" type="button" id="cancel">关闭</button></div>
+    </form></div>
+</script>
+@section Script{
+<script>
+    var U_LIST='@Url.Action("GetMainList")',U_SAVE='@Url.Action("Save")',U_HANDLE='@Url.Action("Handle")',U_DEL='@Url.Action("Delete")';
+    layui.use(['table','form','layer'],function(){
+        var table=layui.table,form=layui.form,layer=layui.layer,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        function dt(v){return v?String(v).replace('T',' ').substring(0,19):'';}
+        function render(){table.render({elem:'#GridMain',id:'GridMain',url:U_LIST,method:'post',where:{page:1,limit:20,searchParam:[]},page:true,height:'full-150',cols:[[
+            {type:'numbers',title:'#'},{field:'AlarmTime',title:'报警时间',width:170,templet:function(d){return dt(d.AlarmTime);}},
+            {field:'FacilityId',title:'设备Id',width:100},{field:'MetricName',title:'指标',width:130},{field:'MetricValue',title:'数值',width:100,align:'right'},
+            {field:'Level',title:'级别',width:90,templet:'#lvlTpl'},{field:'Handled',title:'状态',width:100,templet:'#hdlTpl'},{field:'Handler',title:'处理人',width:110},{field:'HandleRemark',title:'处理说明',minWidth:160},
+            {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
+        function openForm(){layer.open({type:1,area:['600px','auto'],title:'手工登记报警',content:$('#tplForm').html(),success:function(l,idx){
+            form.render();$('#cancel').on('click',function(){layer.close(idx);});
+            form.on('submit(save)',function(data){var f=data.field;var p={Id:0,FacilityId:f.FacilityId?parseInt(f.FacilityId,10):null,MetricName:f.MetricName||null,MetricValue:f.MetricValue?parseFloat(f.MetricValue):null,Level:f.Level};
+                $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已登记',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
+        }});}
+        $('#btnAdd').on('click',openForm);
+        table.on('tool(GridMain)',function(o){
+            if(o.event==='handle'){layer.prompt({title:'处理说明',formType:2},function(val,idx){$.post(U_HANDLE,{id:o.data.Id,remark:val},function(r){if(ok(r)){layer.close(idx);layer.msg('已处理',{icon:1});table.reload('GridMain');}else layer.msg('失败',{icon:2});});});}
+            else if(o.event==='del')layer.confirm('确认删除?',function(idx){$.post(U_DEL,{id:o.data.Id},function(){layer.close(idx);o.del();});});
+        });
+        render();
+    });
+</script>
+}

@@ -1,0 +1,39 @@
+@{
+    ViewData["Title"] = "维修费用分摊";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>维修费用分摊</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-form-pane" style="margin-bottom:10px;">
+                <div class="layui-inline"><label class="layui-form-label">维修工单Id</label><div class="layui-input-inline"><input type="number" id="billId" class="layui-input"></div></div>
+                <button class="layui-btn" id="btnLoad">加载</button>
+                <button class="layui-btn layui-btn-normal" id="btnAddRow">添加分摊行</button>
+                <button class="layui-btn layui-btn-warm" id="btnSave">保存分摊</button>
+                <span id="sumTip" style="margin-left:12px;color:#64748b;"></span>
+            </div>
+            <table class="layui-table">
+                <thead><tr><th style="width:140px;">设备Id</th><th style="width:140px;">费用类型</th><th style="width:140px;">金额</th><th style="width:140px;">分摊比例(%)</th><th>备注</th><th style="width:60px;">操作</th></tr></thead>
+                <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">请输入工单Id并加载</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@section Script{
+<script>
+    var U_BY='@Url.Action("GetByBill")',U_SAVE='@Url.Action("SaveBatch")';
+    layui.use(['layer'],function(){
+        var layer=layui.layer,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        function addRow(c){c=c||{};$('#rows').append('<tr><td><input class="layui-input r-fid" type="number" value="'+(c.FacilityId||'')+'"></td><td><input class="layui-input r-type" value="'+(c.CostType||'')+'"></td><td><input class="layui-input r-amt" type="number" step="0.01" value="'+(c.Amount!=null?c.Amount:'')+'"></td><td><input class="layui-input r-ratio" type="number" step="0.01" value="'+(c.Ratio!=null?c.Ratio:'')+'"></td><td><input class="layui-input r-rk" value="'+(c.Remark||'')+'"></td><td style="text-align:center;"><a class="layui-btn layui-btn-xs layui-btn-danger r-del">删</a></td></tr>');calcSum();}
+        function calcSum(){var amt=0,ratio=0;$('#rows tr').each(function(){var a=parseFloat($(this).find('.r-amt').val());if(!isNaN(a))amt+=a;var rt=parseFloat($(this).find('.r-ratio').val());if(!isNaN(rt))ratio+=rt;});$('#sumTip').text('合计金额：'+amt.toFixed(2)+'　合计比例：'+ratio.toFixed(2)+'%');}
+        function load(){var id=$('#billId').val();if(!id){layer.msg('请输入工单Id');return;}$.get(U_BY,{billId:id},function(res){$('#rows').empty();var data=(res&&res.data)||[];if(!data.length){$('#rows').html('<tr><td colspan="6" style="text-align:center;color:#94a3b8;">暂无分摊，点击“添加分摊行”</td></tr>');$('#sumTip').text('');return;}data.forEach(addRow);});}
+        $('#btnLoad').on('click',load);
+        $('#btnAddRow').on('click',function(){if($('#rows td[colspan]').length)$('#rows').empty();addRow({});});
+        $('#rows').on('click','.r-del',function(){$(this).closest('tr').remove();calcSum();});
+        $('#rows').on('input','.r-amt,.r-ratio',calcSum);
+        $('#btnSave').on('click',function(){var id=$('#billId').val();if(!id){layer.msg('请输入工单Id');return;}var rows=[];$('#rows tr').each(function(){var fid=$(this).find('.r-fid').val();if(!fid)return;rows.push({FacilityId:parseInt(fid,10),CostType:$(this).find('.r-type').val(),Amount:$(this).find('.r-amt').val()?parseFloat($(this).find('.r-amt').val()):null,Ratio:$(this).find('.r-ratio').val()?parseFloat($(this).find('.r-ratio').val()):null,Remark:$(this).find('.r-rk').val()});});
+            $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify({BillId:parseInt(id,10),Rows:rows})}).done(function(r){if(ok(r))layer.msg('已保存',{icon:1});else layer.msg((r&&r.msg)||'失败',{icon:2});});});
+    });
+</script>
+}

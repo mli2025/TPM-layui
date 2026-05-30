@@ -138,6 +138,11 @@ try
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_LabelApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_LubeStandardApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_LubeRecordApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Repair.Facility_RepairTemplateApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Repair.Facility_RepairCostApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Repair.Facility_AlarmRuleApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Repair.Facility_AlarmRecordApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Repair.RepairStatApp>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.ImportService>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.IImportHandler, DeviceMgmt.Web.Services.Import.SpareImportHandler>();
 

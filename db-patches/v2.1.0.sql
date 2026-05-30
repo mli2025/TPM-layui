@@ -203,3 +203,30 @@ SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管�
 GO
 PRINT '==== Batch7: archive menus ready ====';
 GO
+
+/* =============================================================================
+   批次8 · 维修增强：工单模板 / 费用分摊 / 报警规则 / 报警记录 / 故障看板
+   菜单挂在 设备维修 repair 下
+   ============================================================================= */
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT v.[Name],v.[Code],v.[Url],r.[Id],v.[Sort],1,v.[Icon]
+  FROM (VALUES
+        (N'维修工单模板','rp-template','/Facility_RepairTemplate/Index',20,'template-1'),
+        (N'费用分摊','rp-cost','/Facility_RepairCost/Index',21,'rmb'),
+        (N'报警规则','rp-alarmrule','/Facility_AlarmRule/Index',22,'set'),
+        (N'报警记录','rp-alarmrec','/Facility_AlarmRecord/Index',23,'notice'),
+        (N'故障看板','rp-board','/Facility_RepairBoard/Index',24,'chart')
+       ) v([Name],[Code],[Url],[Sort],[Icon])
+  CROSS JOIN (SELECT TOP 1 [Id] FROM [Sys_Module] WHERE [Code]='repair') r
+ WHERE NOT EXISTS (SELECT 1 FROM [Sys_Module] m WHERE m.[Code]=v.[Code]);
+GO
+INSERT INTO [Sys_RoleModule] ([RoleId], [ModuleId])
+SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id]), m.[Id]
+  FROM [Sys_Module] m
+ WHERE m.[Code] IN ('rp-template','rp-cost','rp-alarmrule','rp-alarmrec','rp-board')
+   AND NOT EXISTS (SELECT 1 FROM [Sys_RoleModule] rm
+        WHERE rm.RoleId = (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id])
+          AND rm.ModuleId = m.[Id]);
+GO
+PRINT '==== Batch8: repair enhance menus ready ====';
+GO

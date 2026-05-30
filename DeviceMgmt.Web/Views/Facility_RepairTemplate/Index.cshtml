@@ -1,0 +1,52 @@
+@{
+    ViewData["Title"] = "维修工单模板";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>维修工单模板</strong>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增</button>
+        </div>
+        <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;"><form class="layui-form" lay-filter="f">
+        <input type="hidden" name="Id" />
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">模板名称</label><div class="layui-input-inline"><input type="text" name="TemplateName" class="layui-input" lay-verify="required"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">故障类别</label><div class="layui-input-inline"><input type="text" name="FaultCategory" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">标准工时(h)</label><div class="layui-input-inline"><input type="number" step="0.1" name="StdHours" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item layui-form-text"><label class="layui-form-label">标准步骤</label><div class="layui-input-block"><textarea name="StdSteps" class="layui-textarea"></textarea></div></div>
+        <div class="layui-form-item layui-form-text"><label class="layui-form-label">常用备件</label><div class="layui-input-block"><textarea name="StdParts" class="layui-textarea"></textarea></div></div>
+        <div style="text-align:center;margin-top:10px;"><button class="layui-btn" lay-submit lay-filter="save">保存</button><button class="layui-btn layui-btn-primary" type="button" id="cancel">关闭</button></div>
+    </form></div>
+</script>
+@section Script{
+<script>
+    var U_LIST='@Url.Action("GetMainList")',U_SAVE='@Url.Action("Save")',U_DEL='@Url.Action("Delete")';
+    layui.use(['table','form','layer'],function(){
+        var table=layui.table,form=layui.form,layer=layui.layer,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        function render(){table.render({elem:'#GridMain',id:'GridMain',url:U_LIST,method:'post',where:{page:1,limit:20,searchParam:[]},page:true,height:'full-150',cols:[[
+            {type:'numbers',title:'#'},{field:'TemplateName',title:'模板名称',width:200},{field:'FaultCategory',title:'故障类别',width:150},
+            {field:'StdHours',title:'标准工时',width:110,align:'right'},{field:'StdSteps',title:'标准步骤',minWidth:200},
+            {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
+        function openForm(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑':'新增',content:$('#tplForm').html(),success:function(l,idx){
+            form.val('f',{Id:row.Id||0,TemplateName:row.TemplateName||'',FaultCategory:row.FaultCategory||'',StdHours:row.StdHours||'',StdSteps:row.StdSteps||'',StdParts:row.StdParts||''});form.render();
+            $('#cancel').on('click',function(){layer.close(idx);});
+            form.on('submit(save)',function(data){var f=data.field;var p={Id:parseInt(f.Id||0,10),TemplateName:f.TemplateName||null,FaultCategory:f.FaultCategory||null,StdHours:f.StdHours?parseFloat(f.StdHours):null,StdSteps:f.StdSteps||null,StdParts:f.StdParts||null,Status:1};
+                $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
+        }});}
+        $('#btnAdd').on('click',function(){openForm({});});
+        table.on('tool(GridMain)',function(o){if(o.event==='edit')openForm(o.data);else if(o.event==='del')layer.confirm('确认删除?',function(idx){$.post(U_DEL,{id:o.data.Id},function(){layer.close(idx);o.del();});});});
+        render();
+    });
+</script>
+}

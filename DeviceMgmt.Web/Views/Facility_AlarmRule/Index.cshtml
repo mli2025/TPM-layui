@@ -1,0 +1,62 @@
+@{
+    ViewData["Title"] = "报警规则";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>报警规则</strong>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增规则</button>
+        </div>
+        <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;"><form class="layui-form" lay-filter="f">
+        <input type="hidden" name="Id" />
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">规则名称</label><div class="layui-input-inline"><input type="text" name="RuleName" class="layui-input" lay-verify="required"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">设备类型</label><div class="layui-input-inline"><input type="text" name="FacilityType" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">指标</label><div class="layui-input-inline"><input type="text" name="MetricName" class="layui-input" placeholder="温度/振动/压力"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">条件</label><div class="layui-input-inline" style="width:90px;"><select name="Operator"><option value=">">&gt;</option><option value=">=">&ge;</option><option value="<">&lt;</option><option value="<=">&le;</option><option value="==">=</option></select></div></div>
+            <div class="layui-inline"><label class="layui-form-label">阈值</label><div class="layui-input-inline"><input type="number" step="0.01" name="Threshold" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">级别</label><div class="layui-input-inline" style="width:110px;"><select name="Level"><option value="提示">提示</option><option value="警告">警告</option><option value="严重">严重</option></select></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">通知给</label><div class="layui-input-inline"><input type="text" name="NotifyTo" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">启用</label><div class="layui-input-inline" style="width:90px;"><select name="Enabled"><option value="1">启用</option><option value="0">停用</option></select></div></div>
+        </div>
+        <div style="text-align:center;margin-top:10px;"><button class="layui-btn" lay-submit lay-filter="save">保存</button><button class="layui-btn layui-btn-primary" type="button" id="cancel">关闭</button></div>
+    </form></div>
+</script>
+@section Script{
+<script>
+    var U_LIST='@Url.Action("GetMainList")',U_SAVE='@Url.Action("Save")',U_DEL='@Url.Action("Delete")';
+    layui.use(['table','form','layer'],function(){
+        var table=layui.table,form=layui.form,layer=layui.layer,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        function render(){table.render({elem:'#GridMain',id:'GridMain',url:U_LIST,method:'post',where:{page:1,limit:20,searchParam:[]},page:true,height:'full-150',cols:[[
+            {type:'numbers',title:'#'},{field:'RuleName',title:'规则名称',width:180},{field:'MetricName',title:'指标',width:120},
+            {field:'Operator',title:'条件',width:80,align:'center'},{field:'Threshold',title:'阈值',width:100,align:'right'},
+            {field:'Level',title:'级别',width:90},{field:'NotifyTo',title:'通知给',width:130},
+            {field:'Enabled',title:'状态',width:80,templet:function(d){return d.Enabled==1?'启用':'停用';}},
+            {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
+        function openForm(row){row=row||{};layer.open({type:1,area:['720px','auto'],title:row.Id?'编辑':'新增',content:$('#tplForm').html(),success:function(l,idx){
+            form.val('f',{Id:row.Id||0,RuleName:row.RuleName||'',FacilityType:row.FacilityType||'',FacilityId:row.FacilityId||'',MetricName:row.MetricName||'',Operator:row.Operator||'>',Threshold:row.Threshold||'',Level:row.Level||'警告',NotifyTo:row.NotifyTo||'',Enabled:String(row.Enabled!=null?row.Enabled:1)});form.render();
+            $('#cancel').on('click',function(){layer.close(idx);});
+            form.on('submit(save)',function(data){var f=data.field;var p={Id:parseInt(f.Id||0,10),RuleName:f.RuleName||null,FacilityType:f.FacilityType||null,FacilityId:f.FacilityId?parseInt(f.FacilityId,10):null,MetricName:f.MetricName||null,Operator:f.Operator,Threshold:f.Threshold?parseFloat(f.Threshold):null,Level:f.Level,NotifyTo:f.NotifyTo||null,Enabled:parseInt(f.Enabled||1,10)};
+                $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
+        }});}
+        $('#btnAdd').on('click',function(){openForm({});});
+        table.on('tool(GridMain)',function(o){if(o.event==='edit')openForm(o.data);else if(o.event==='del')layer.confirm('确认删除?',function(idx){$.post(U_DEL,{id:o.data.Id},function(){layer.close(idx);o.del();});});});
+        render();
+    });
+</script>
+}
