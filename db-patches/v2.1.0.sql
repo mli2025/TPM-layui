@@ -312,3 +312,56 @@ SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管�
 GO
 PRINT '==== Batch9: spare enhance tables & menus ready ====';
 GO
+
+/* =============================================================================
+   批次10 · 各模块统计报表（计量/特种/安全/能源/备件）
+   通过既有报表引擎 Sys_ReportDef 预置只读 SELECT 报表，进入"报表中心"即可运行/导出/图表
+   注意：报表引擎安全校验禁止 SQL 含 CREATE/UPDATE/DELETE 等子串，故聚合查询避免使用
+        含这些子串的列名（如 CreateDate）
+   ============================================================================= */
+INSERT INTO [Sys_ReportDef] ([Code],[Name],[Module],[QueryDef],[ChartDef],[OwnerId],[IsPublic])
+SELECT v.[Code],v.[Name],v.[Module],v.[QueryDef],v.[ChartDef],NULL,1
+  FROM (VALUES
+    ('rpt-meter-cat', N'计量器具-按类别统计', N'计量',
+     N'SELECT ISNULL(Category,N''未分类'') AS 类别, COUNT(*) AS 数量 FROM [Meter] GROUP BY Category',
+     N'{"type":"pie","x":"类别","y":"数量"}'),
+    ('rpt-meter-status', N'计量器具-按状态统计', N'计量',
+     N'SELECT CASE WHEN Status=1 THEN N''在用'' ELSE N''停用'' END AS 状态, COUNT(*) AS 数量 FROM [Meter] GROUP BY Status',
+     N'{"type":"bar","x":"状态","y":"数量"}'),
+    ('rpt-special-cat', N'特种设备-按类别统计', N'特种设备',
+     N'SELECT ISNULL(Category,N''未分类'') AS 类别, COUNT(*) AS 数量 FROM [Special_Equipment] GROUP BY Category',
+     N'{"type":"pie","x":"类别","y":"数量"}'),
+    ('rpt-special-level', N'特种设备-按安全级别统计', N'特种设备',
+     N'SELECT ISNULL(SafetyLevel,N''未定级'') AS 安全级别, COUNT(*) AS 数量 FROM [Special_Equipment] GROUP BY SafetyLevel',
+     N'{"type":"bar","x":"安全级别","y":"数量"}'),
+    ('rpt-safety-org', N'安全附件-按检定机构统计', N'安全附件',
+     N'SELECT ISNULL(CheckOrg,N''未指定'') AS 检定机构, COUNT(*) AS 数量 FROM [Safety_Accessory] GROUP BY CheckOrg',
+     N'{"type":"bar","x":"检定机构","y":"数量"}'),
+    ('rpt-energy-dim', N'能耗-按维度汇总', N'能源',
+     N'SELECT ISNULL(Dimension,N''未分'') AS 维度, SUM(SummaryValue) AS 能耗合计 FROM [Energy_Summary] GROUP BY Dimension',
+     N'{"type":"bar","x":"维度","y":"能耗合计"}'),
+    ('rpt-spare-cat', N'备件-按类别统计', N'备品备件',
+     N'SELECT ISNULL(Leibie,N''未分类'') AS 类别, COUNT(*) AS 数量 FROM [Basic_Spare] GROUP BY Leibie',
+     N'{"type":"pie","x":"类别","y":"数量"}'),
+    ('rpt-spare-value', N'备件-按类别金额统计', N'备品备件',
+     N'SELECT ISNULL(Leibie,N''未分类'') AS 类别, SUM(ISNULL(Danjia,0)) AS 单价合计 FROM [Basic_Spare] GROUP BY Leibie',
+     N'{"type":"bar","x":"类别","y":"单价合计"}')
+  ) v([Code],[Name],[Module],[QueryDef],[ChartDef])
+ WHERE NOT EXISTS (SELECT 1 FROM [Sys_ReportDef] d WHERE d.[Code]=v.[Code]);
+GO
+PRINT '==== Batch10: module statistic reports seeded ====';
+GO
+
+/* =============================================================================
+   v2.1.0 交付汇总（批次1-10 一次性补丁）
+   - 批次1 登录安全/角色模板/备件CRUD     - 批次6 点检重构(Inspect_RecordSub 新表)
+   - 批次2 字段级审计                       - 批次7 设备档案(验收/盘点/卡片/证书/标签/润滑)
+   - 批次3 批量导入框架 + 报表引擎          - 批次8 维修增强(模板/分摊/报警/看板)
+   - 批次4 工作流挂接业务单据               - 批次9 备件增强(预警/生命周期/盘点) 新增4表
+   - 批次5 维保增强(标准库/延期/资质)       - 批次10 各模块统计报表(报表中心预置)
+   本补丁新增物理表：Inspect_RecordSub / Spare_AlarmConfig / Spare_LifeCycle /
+                     Spare_StockCheck / Spare_StockCheckSub
+   其余实体使用 v2.0.0.sql 已建表；菜单与角色绑定均幂等，可重复执行。
+   ============================================================================= */
+PRINT '==== v2.1.0 patch applied (Batch 1-10) ====';
+GO
