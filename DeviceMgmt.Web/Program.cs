@@ -125,6 +125,9 @@ try
     builder.Services.AddScoped<AuditTrailApp>();
     builder.Services.AddScoped<ImportLogApp>();
     builder.Services.AddScoped<ReportApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Maint.Maint_StandardApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Maint.Maint_DelayApplyApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Maint.Maint_QualificationApp>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.ImportService>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.IImportHandler, DeviceMgmt.Web.Services.Import.SpareImportHandler>();
 

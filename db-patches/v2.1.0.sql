@@ -106,3 +106,30 @@ SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管�
 GO
 PRINT '==== Batch4: workflow menus ready ====';
 GO
+
+/* =============================================================================
+   批次5 · 维保增强：标准库 / 延期申请 / 资质监控 菜单（挂在 设备保养 maintenance 下）
+   ============================================================================= */
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT N'维保标准库','mt-standard','/Maint_Standard/Index',[Id],10,1,'template-1'
+  FROM [Sys_Module] WHERE [Code]='maintenance'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_Module] WHERE [Code]='mt-standard');
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT N'延期申请','mt-delay','/Maint_DelayApply/Index',[Id],11,1,'time'
+  FROM [Sys_Module] WHERE [Code]='maintenance'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_Module] WHERE [Code]='mt-delay');
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT N'资质有效期监控','mt-qual','/Maint_Qualification/Index',[Id],12,1,'survey'
+  FROM [Sys_Module] WHERE [Code]='maintenance'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_Module] WHERE [Code]='mt-qual');
+GO
+INSERT INTO [Sys_RoleModule] ([RoleId], [ModuleId])
+SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id]), m.[Id]
+  FROM [Sys_Module] m
+ WHERE m.[Code] IN ('mt-standard','mt-delay','mt-qual')
+   AND NOT EXISTS (SELECT 1 FROM [Sys_RoleModule] rm
+        WHERE rm.RoleId = (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id])
+          AND rm.ModuleId = m.[Id]);
+GO
+PRINT '==== Batch5: maintenance enhance menus ready ====';
+GO

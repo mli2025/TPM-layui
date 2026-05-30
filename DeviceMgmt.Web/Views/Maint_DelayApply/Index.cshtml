@@ -1,0 +1,112 @@
+@{
+    ViewData["Title"] = "维保延期申请";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>维保延期申请审批</strong>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增申请</button>
+        </div>
+        <div class="layui-card-body">
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    {{# if(d.ApproveStatus == 0){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="agree">通过</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="reject">驳回</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="statusTpl">
+    {{# var m={0:['新建待审','#f59e0b'],1:['已通过','#16a34a'],2:['已驳回','#dc2626']}; var s=m[d.ApproveStatus]||['',''];}}
+    <span style="color:{{=s[1]}};font-weight:600;">{{=s[0]}}</span>
+</script>
+
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;">
+        <form class="layui-form" lay-filter="delayForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">业务类型</label><div class="layui-input-inline">
+                    <select name="BizType"><option value="计划">保养计划</option><option value="工单">保养工单</option></select>
+                </div></div>
+                <div class="layui-inline"><label class="layui-form-label">业务Id</label><div class="layui-input-inline"><input type="number" name="BizId" class="layui-input" lay-verify="required"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">原计划日期</label><div class="layui-input-inline"><input type="text" name="OldDate" id="fOld" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">申请新日期</label><div class="layui-input-inline"><input type="text" name="NewDate" id="fNew" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item layui-form-text">
+                <label class="layui-form-label">延期理由</label>
+                <div class="layui-input-block"><textarea name="Reason" class="layui-textarea" lay-verify="required"></textarea></div>
+            </div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="delaySave">提交</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="delayCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+@section Script{
+    <script>
+        var URL_LIST = '@Url.Action("GetMainList")', URL_SAVE = '@Url.Action("Save")', URL_APPROVE = '@Url.Action("Approve")', URL_DEL = '@Url.Action("Delete")';
+        layui.use(['table', 'form', 'layer', 'laydate'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, $ = layui.$;
+            function ok(r) { return r && (r.code === 0 || r.code === 200); }
+            function dcell(d, f) { return d[f] ? String(d[f]).replace('T', ' ').substring(0, 10) : ''; }
+            function renderList() {
+                table.render({
+                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post',
+                    where: { page: 1, limit: 20, searchParam: [] }, page: true, height: 'full-150',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'BizType', title: '类型', width: 100 },
+                        { field: 'BizId', title: '业务Id', width: 100 },
+                        { field: 'OldDate', title: '原日期', width: 120, templet: function (d) { return dcell(d, 'OldDate'); } },
+                        { field: 'NewDate', title: '新日期', width: 120, templet: function (d) { return dcell(d, 'NewDate'); } },
+                        { field: 'Reason', title: '理由', minWidth: 180 },
+                        { field: 'ApplyUser', title: '申请人', width: 110 },
+                        { field: 'ApproveStatus', title: '状态', width: 110, templet: '#statusTpl' },
+                        { title: '操作', width: 180, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+            function openForm() {
+                layer.open({
+                    type: 1, area: ['640px', 'auto'], title: '新增延期申请', content: $('#tplForm').html(),
+                    success: function (layero, idx) {
+                        laydate.render({ elem: '#fOld', type: 'date' });
+                        laydate.render({ elem: '#fNew', type: 'date' });
+                        form.render();
+                        $('#delayCancel').on('click', function () { layer.close(idx); });
+                        form.on('submit(delaySave)', function (data) {
+                            var f = data.field;
+                            var payload = {
+                                Id: 0, BizType: f.BizType, BizId: parseInt(f.BizId || 0, 10),
+                                OldDate: f.OldDate || null, NewDate: f.NewDate || null, Reason: f.Reason || null
+                            };
+                            $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) })
+                                .done(function (res) { if (ok(res)) { layer.msg('已提交', { icon: 1 }); layer.close(idx); table.reload('GridMain'); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
+                            return false;
+                        });
+                    }
+                });
+            }
+            $('#btnAdd').on('click', openForm);
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'agree' || obj.event === 'reject') {
+                    $.post(URL_APPROVE, { id: obj.data.Id, agree: obj.event === 'agree' }, function (res) {
+                        if (ok(res)) { layer.msg('已处理', { icon: 1 }); table.reload('GridMain'); } else layer.msg('失败', { icon: 2 });
+                    });
+                } else if (obj.event === 'del') {
+                    layer.confirm('确认删除?', function (idx) { $.post(URL_DEL, { id: obj.data.Id }, function () { layer.close(idx); obj.del(); }); });
+                }
+            });
+            renderList();
+        });
+    </script>
+}
