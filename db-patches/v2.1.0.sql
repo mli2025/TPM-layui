@@ -85,3 +85,24 @@ SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管�
 GO
 PRINT '==== Batch3: import & report menus ready ====';
 GO
+
+/* =============================================================================
+   批次4 · 工作流：激活模板菜单 + 新增审批中心
+   ============================================================================= */
+UPDATE [Sys_Module] SET [Status]=1 WHERE [Code]='sys-workflow';
+GO
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT N'审批中心','sys-wfinst','/Wf_Instance/Index',[Id],15,1,'ok-circle'
+  FROM [Sys_Module] WHERE [Code]='system'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_Module] WHERE [Code]='sys-wfinst');
+GO
+INSERT INTO [Sys_RoleModule] ([RoleId], [ModuleId])
+SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id]), m.[Id]
+  FROM [Sys_Module] m
+ WHERE m.[Code] IN ('sys-workflow','sys-wfinst')
+   AND NOT EXISTS (SELECT 1 FROM [Sys_RoleModule] rm
+        WHERE rm.RoleId = (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id])
+          AND rm.ModuleId = m.[Id]);
+GO
+PRINT '==== Batch4: workflow menus ready ====';
+GO

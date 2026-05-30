@@ -44,6 +44,19 @@ public class Wf_InstanceController : BaseController
         return Json(new ResponseData { code = 0, data = new { instance = inst, logs, template = tpl, nodes } });
     }
 
+    /// <summary>按业务单据查询其工作流实例（含审批日志），供业务页内嵌显示流程状态</summary>
+    [HttpGet]
+    public IActionResult GetByBiz([FromQuery] string bizType, [FromQuery] long bizId)
+    {
+        if (string.IsNullOrWhiteSpace(bizType) || bizId <= 0)
+            return Json(new ResponseData { code = 400, msg = "参数缺失" });
+        var inst = _instRepo.Find("[BizType]=@t AND [BizId]=@i", new { t = bizType, i = bizId }, "[Id] DESC").FirstOrDefault();
+        if (inst == null) return Json(new ResponseData { code = 0, data = (object?)null });
+        var logs = _app.GetLogs(inst.Id).ToList();
+        var nodes = _app.GetNodes(inst.TemplateId).ToList();
+        return Json(new ResponseData { code = 0, data = new { instance = inst, logs, nodes } });
+    }
+
     [HttpGet]
     public IActionResult GetTemplates()
     {
