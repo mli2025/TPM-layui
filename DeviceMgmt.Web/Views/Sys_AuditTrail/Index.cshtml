@@ -1,0 +1,115 @@
+@{
+    ViewData["Title"] = "字段级审计追踪";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <strong>字段级审计追踪</strong>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px;">关键数据变更的旧值/新值/理由明细（只读，URS 1401-1406）</span>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
+                <div class="layui-col-md2"><input type="text" id="kwAccount" class="layui-input" placeholder="操作账号"></div>
+                <div class="layui-col-md2"><input type="text" id="kwTarget" class="layui-input" placeholder="对象类型"></div>
+                <div class="layui-col-md2"><input type="text" id="kwTargetId" class="layui-input" placeholder="对象编号"></div>
+                <div class="layui-col-md2"><input type="text" id="kwField" class="layui-input" placeholder="字段"></div>
+                <div class="layui-col-md2"><input type="text" id="dtStart" class="layui-input" placeholder="起始时间"></div>
+                <div class="layui-col-md2"><input type="text" id="dtEnd" class="layui-input" placeholder="结束时间"></div>
+            </div>
+            <div class="layui-form layui-row" style="margin-bottom:8px;">
+                <div class="layui-col-md12" style="text-align:right;">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-search"></i> 查询</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnClear"><i class="layui-icon layui-icon-refresh-3"></i> 重置</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="timeline">该记录时间线</a>
+</script>
+
+@section Script{
+    <script>
+        var URL_LIST = '@Url.Action("GetMainList")';
+        var URL_TL = '@Url.Action("GetTimeline")';
+
+        layui.use(['table', 'form', 'layer', 'laydate'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, $ = layui.$;
+            function ok(r) { return r && (r.code === 0 || r.code === 200); }
+            function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+            function timeCell(d) { return d.CreateDate ? String(d.CreateDate).replace('T', ' ').substring(0, 19) : ''; }
+            function actionCell(d) {
+                var map = { CREATE: ['layui-bg-green', '新建'], UPDATE: ['layui-bg-blue', '修改'], DELETE: ['layui-bg-red', '删除'] };
+                var m = map[d.ActionType] || ['', d.ActionType || ''];
+                return '<span class="layui-badge ' + m[0] + '">' + m[1] + '</span>';
+            }
+
+            laydate.render({ elem: '#dtStart', type: 'datetime' });
+            laydate.render({ elem: '#dtEnd', type: 'datetime' });
+
+            function getWhere() {
+                var list = [];
+                var acc = $('#kwAccount').val(), tgt = $('#kwTarget').val(), tid = $('#kwTargetId').val();
+                var fld = $('#kwField').val(), ds = $('#dtStart').val(), de = $('#dtEnd').val();
+                if (acc) list.push({ field: 'UserAccount', conditional: 'like', value: acc });
+                if (tgt) list.push({ field: 'TargetType', conditional: 'like', value: tgt });
+                if (tid) list.push({ field: 'TargetId', conditional: 'eq', value: tid });
+                if (fld) list.push({ field: 'FieldName', conditional: 'like', value: fld });
+                if (ds) list.push({ field: 'CreateDate', conditional: 'ge', value: ds });
+                if (de) list.push({ field: 'CreateDate', conditional: 'le', value: de });
+                return { page: 1, limit: 20, searchParam: list };
+            }
+
+            function renderList() {
+                table.render({
+                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post',
+                    where: getWhere(), page: true, height: 'full-220',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'CreateDate', title: '时间', width: 165, templet: timeCell, sort: true },
+                        { field: 'UserAccount', title: '账号', width: 100 },
+                        { field: 'Module', title: '模块', width: 110 },
+                        { field: 'TargetType', title: '对象类型', width: 140 },
+                        { field: 'TargetId', title: '对象编号', width: 100 },
+                        { field: 'ActionType', title: '动作', width: 80, templet: actionCell },
+                        { field: 'FieldName', title: '字段', width: 130 },
+                        { field: 'OldValue', title: '旧值', minWidth: 140 },
+                        { field: 'NewValue', title: '新值', minWidth: 140 },
+                        { field: 'Reason', title: '理由', minWidth: 140 },
+                        { field: 'IpAddress', title: 'IP', width: 120 },
+                        { title: '操作', width: 130, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+
+            $('#btnReload').on('click', function () { table.reload('GridMain', { where: getWhere() }); });
+            $('#btnClear').on('click', function () {
+                $('#kwAccount,#kwTarget,#kwTargetId,#kwField,#dtStart,#dtEnd').val('');
+                table.reload('GridMain', { where: getWhere() });
+            });
+
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'timeline') {
+                    var d = obj.data;
+                    $.get(URL_TL, { targetType: d.TargetType, targetId: d.TargetId }, function (res) {
+                        if (!ok(res)) { layer.msg(res.msg || '加载失败', { icon: 2 }); return; }
+                        var list = res.data || [];
+                        var html = '<div style="padding:12px;max-height:520px;overflow:auto;">';
+                        if (!list.length) html += '<p style="color:#94a3b8;">暂无变更记录</p>';
+                        html += '<table class="layui-table" lay-size="sm"><thead><tr><th>时间</th><th>账号</th><th>动作</th><th>字段</th><th>旧值</th><th>新值</th><th>理由</th></tr></thead><tbody>';
+                        list.forEach(function (r) {
+                            html += '<tr><td>' + timeCell(r) + '</td><td>' + esc(r.UserAccount) + '</td><td>' + esc(r.ActionType) + '</td><td>' + esc(r.FieldName) + '</td><td>' + esc(r.OldValue) + '</td><td>' + esc(r.NewValue) + '</td><td>' + esc(r.Reason) + '</td></tr>';
+                        });
+                        html += '</tbody></table></div>';
+                        layer.open({ type: 1, title: '变更时间线 · ' + esc(d.TargetType) + ' #' + esc(d.TargetId), area: ['900px', '600px'], content: html });
+                    });
+                }
+            });
+
+            renderList();
+        });
+    </script>
+}

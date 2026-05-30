@@ -42,3 +42,23 @@ SELECT v.[Name], 1
 GO
 PRINT '==== Batch1: security settings + role templates ready ====';
 GO
+
+/* =============================================================================
+   批次2 · 字段级审计追踪页菜单（挂在 系统管理 下，Status=1 启用）
+   ============================================================================= */
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT N'字段级审计','sys-audittrail','/Sys_AuditTrail/Index',[Id],12,1,'history'
+  FROM [Sys_Module] WHERE [Code]='system'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_Module] WHERE [Code]='sys-audittrail');
+GO
+/* 绑定给 admin 角色 */
+INSERT INTO [Sys_RoleModule] ([RoleId], [ModuleId])
+SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id]), m.[Id]
+  FROM [Sys_Module] m
+ WHERE m.[Code] = 'sys-audittrail'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_RoleModule] rm
+        WHERE rm.RoleId = (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id])
+          AND rm.ModuleId = m.[Id]);
+GO
+PRINT '==== Batch2: audit trail menu ready ====';
+GO

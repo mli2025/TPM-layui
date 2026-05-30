@@ -121,6 +121,8 @@ try
     builder.Services.AddScoped<AttachmentService>();
     builder.Services.AddScoped<VersionService>();
     builder.Services.AddScoped<OperationLogService>();
+    builder.Services.AddScoped<AuditService>();
+    builder.Services.AddScoped<AuditTrailApp>();
 
     // Facility
     builder.Services.AddScoped<Facility_ResourceDetailApp>();
