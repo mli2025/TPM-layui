@@ -1,0 +1,110 @@
+@{
+    ViewData["Title"] = "点检标准库";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>点检标准库</strong>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增标准</button>
+        </div>
+        <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;">
+        <form class="layui-form" lay-filter="stdForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">标准编号</label><div class="layui-input-inline"><input type="text" name="StdNo" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">设备名称</label><div class="layui-input-inline"><input type="text" name="FacilityName" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">巡检周期</label><div class="layui-input-inline">
+                    <select name="CycleType"><option value="班">班次</option><option value="日">日</option><option value="周">周</option><option value="月">月</option></select>
+                </div></div>
+                <div class="layui-inline"><label class="layui-form-label">编制人</label><div class="layui-input-inline"><input type="text" name="Maker" class="layui-input"></div></div>
+            </div>
+            <fieldset class="layui-elem-field layui-field-title"><legend>点检项明细
+                <button class="layui-btn layui-btn-xs" type="button" id="btnAddSub" style="margin-left:10px;">添加项</button>
+            </legend></fieldset>
+            <table class="layui-table" style="margin:0;"><thead><tr><th>点检项</th><th>方法</th><th>标准</th><th style="width:60px;">操作</th></tr></thead><tbody id="SubsBody"></tbody></table>
+            <div style="text-align:center;margin-top:14px;">
+                <button class="layui-btn" lay-submit lay-filter="stdSave">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="stdCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+@section Script{
+    <script>
+        var URL_LIST = '@Url.Action("GetMainList")', URL_GET = '@Url.Action("GetDetail")', URL_SAVE = '@Url.Action("Save")', URL_DEL = '@Url.Action("Delete")';
+        layui.use(['table', 'form', 'layer'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.$;
+            function ok(r) { return r && (r.code === 0 || r.code === 200); }
+            function addSub(s) {
+                s = s || {};
+                $('#SubsBody').append('<tr><td><input class="layui-input s-item" value="' + (s.ItemName || '') + '"></td><td><input class="layui-input s-method" value="' + (s.Method || '') + '"></td><td><input class="layui-input s-std" value="' + (s.Standard || '') + '"></td><td style="text-align:center;"><a class="layui-btn layui-btn-xs layui-btn-danger sub-del">删</a></td></tr>');
+            }
+            function collectSubs() {
+                var subs = [];
+                $('#SubsBody tr').each(function () {
+                    var item = $(this).find('.s-item').val(); if (!item) return;
+                    subs.push({ ItemName: item, Method: $(this).find('.s-method').val(), Standard: $(this).find('.s-std').val() });
+                });
+                return subs;
+            }
+            function renderList() {
+                table.render({
+                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post', where: { page: 1, limit: 20, searchParam: [] }, page: true, height: 'full-150',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'StdNo', title: '标准编号', width: 150 },
+                        { field: 'FacilityName', title: '设备', width: 180 },
+                        { field: 'CycleType', title: '周期', width: 100 },
+                        { field: 'Maker', title: '编制人', width: 110 },
+                        { field: 'Status', title: '状态', width: 80, templet: function (d) { return d.Status == 1 ? '启用' : '停用'; } },
+                        { title: '操作', width: 140, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+            function openForm(row) {
+                row = row || {};
+                layer.open({
+                    type: 1, area: ['800px', 'auto'], title: row.Id ? '编辑标准' : '新增标准', content: $('#tplForm').html(),
+                    success: function (layero, idx) {
+                        $('#SubsBody').empty();
+                        $('#btnAddSub').on('click', function () { addSub({}); });
+                        $('#SubsBody').on('click', '.sub-del', function () { $(this).closest('tr').remove(); });
+                        $('#stdCancel').on('click', function () { layer.close(idx); });
+                        if (row.Id) {
+                            $.get(URL_GET, { id: row.Id }, function (res) {
+                                var d = res.data || {}, m = d.Main || {}, subs = d.Subs || [];
+                                form.val('stdForm', { Id: m.Id, StdNo: m.StdNo || '', FacilityName: m.FacilityName || '', FacilityId: m.FacilityId || '', CycleType: m.CycleType || '日', Maker: m.Maker || '' });
+                                subs.forEach(addSub); form.render();
+                            });
+                        } else { form.val('stdForm', { Id: 0, CycleType: '日' }); form.render(); }
+                        form.on('submit(stdSave)', function (data) {
+                            var f = data.field;
+                            var payload = { Main: { Id: parseInt(f.Id || 0, 10), StdNo: f.StdNo || null, FacilityName: f.FacilityName || null, FacilityId: f.FacilityId ? parseInt(f.FacilityId, 10) : null, CycleType: f.CycleType, Maker: f.Maker || null, Status: 1 }, Subs: collectSubs() };
+                            $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已保存', { icon: 1 }); layer.close(idx); table.reload('GridMain'); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
+                            return false;
+                        });
+                    }
+                });
+            }
+            $('#btnAdd').on('click', function () { openForm({}); });
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'edit') openForm(obj.data);
+                else if (obj.event === 'del') layer.confirm('确认删除(含明细)?', function (idx) { $.post(URL_DEL, { id: obj.data.Id }, function () { layer.close(idx); obj.del(); }); });
+            });
+            renderList();
+        });
+    </script>
+}

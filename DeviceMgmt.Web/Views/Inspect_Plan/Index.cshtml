@@ -1,0 +1,141 @@
+@{
+    ViewData["Title"] = "点检计划";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>点检计划</strong>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增计划</button>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-tab layui-tab-brief" lay-filter="planTab">
+                <ul class="layui-tab-title">
+                    <li class="layui-this" lay-id="list">列表</li>
+                    <li lay-id="cal">日历</li>
+                </ul>
+                <div class="layui-tab-content">
+                    <div class="layui-tab-item layui-show"><table id="GridMain" lay-filter="GridMain"></table></div>
+                    <div class="layui-tab-item">
+                        <div style="margin-bottom:8px;">
+                            <button class="layui-btn layui-btn-sm layui-btn-primary" id="calPrev">‹ 上月</button>
+                            <span id="calTitle" style="font-weight:600;margin:0 12px;"></span>
+                            <button class="layui-btn layui-btn-sm layui-btn-primary" id="calNext">下月 ›</button>
+                        </div>
+                        <div id="calGrid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;">
+        <form class="layui-form" lay-filter="planForm">
+            <input type="hidden" name="Id" />
+            <div class="layui-form-item">
+                <label class="layui-form-label">点检标准</label>
+                <div class="layui-input-block"><select name="StandardId" lay-verify="required"></select></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">执行人</label><div class="layui-input-inline"><input type="text" name="Executor" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">计划日期</label><div class="layui-input-inline"><input type="text" name="PlanDate" id="fPlan" class="layui-input"></div></div>
+            </div>
+            <div style="text-align:center;margin-top:10px;">
+                <button class="layui-btn" lay-submit lay-filter="planSave">保存</button>
+                <button class="layui-btn layui-btn-primary" type="button" id="planCancel">关闭</button>
+            </div>
+        </form>
+    </div>
+</script>
+
+@section Script{
+    <script>
+        var URL_LIST = '@Url.Action("GetMainList")', URL_MONTH = '@Url.Action("GetMonth")', URL_STD = '@Url.Action("Standards")', URL_SAVE = '@Url.Action("Save")', URL_DEL = '@Url.Action("Delete")';
+        layui.use(['table', 'form', 'layer', 'laydate', 'element'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, $ = layui.$;
+            var stdCache = [];
+            function ok(r) { return r && (r.code === 0 || r.code === 200); }
+            function dcell(d, f) { return d[f] ? String(d[f]).replace('T', ' ').substring(0, 10) : ''; }
+            function loadStandards(cb) { $.get(URL_STD, function (res) { stdCache = (res && res.data) || []; if (cb) cb(); }); }
+            function stdName(id) { for (var i = 0; i < stdCache.length; i++) if (String(stdCache[i].Id) === String(id)) return stdCache[i].StdNo || stdCache[i].FacilityName || ('#' + id); return id; }
+
+            function renderList() {
+                table.render({
+                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post', where: { page: 1, limit: 20, searchParam: [] }, page: true, height: 'full-200',
+                    cols: [[
+                        { type: 'numbers', title: '#' },
+                        { field: 'PlanNo', title: '计划号', width: 180 },
+                        { field: 'StandardId', title: '点检标准', width: 180, templet: function (d) { return stdName(d.StandardId); } },
+                        { field: 'Executor', title: '执行人', width: 120 },
+                        { field: 'PlanDate', title: '计划日期', width: 130, templet: function (d) { return dcell(d, 'PlanDate'); } },
+                        { field: 'Status', title: '状态', width: 90, templet: function (d) { return d.Status == 1 ? '已完成' : '待执行'; } },
+                        { title: '操作', width: 140, toolbar: '#barRow', fixed: 'right' }
+                    ]]
+                });
+            }
+
+            var calY, calM;
+            function renderCal() {
+                $('#calTitle').text(calY + ' 年 ' + (calM) + ' 月');
+                $.get(URL_MONTH, { year: calY, month: calM }, function (res) {
+                    var plans = (res && res.data) || [];
+                    var byDay = {};
+                    plans.forEach(function (p) { var day = new Date(String(p.PlanDate).replace('T', ' ')).getDate(); (byDay[day] = byDay[day] || []).push(p); });
+                    var first = new Date(calY, calM - 1, 1).getDay();
+                    var days = new Date(calY, calM, 0).getDate();
+                    var html = '<table class="layui-table" style="table-layout:fixed;"><thead><tr>';
+                    ['日', '一', '二', '三', '四', '五', '六'].forEach(function (w) { html += '<th style="text-align:center;">' + w + '</th>'; });
+                    html += '</tr></thead><tbody><tr>';
+                    for (var i = 0; i < first; i++) html += '<td></td>';
+                    for (var d = 1; d <= days; d++) {
+                        if ((first + d - 1) % 7 === 0 && d !== 1) html += '</tr><tr>';
+                        var items = byDay[d] || [];
+                        var cell = '<div style="font-weight:600;">' + d + '</div>';
+                        items.forEach(function (p) { cell += '<div style="font-size:12px;background:' + (p.Status == 1 ? '#dcfce7' : '#dbeafe') + ';margin:2px 0;padding:1px 4px;border-radius:3px;">' + (p.Executor || '') + '</div>'; });
+                        html += '<td style="vertical-align:top;height:80px;">' + cell + '</td>';
+                    }
+                    html += '</tr></tbody></table>';
+                    $('#calGrid').html(html);
+                });
+            }
+
+            function openForm(row) {
+                row = row || {};
+                layer.open({
+                    type: 1, area: ['620px', 'auto'], title: row.Id ? '编辑计划' : '新增计划', content: $('#tplForm').html(),
+                    success: function (layero, idx) {
+                        var opt = ''; stdCache.forEach(function (s) { opt += '<option value="' + s.Id + '">' + (s.StdNo || s.FacilityName || ('#' + s.Id)) + '</option>'; });
+                        $('select[name=StandardId]').html(opt);
+                        laydate.render({ elem: '#fPlan', type: 'date' });
+                        form.val('planForm', { Id: row.Id || 0, StandardId: row.StandardId || '', Executor: row.Executor || '', PlanDate: dcell(row, 'PlanDate') });
+                        form.render();
+                        $('#planCancel').on('click', function () { layer.close(idx); });
+                        form.on('submit(planSave)', function (data) {
+                            var f = data.field;
+                            var payload = { Id: parseInt(f.Id || 0, 10), StandardId: parseInt(f.StandardId || 0, 10), Executor: f.Executor || null, PlanDate: f.PlanDate || null, Status: 0 };
+                            $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已保存', { icon: 1 }); layer.close(idx); table.reload('GridMain'); if (calY) renderCal(); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
+                            return false;
+                        });
+                    }
+                });
+            }
+
+            $('#btnAdd').on('click', function () { openForm({}); });
+            $('#calPrev').on('click', function () { calM--; if (calM < 1) { calM = 12; calY--; } renderCal(); });
+            $('#calNext').on('click', function () { calM++; if (calM > 12) { calM = 1; calY++; } renderCal(); });
+            layui.element.on('tab(planTab)', function () { if (this.getAttribute('lay-id') === 'cal' && !calY) { var now = new Date(); calY = now.getFullYear(); calM = now.getMonth() + 1; renderCal(); } });
+
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'edit') openForm(obj.data);
+                else if (obj.event === 'del') layer.confirm('确认删除?', function (idx) { $.post(URL_DEL, { id: obj.data.Id }, function () { layer.close(idx); obj.del(); }); });
+            });
+
+            loadStandards(renderList);
+        });
+    </script>
+}

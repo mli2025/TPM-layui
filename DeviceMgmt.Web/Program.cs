@@ -128,6 +128,9 @@ try
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Maint.Maint_StandardApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Maint.Maint_DelayApplyApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Maint.Maint_QualificationApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Inspect.Inspect_StandardApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Inspect.Inspect_PlanApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Inspect.Inspect_RecordApp>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.ImportService>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.IImportHandler, DeviceMgmt.Web.Services.Import.SpareImportHandler>();
 

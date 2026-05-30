@@ -133,3 +133,44 @@ SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管�
 GO
 PRINT '==== Batch5: maintenance enhance menus ready ====';
 GO
+
+/* =============================================================================
+   批次6 · 点检：新增点检记录明细表 Inspect_RecordSub + 菜单
+   ============================================================================= */
+IF OBJECT_ID(N'[Inspect_RecordSub]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [Inspect_RecordSub] (
+        [Id]        bigint        IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [RecordId]  bigint        NOT NULL,
+        [ItemName]  nvarchar(200) NULL,
+        [ResultValue] nvarchar(200) NULL,
+        [IsNormal]  bit           NOT NULL DEFAULT(1),
+        [Remark]    nvarchar(300) NULL
+    );
+    CREATE INDEX IX_Inspect_RecordSub_Record ON [Inspect_RecordSub]([RecordId]);
+END
+GO
+/* 菜单挂在 设备维修 repair 下（点检属维修模块），或 maintenance 下；此处放 repair */
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT N'点检标准库','ins-standard','/Inspect_Standard/Index',[Id],10,1,'template-1'
+  FROM [Sys_Module] WHERE [Code]='repair'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_Module] WHERE [Code]='ins-standard');
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT N'点检计划','ins-plan','/Inspect_Plan/Index',[Id],11,1,'date'
+  FROM [Sys_Module] WHERE [Code]='repair'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_Module] WHERE [Code]='ins-plan');
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT N'点检执行单','ins-record','/Inspect_Record/Index',[Id],12,1,'form'
+  FROM [Sys_Module] WHERE [Code]='repair'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_Module] WHERE [Code]='ins-record');
+GO
+INSERT INTO [Sys_RoleModule] ([RoleId], [ModuleId])
+SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id]), m.[Id]
+  FROM [Sys_Module] m
+ WHERE m.[Code] IN ('ins-standard','ins-plan','ins-record')
+   AND NOT EXISTS (SELECT 1 FROM [Sys_RoleModule] rm
+        WHERE rm.RoleId = (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id])
+          AND rm.ModuleId = m.[Id]);
+GO
+PRINT '==== Batch6: inspection menus & Inspect_RecordSub ready ====';
+GO
