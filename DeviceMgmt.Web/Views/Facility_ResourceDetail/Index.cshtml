@@ -171,6 +171,12 @@
             function toastErr(msg) { layer.msg(msg || '操作失败', { icon: 2 }); }
             function fmtDate(s) { return s ? (s + '').replace('T',' ').substring(0,10) : ''; }
             function fmtDt(s) { return s ? (s + '').replace('T',' ').substring(0,19) : ''; }
+            // 千分位格式化（小数位 dec，默认 0）：fmtThousand(12345.6, 2) => "12,345.60"
+            function fmtThousand(v, dec) {
+                if (v == null || v === '') return '';
+                var n = Number(v); if (isNaN(n)) return v;
+                return n.toLocaleString('en-US', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 });
+            }
 
             // 顶部粗筛条件（用于服务端预过滤，缩小前端一次性加载的数据量）
             function getWhere() {
@@ -198,7 +204,7 @@
                     { field: 'Manufacturer', title: '制造商', width: 130, sort: true, filter: true },
                     { field: 'Location', title: '安装位置', width: 140, sort: true, filter: true },
                     { field: 'DeptName', title: '工作中心', width: 120, sort: true, filter: true, templet: function(d){ return d.DeptName || deptName(d.DeptId); } },
-                    { field: 'PurchaseDate', title: '购置日期', width: 110, sort: true, filter: true, templet: function(d){ return fmtDate(d.PurchaseDate); } },
+                    { field: 'PurchaseDate', title: '购置日期', width: 110, align: 'center', sort: true, filter: { type: 'date[yyyy-MM-dd]' }, templet: function(d){ return fmtDate(d.PurchaseDate); } },
                     { field: 'AssetNumber', title: '资产编号', width: 130, sort: true, filter: true },
                     { field: 'StatusName', title: '状态', width: 90, sort: true, filter: true, templet:'#statusTpl' },
                     { title: '操作', width: 280, toolbar: '#barRow', fixed: 'right' }
@@ -235,6 +241,8 @@
                         even: true,
                         drag: true,
                         autoColumnWidth: false,
+                        // 导出文件名（soul-table 前端导出使用）
+                        excel: { filename: '设备台账.xlsx' },
                         // 列显隐用 layui 原生顶部工具栏的 filter(齿轮) 面板，放在表格上方且自动生效
                         toolbar: '#tableToolbar',
                         defaultToolbar: ['filter'],
@@ -490,11 +498,10 @@
             form.on('select(fltDept)', function(){ loadData(); });
             form.on('select(fltStatus)', function(){ loadData(); });
 
+            // 导出当前“筛选后/排序后/列顺序”的表格（soul-table 前端导出，所见即所得）
             $('#btnExport').on('click', function () {
-                var $f = $('<form method="post" action="' + URL_EXPORT + '"></form>');
-                $f.append('<input type="hidden" name="page" value="1">');
-                $f.append('<input type="hidden" name="limit" value="999999">');
-                $('body').append($f); $f.submit(); $f.remove();
+                try { soulTable.export('GridMain'); }
+                catch (e) { toastErr('导出失败：' + (e && e.message || e)); }
             });
 
             table.on('tool(GridMain)', function (obj) {
