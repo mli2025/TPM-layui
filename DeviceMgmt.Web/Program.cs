@@ -123,6 +123,10 @@ try
     builder.Services.AddScoped<OperationLogService>();
     builder.Services.AddScoped<AuditService>();
     builder.Services.AddScoped<AuditTrailApp>();
+    builder.Services.AddScoped<ImportLogApp>();
+    builder.Services.AddScoped<ReportApp>();
+    builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.ImportService>();
+    builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.IImportHandler, DeviceMgmt.Web.Services.Import.SpareImportHandler>();
 
     // Facility
     builder.Services.AddScoped<Facility_ResourceDetailApp>();

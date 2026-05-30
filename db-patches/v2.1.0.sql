@@ -62,3 +62,26 @@ SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管�
 GO
 PRINT '==== Batch2: audit trail menu ready ====';
 GO
+
+/* =============================================================================
+   批次3 · 批量导入 / 自定义报表 菜单（系统管理下，Status=1 启用）
+   ============================================================================= */
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT N'批量导入','sys-import','/Sys_Import/Index',[Id],13,1,'upload'
+  FROM [Sys_Module] WHERE [Code]='system'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_Module] WHERE [Code]='sys-import');
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT N'自定义报表','sys-report','/Sys_Report/Index',[Id],14,1,'chart'
+  FROM [Sys_Module] WHERE [Code]='system'
+   AND NOT EXISTS (SELECT 1 FROM [Sys_Module] WHERE [Code]='sys-report');
+GO
+INSERT INTO [Sys_RoleModule] ([RoleId], [ModuleId])
+SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id]), m.[Id]
+  FROM [Sys_Module] m
+ WHERE m.[Code] IN ('sys-import','sys-report')
+   AND NOT EXISTS (SELECT 1 FROM [Sys_RoleModule] rm
+        WHERE rm.RoleId = (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id])
+          AND rm.ModuleId = m.[Id]);
+GO
+PRINT '==== Batch3: import & report menus ready ====';
+GO

@@ -1,0 +1,97 @@
+@{
+    ViewData["Title"] = "批量导入";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>批量导入</strong>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px;">下载模板 → 填写 → 上传导入（支持 .xls/.xlsx/.csv）</span>
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space10" style="margin-bottom:10px;">
+                <div class="layui-col-md3">
+                    <select id="bizType" lay-filter="bizType"></select>
+                </div>
+                <div class="layui-col-md9">
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnTpl"><i class="layui-icon layui-icon-download-circle"></i> 下载模板</button>
+                    <button class="layui-btn layui-btn-sm" id="btnUpload"><i class="layui-icon layui-icon-upload"></i> 选择文件并导入</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新日志</button>
+                </div>
+            </div>
+            <table id="GridMain" lay-filter="GridMain"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail">错误明细</a>
+</script>
+
+@section Script{
+    <script>
+        var URL_BIZ = '@Url.Action("BizList")';
+        var URL_TPL = '@Url.Action("Template")';
+        var URL_UPLOAD = '@Url.Action("Upload")';
+        var URL_LOG = '@Url.Action("GetLogList")';
+
+        layui.use(['table', 'form', 'layer', 'upload'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, upload = layui.upload, $ = layui.$;
+            function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+            function timeCell(d) { return d.CreateDate ? String(d.CreateDate).replace('T', ' ').substring(0, 19) : ''; }
+
+            $.get(URL_BIZ, function (res) {
+                var list = (res && res.data) || [];
+                var html = '';
+                list.forEach(function (b) { html += '<option value="' + b.bizType + '">' + esc(b.name) + '</option>'; });
+                $('#bizType').html(html); form.render('select');
+            });
+
+            $('#btnTpl').on('click', function () {
+                var biz = $('#bizType').val();
+                if (!biz) { layer.msg('请选择导入类型'); return; }
+                window.location.href = URL_TPL + '?bizType=' + encodeURIComponent(biz);
+            });
+
+            upload.render({
+                elem: '#btnUpload', url: URL_UPLOAD, auto: true, accept: 'file',
+                exts: 'xls|xlsx|csv', field: 'file',
+                data: { bizType: function () { return $('#bizType').val(); } },
+                before: function () { layer.load(2); },
+                done: function (res) {
+                    layer.closeAll('loading');
+                    if (!res || (res.code !== 0 && res.code !== 200)) { layer.msg((res && res.msg) || '导入失败', { icon: 2 }); return; }
+                    var d = res.data || {};
+                    var errs = (d.errors || []).map(function (e) { return esc(e); }).join('<br>');
+                    layer.open({
+                        type: 1, title: '导入结果', area: ['560px', 'auto'],
+                        content: '<div style="padding:14px;">总数 ' + d.Total + '，成功 <b style="color:#16a34a;">' + d.Success + '</b>，失败 <b style="color:#dc2626;">' + d.Fail + '</b>，跳过 ' + d.Skip + '<hr>' + (errs || '无错误') + '</div>'
+                    });
+                    table.reload('GridMain');
+                },
+                error: function () { layer.closeAll('loading'); layer.msg('上传出错', { icon: 2 }); }
+            });
+
+            $('#btnReload').on('click', function () { table.reload('GridMain'); });
+
+            table.render({
+                elem: '#GridMain', id: 'GridMain', url: URL_LOG, method: 'post', page: true, height: 'full-180',
+                cols: [[
+                    { type: 'numbers', title: '#' },
+                    { field: 'CreateDate', title: '时间', width: 165, templet: timeCell, sort: true },
+                    { field: 'BizType', title: '业务', width: 140 },
+                    { field: 'FileName', title: '文件', minWidth: 180 },
+                    { field: 'TotalCount', title: '总数', width: 80, align: 'right' },
+                    { field: 'SuccessCount', title: '成功', width: 80, align: 'right' },
+                    { field: 'FailCount', title: '失败', width: 80, align: 'right' },
+                    { field: 'SkipCount', title: '跳过', width: 80, align: 'right' },
+                    { title: '操作', width: 100, toolbar: '#barRow', fixed: 'right' }
+                ]]
+            });
+
+            table.on('tool(GridMain)', function (obj) {
+                if (obj.event === 'detail') {
+                    layer.open({ type: 1, title: '错误明细', area: ['700px', '520px'], content: '<div style="padding:12px;white-space:pre-wrap;">' + esc(obj.data.ErrorDetail) + '</div>' });
+                }
+            });
+        });
+    </script>
+}

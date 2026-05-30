@@ -1,0 +1,169 @@
+@{
+    ViewData["Title"] = "自定义报表";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-row layui-col-space12">
+        <div class="layui-col-md3">
+            <div class="layui-card">
+                <div class="layui-card-header"><strong>报表列表</strong>
+                    <button class="layui-btn layui-btn-xs" id="btnNew" style="float:right;margin-top:6px;">新建</button>
+                </div>
+                <div class="layui-card-body" style="padding:8px;">
+                    <ul id="reportList" class="layui-nav layui-nav-tree" style="width:100%;"></ul>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md9">
+            <div class="layui-card">
+                <div class="layui-card-header"><strong>报表定义</strong></div>
+                <div class="layui-card-body">
+                    <form class="layui-form" lay-filter="reportForm">
+                        <input type="hidden" name="Id" />
+                        <div class="layui-form-item">
+                            <div class="layui-inline"><label class="layui-form-label">名称</label><div class="layui-input-inline"><input type="text" name="Name" class="layui-input" lay-verify="required"></div></div>
+                            <div class="layui-inline"><label class="layui-form-label">编码</label><div class="layui-input-inline"><input type="text" name="Code" class="layui-input"></div></div>
+                            <div class="layui-inline"><label class="layui-form-label">模块</label><div class="layui-input-inline"><input type="text" name="Module" class="layui-input"></div></div>
+                        </div>
+                        <div class="layui-form-item layui-form-text">
+                            <label class="layui-form-label">查询SQL</label>
+                            <div class="layui-input-block">
+                                <textarea name="QueryDef" class="layui-textarea" style="min-height:120px;font-family:monospace;" placeholder="仅允许 SELECT/WITH 只读查询，例如：&#10;SELECT Status AS 状态, COUNT(*) AS 数量 FROM Facility_ResourceDetail GROUP BY Status"></textarea>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <div class="layui-inline"><label class="layui-form-label">图表类型</label><div class="layui-input-inline">
+                                <select name="ChartType"><option value="">无</option><option value="bar">柱状图</option><option value="line">折线图</option><option value="pie">饼图</option></select>
+                            </div></div>
+                            <div class="layui-inline"><label class="layui-form-label">X字段</label><div class="layui-input-inline"><input type="text" name="ChartX" class="layui-input" placeholder="列名"></div></div>
+                            <div class="layui-inline"><label class="layui-form-label">Y字段</label><div class="layui-input-inline"><input type="text" name="ChartY" class="layui-input" placeholder="列名(数值)"></div></div>
+                        </div>
+                        <div class="layui-form-item">
+                            <button class="layui-btn" lay-submit lay-filter="reportSave">保存</button>
+                            <button class="layui-btn layui-btn-normal" type="button" id="btnRun">运行</button>
+                            <button class="layui-btn layui-btn-warm" type="button" id="btnExport">导出Excel</button>
+                            <button class="layui-btn layui-btn-danger" type="button" id="btnDel">删除</button>
+                        </div>
+                    </form>
+                    <div id="chart" style="width:100%;height:300px;display:none;"></div>
+                    <div style="overflow:auto;max-height:360px;"><table class="layui-table" id="resultTbl" lay-size="sm" style="margin:0;"></table></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Script{
+    <script src="~/lib/layui/echarts.min.js"></script>
+    <script>
+        var URL_LIST = '@Url.Action("List")', URL_GET = '@Url.Action("Get")', URL_SAVE = '@Url.Action("Save")',
+            URL_DEL = '@Url.Action("Delete")', URL_RUN = '@Url.Action("Run")', URL_EXPORT = '@Url.Action("Export")';
+
+        layui.use(['form', 'layer'], function () {
+            var form = layui.form, layer = layui.layer, $ = layui.$;
+            var chart = null;
+            function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+            function parseChartDef(json) { try { return JSON.parse(json || '{}'); } catch (e) { return {}; } }
+
+            function loadList() {
+                $.get(URL_LIST, function (res) {
+                    var list = (res && res.data) || [];
+                    var html = '';
+                    list.forEach(function (r) {
+                        html += '<li class="layui-nav-item"><a href="javascript:;" data-id="' + r.Id + '">' + esc(r.Name) + '<span style="color:#94a3b8;font-size:12px;"> ' + esc(r.Module || '') + '</span></a></li>';
+                    });
+                    $('#reportList').html(html);
+                    $('#reportList a').on('click', function () { loadDef($(this).data('id')); });
+                });
+            }
+
+            function loadDef(id) {
+                $.get(URL_GET, { id: id }, function (res) {
+                    var d = (res && res.data) || {};
+                    var cd = parseChartDef(d.ChartDef);
+                    form.val('reportForm', {
+                        Id: d.Id || 0, Name: d.Name || '', Code: d.Code || '', Module: d.Module || '',
+                        QueryDef: d.QueryDef || '', ChartType: cd.type || '', ChartX: cd.x || '', ChartY: cd.y || ''
+                    });
+                });
+            }
+
+            $('#btnNew').on('click', function () {
+                form.val('reportForm', { Id: 0, Name: '', Code: '', Module: '', QueryDef: '', ChartType: '', ChartX: '', ChartY: '' });
+                $('#resultTbl').html(''); $('#chart').hide();
+            });
+
+            form.on('submit(reportSave)', function (data) {
+                var f = data.field;
+                var payload = {
+                    Id: parseInt(f.Id || 0, 10), Name: f.Name, Code: f.Code, Module: f.Module, QueryDef: f.QueryDef,
+                    ChartDef: JSON.stringify({ type: f.ChartType, x: f.ChartX, y: f.ChartY })
+                };
+                $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) })
+                    .done(function (res) {
+                        if (res && (res.code === 0 || res.code === 200)) { layer.msg('已保存', { icon: 1 }); form.val('reportForm', { Id: res.data }); loadList(); }
+                        else layer.msg((res && res.msg) || '失败', { icon: 2 });
+                    });
+                return false;
+            });
+
+            $('#btnDel').on('click', function () {
+                var id = $('input[name=Id]').val();
+                if (!id || id === '0') { layer.msg('请先选择报表'); return; }
+                layer.confirm('确认删除该报表定义?', function (idx) {
+                    $.post(URL_DEL, { id: id }, function () { layer.close(idx); layer.msg('已删除', { icon: 1 }); $('#btnNew').click(); loadList(); });
+                });
+            });
+
+            function renderResult(d) {
+                var cols = d.columns || [], rows = d.rows || [];
+                var html = '<thead><tr>';
+                cols.forEach(function (c) { html += '<th>' + esc(c) + '</th>'; });
+                html += '</tr></thead><tbody>';
+                rows.forEach(function (r) {
+                    html += '<tr>';
+                    cols.forEach(function (c) { html += '<td>' + esc(r[c]) + '</td>'; });
+                    html += '</tr>';
+                });
+                html += '</tbody>';
+                $('#resultTbl').html(html);
+                drawChart(rows);
+            }
+
+            function drawChart(rows) {
+                var type = $('select[name=ChartType]').val(), x = $('input[name=ChartX]').val(), y = $('input[name=ChartY]').val();
+                if (!type || !x || !y || !rows.length || typeof echarts === 'undefined') { $('#chart').hide(); return; }
+                $('#chart').show();
+                if (!chart) chart = echarts.init(document.getElementById('chart'));
+                var cats = rows.map(function (r) { return r[x]; });
+                var vals = rows.map(function (r) { return Number(r[y]) || 0; });
+                var opt;
+                if (type === 'pie') {
+                    opt = { tooltip: {}, series: [{ type: 'pie', radius: '60%', data: rows.map(function (r) { return { name: r[x], value: Number(r[y]) || 0 }; }) }] };
+                } else {
+                    opt = { tooltip: {}, xAxis: { type: 'category', data: cats }, yAxis: { type: 'value' }, series: [{ type: type, data: vals }] };
+                }
+                chart.setOption(opt, true);
+            }
+
+            $('#btnRun').on('click', function () {
+                var id = $('input[name=Id]').val();
+                if (!id || id === '0') { layer.msg('请先保存报表再运行'); return; }
+                layer.load(2);
+                $.get(URL_RUN, { id: id }, function (res) {
+                    layer.closeAll('loading');
+                    if (!res || (res.code !== 0 && res.code !== 200)) { layer.msg((res && res.msg) || '运行失败', { icon: 2 }); return; }
+                    renderResult(res.data || {});
+                });
+            });
+
+            $('#btnExport').on('click', function () {
+                var id = $('input[name=Id]').val();
+                if (!id || id === '0') { layer.msg('请先保存报表'); return; }
+                window.location.href = URL_EXPORT + '?id=' + id;
+            });
+
+            loadList();
+        });
+    </script>
+}
