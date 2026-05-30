@@ -2,12 +2,9 @@
     ViewData["Title"] = "设备台账";
 }
 @section Style{
-    <link href="~/js/soul-table/soulTable.css" rel="stylesheet" />
     <style>
         .ms-edit .layui-form-label{ width:130px; }
         .ms-edit .layui-input-block { margin-left: 130px; }
-        /* soul-table 表头筛选图标更明显 */
-        .layui-table-view .soul-table-tool { color:#1F4D3B; }
     </style>
 }
 <div class="layui-fluid" style="padding:12px;">
@@ -154,17 +151,9 @@
         var URL_TPL_OPTS       = '@Url.Action("GetTemplateOptions")';
         var URL_HISTORY        = '@Url.Action("GetFacilityHistory")';
 
-        // 注册 soul-table 扩展模块（表头去重下拉筛选/列显隐/拖拽/固定列/导出）
-        layui.config({ base: '/js/soul-table/' }).extend({
-            excel: 'excel',
-            tableMerge: 'tableMerge',
-            tableChild: 'tableChild',
-            tableFilter: 'tableFilter',
-            soulTable: 'soulTable'
-        });
-
+        // soul-table 模块已在布局 _LayoutInner.cshtml 全局注册，这里直接使用
         layui.use(['table', 'form', 'layer', 'laydate', 'element', 'soulTable'], function () {
-            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, element = layui.element, soulTable = layui.soulTable;
+            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, element = layui.element;
             function ok(res) { return res && (res.code === 0 || res.code === 200); }
             function toast(msg) { layer.msg(msg || ''); }
             function toastOk(msg) { layer.msg(msg || '操作成功', { icon: 1 }); }
@@ -226,35 +215,18 @@
             function renderList() { loadData(); }
 
             function loadData() {
-                var loadIdx = layer.load(2);
-                $.post(URL_LIST, getWhere(), function (res) {
-                    layer.close(loadIdx);
-                    var rows = ok(res) ? decorate(res.data || []) : [];
-                    table.render({
+                // 前端模式：取回全部匹配行后用公共组件渲染（去重下拉才能列出全部值）
+                SoulGrid.loadAll(URL_LIST, getWhere(), function (rows) {
+                    SoulGrid.render({
                         elem: '#GridMain',
                         id: 'GridMain',
-                        data: rows,
-                        page: true,
-                        limit: 20,
-                        limits: [20, 50, 100, 200],
+                        data: decorate(rows),
                         height: 'full-200',
-                        even: true,
-                        drag: true,
-                        autoColumnWidth: false,
-                        // 导出文件名（soul-table 前端导出使用）
-                        excel: { filename: '设备台账.xlsx' },
-                        // 列显隐用 layui 原生顶部工具栏的 filter(齿轮) 面板，放在表格上方且自动生效
                         toolbar: '#tableToolbar',
-                        defaultToolbar: ['filter'],
-                        // 每列下拉只保留：去重筛选(data) + 条件筛选(condition)
-                        // cache:false 关闭列布局本地缓存，避免列结构变更后 updateCols 读取旧缓存崩溃
-                        filter: { cache: false, bottom: false, items: ['data', 'condition'] },
-                        cols: buildCols(),
-                        done: function () {
-                            try { soulTable.render(this); } catch (e) { console.error('soulTable render error', e); }
-                        }
+                        filename: '设备台账',
+                        cols: buildCols()
                     });
-                }).fail(function(){ layer.close(loadIdx); toastErr('数据加载失败'); });
+                });
             }
 
             var __DEPTS__ = [];
@@ -498,11 +470,8 @@
             form.on('select(fltDept)', function(){ loadData(); });
             form.on('select(fltStatus)', function(){ loadData(); });
 
-            // 导出当前“筛选后/排序后/列顺序”的表格（soul-table 前端导出，所见即所得）
-            $('#btnExport').on('click', function () {
-                try { soulTable.export('GridMain'); }
-                catch (e) { toastErr('导出失败：' + (e && e.message || e)); }
-            });
+            // 导出当前“筛选后/排序后/列顺序”的表格（前端导出，所见即所得）
+            $('#btnExport').on('click', function () { SoulGrid.export('GridMain'); });
 
             table.on('tool(GridMain)', function (obj) {
                 if (obj.event === 'view') openDialog('view', obj.data);

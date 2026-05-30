@@ -328,76 +328,93 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
         autoUnmask: true
     });
 
-    if (window.URLThisGetList) {
-        Cols = normalizeColumnTitles(Cols);
-        tableIns = table.render({
-            elem: '#GridMain',
-            method: 'POST',
-            url: URLThisGetList,
-            where: { "key": $("#demoReload").val() },
-            cols: [Cols],
-            page: true,
-            toolbar: true,
-            height: 'full-80',
-            defaultToolbar: ['filter'],
-            autoSort: false,
-            totalRow: JSON.stringify(Cols).indexOf('totalRow') > -1,
-            size: 'sm',
-            even: true,
-            limit: TableLimit,
-            limits: TableLimits,
-            parseData: function (res) {
-                if (!res.data) {
-                    res = eval('(' + res + ')');
-                }
-                if (res && res.code === 200) res.code = 0;
-                //console.log(res.Data.ds);
-                return res
-            },
-            response: {
-                statusCode: 0 //规定成功的状态码，默认：0
-            },
-            done: function (res, curr, count) {
-                //数据表格加载完成时调用此函数
-                //如果是异步请求数据方式，res即为你接口返回的信息。
-                //如果是直接赋值的方式，res即为：{data: [], count: 99} data为当前页数据、count为数据总长度
-                //设置全部数据到全局变量
-                table_data = res.data;
-                //在缓存中找到id ,然后设置data表格中的选中状态
-                //循环所有数据，找出对应关系，设置checkbox选中状态
-                for (var i = 0; i < res.data.length; i++) {
-                    for (var j = 0; j < ids.length; j++) {
-                        //数据id和要勾选的id相同时checkbox选中
-                        if (res.data[i].Id == ids[j]) {
-                            //这里才是真正的有效勾选
-                            res.data[i]["LAY_CHECKED"] = 'true';
-                            //找到对应数据改变勾选样式，呈现出选中效果
-                            var index = res.data[i]['LAY_TABLE_INDEX'];
-                            $('.layui-table-fixed-l tr[data-index=' + index + '] input[type="checkbox"]').prop('checked', true);
-                            $('.layui-table-fixed-l tr[data-index=' + index + '] input[type="checkbox"]').next().addClass('layui-form-checked');
-                        }
-                    }
-                }
-                //设置全选checkbox的选中状态，只有改变LAY_CHECKED的值， table.checkStatus才能抓取到选中的状态
-                var checkStatus = table.checkStatus('my-table');
-                if (checkStatus.isAll) {
-                    $('.layui-table-header th[data-field="0"] input[type="checkbox"]').prop('checked', true);
-                    $('.layui-table-header th[data-field="0"] input[type="checkbox"]').next().addClass('layui-form-checked');
-                }
-                if (buttons) {
-                    for (let i = 0; i < buttons.length; i++) {
-                        if (buttons[i].ModuleId == GetQueryString("moduleId")) {
-                            $("*[powerid='" + buttons[i].DomId+"']").removeClass("layui-hide");
-                        }
+        // 表格加载完成的公共回调（两种模式共用）
+        function gridDone(res, curr, count) {
+            //设置全部数据到全局变量
+            table_data = res.data;
+            //循环所有数据，找出对应关系，设置checkbox选中状态
+            for (var i = 0; i < res.data.length; i++) {
+                for (var j = 0; j < ids.length; j++) {
+                    if (res.data[i].Id == ids[j]) {
+                        res.data[i]["LAY_CHECKED"] = 'true';
+                        var index = res.data[i]['LAY_TABLE_INDEX'];
+                        $('.layui-table-fixed-l tr[data-index=' + index + '] input[type="checkbox"]').prop('checked', true);
+                        $('.layui-table-fixed-l tr[data-index=' + index + '] input[type="checkbox"]').next().addClass('layui-form-checked');
                     }
                 }
             }
-        });
+            var checkStatus = table.checkStatus('my-table');
+            if (checkStatus.isAll) {
+                $('.layui-table-header th[data-field="0"] input[type="checkbox"]').prop('checked', true);
+                $('.layui-table-header th[data-field="0"] input[type="checkbox"]').next().addClass('layui-form-checked');
+            }
+            if (buttons) {
+                for (let i = 0; i < buttons.length; i++) {
+                    if (buttons[i].ModuleId == GetQueryString("moduleId")) {
+                        $("*[powerid='" + buttons[i].DomId + "']").removeClass("layui-hide");
+                    }
+                }
+            }
+        }
 
-        layui.use(['extend_table'], function () {
-            extendTable = layui.extend_table;
-            extendTable.init(tableIns);
-        })
+        // 前端模式：一次性取回全部数据 + soul-table 完整体验（去重下拉/固定列/列显隐/导出筛选后）
+        // 页面只需在 NomalListPage.js 之前设置 window.SoulFront = true 即可启用
+        function renderSoulFront() {
+            var kw = $("#demoReload").val();
+            var where = $.extend({ page: 1, limit: 100000 }, searchParam || {}, { key: kw, q: kw });
+            SoulGrid.loadAll(URLThisGetList, where, function (rows) {
+                SoulGrid.render({
+                    elem: '#GridMain', id: 'GridMain', data: rows,
+                    cols: [Cols], height: 'full-80', size: 'sm',
+                    filename: (document.title || '导出数据'),
+                    totalRow: JSON.stringify(Cols).indexOf('totalRow') > -1,
+                    done: gridDone
+                });
+            });
+        }
+
+        // 刷新表格（兼容两种模式）
+        window.__reloadGrid__ = function () { if (window.SoulFront) renderSoulFront(); else table.reload('GridMain'); };
+
+    if (window.URLThisGetList) {
+        Cols = normalizeColumnTitles(Cols);
+        if (window.SoulFront) {
+            renderSoulFront();
+        } else {
+            tableIns = table.render({
+                elem: '#GridMain',
+                method: 'POST',
+                url: URLThisGetList,
+                where: { "key": $("#demoReload").val() },
+                cols: [Cols],
+                page: true,
+                toolbar: true,
+                height: 'full-80',
+                defaultToolbar: ['filter'],
+                autoSort: false,
+                totalRow: JSON.stringify(Cols).indexOf('totalRow') > -1,
+                size: 'sm',
+                even: true,
+                limit: TableLimit,
+                limits: TableLimits,
+                parseData: function (res) {
+                    if (!res.data) {
+                        res = eval('(' + res + ')');
+                    }
+                    if (res && res.code === 200) res.code = 0;
+                    return res
+                },
+                response: {
+                    statusCode: 0 //规定成功的状态码，默认：0
+                },
+                done: gridDone
+            });
+
+            layui.use(['extend_table'], function () {
+                extendTable = layui.extend_table;
+                extendTable.init(tableIns);
+            })
+        }
         //table.reload('GridMain', {});
         //console.log(extTable)
         table.on('tool(GridMain)', function (obj) {
@@ -420,9 +437,7 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
         });
 
         table.on('sort(GridMain)', function (obj) { //注：tool是工具条事件名，GridMain是table原始容器的属性 lay-filter="对应的值"
-            console.log(obj.field); //当前排序的字段名
-            console.log(obj.type); //当前排序类型：desc（降序）、asc（升序）、null（空对象，默认排序）
-            console.log(this); //当前排序的 th 对象
+            if (window.SoulFront) return; //前端模式由 layui 客户端排序，无需请求服务端
             //尽管我们的 table 自带排序功能，但并没有请求服务端。
             //有些时候，你可能需要根据当前排序的字段，重新向服务端发送请求，从而实现服务端排序，如：
             if (searchParam == undefined)
@@ -523,7 +538,7 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
                 console.log(res);*/
                 layerTips.close(loadIndex);
                 if (isSuccessCode(res.code)) {
-                    table.reload('GridMain');
+                    window.__reloadGrid__();
                     layer.closeAll();
                     layerTips.msg((typeof Glb_SaveSuccess == "undefined" ? "保存成功" : Glb_SaveSuccess));
                 } else {
@@ -580,10 +595,12 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
         })
     });
     $("#btn_Export").on("click", function () {
+        if (window.SoulFront) { SoulGrid.export('GridMain'); return; } //前端导出：所见即所得
         var data = searchParam ? searchParam : "data";
         $.download(URLThisExportList, data, "POST");
     })
     $("#btn_Search").on("click", function () {
+        if (window.SoulFront) { renderSoulFront(); return; }
         table.reload('GridMain', {
             where: {
                 "q": $("#demoReload").val()
@@ -602,7 +619,7 @@ layui.use(['table', 'element', 'form', 'laydate', 'tableSelect', 'upload'], func
                 success: function (res) {
                     layerTips.close(loadIndex);
                     if (isSuccessCode(res.code)) {
-                        table.reload('GridMain');
+                        window.__reloadGrid__();
                     } else {
                         layerTips.alert((typeof Glb_DelFail=="undefined"?"删除失败":Glb_DelFail)+': ' + res.msg);
                     }

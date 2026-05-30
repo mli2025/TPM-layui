@@ -28,21 +28,21 @@
         <a class='layui-btn layui-btn-xs layui-btn-normal' lay-event='viewModel'>&#x67e5;&#x770b;</a>
     </script>
     <script>
+        window.SoulFront = true; // 启用 soul-table 前端模式（去重下拉/固定列/列显隐/导出筛选后）
         var URLThisGetList = '@Url.Action("GetMainList")';
         var URLThisExportList = '@Url.Action("ExportExcel")';
         var Cols = [
-            { field: 'Id', title: 'Id', width: 80, sort: true },
-            { field: 'Code', title: 'Code', search: 'input', width: 130 },
-            { field: 'Name', title: 'Name', search: 'input', width: 170 },
-            { field: 'Specs', title: 'Specs', search: 'input', width: 130 },
-            { field: 'SafeStock', title: 'SafeStock', search: 'input', width: 110 },
-            { field: 'Remark', title: 'Remark', search: 'input', width: 170 },
-            { field: 'Status', title: 'Status', search: 'input', width: 110 },
-            { field: 'Leibie', title: 'Leibie', search: 'input', width: 130 },
-            { field: 'Danjia', title: 'Danjia', search: 'input', width: 110 },
-            { field: 'Kehu', title: 'Kehu', search: 'input', width: 130 },
-            { field: 'Danwei', title: 'Danwei', search: 'input', width: 130 },
-            { fixed: 'right', title: '\u64cd\u4f5c', width: 90, align: 'center', toolbar: '#barDemo' }
+            { field: 'Code', title: '编码', width: 140, fixed: 'left', sort: true, filter: true },
+            { field: 'Name', title: '名称', width: 180, fixed: 'left', sort: true, filter: true },
+            { field: 'Specs', title: '规格', width: 130, sort: true, filter: true },
+            { field: 'Leibie', title: '类别', width: 120, sort: true, filter: true },
+            { field: 'Danwei', title: '单位', width: 90, sort: true, filter: true },
+            { field: 'SafeStock', title: '安全库存', width: 110, align: 'right', sort: true, templet: function (d) { return SoulGrid.fmtThousand(d.SafeStock); } },
+            { field: 'Danjia', title: '单价', width: 110, align: 'right', sort: true, totalRow: true, templet: function (d) { return SoulGrid.fmtThousand(d.Danjia, 2); } },
+            { field: 'Kehu', title: '客户', width: 140, sort: true, filter: true },
+            { field: 'Status', title: '状态', width: 100, sort: true, filter: true },
+            { field: 'Remark', title: '备注', minWidth: 160, sort: true, filter: true },
+            { fixed: 'right', title: '操作', width: 90, align: 'center', toolbar: '#barDemo' }
         ];
         function viewModel(obj) {
             var Id = obj.data.Id || obj.data.id;

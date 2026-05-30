@@ -27,16 +27,6 @@
             <p class="text-xs text-slate-400 mt-0.5">点击列头排序；表头输入框 / 下拉即时筛选（服务端分页，2 万级数据可用）；点击行查看详情</p>
         </div>
         <div class="flex gap-2">
-            <div class="relative inline-block">
-                <button id="btnCols" class="px-3 py-1.5 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50">列设置 ▾</button>
-                <div id="colPanel" class="hidden absolute right-0 mt-1 w-64 max-h-96 overflow-auto bg-white border border-slate-200 rounded-lg shadow-xl p-2 z-50">
-                    <div class="flex items-center justify-between px-1 pb-2 mb-1 border-b border-slate-100">
-                        <span class="text-xs font-semibold text-slate-500">列显示 / 冻结</span>
-                        <button id="btnColReset" class="text-xs text-brand-700 hover:underline">重置</button>
-                    </div>
-                    <div id="colList"></div>
-                </div>
-            </div>
             <button id="btnReload" class="px-3 py-1.5 text-sm rounded-md bg-brand-700 text-white hover:bg-brand-800">刷新</button>
             <button id="btnClear" class="px-3 py-1.5 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50">清除筛选</button>
             <button id="btnExport" class="px-3 py-1.5 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50">导出当前页 CSV</button>
@@ -62,7 +52,6 @@
 <script>
 var URL_DATA = '@Url.Action("GridData")';
 var URL_INFO = '@Url.Action("GetMainInfo")';
-var URL_DISTINCT = '@Url.Action("DistinctValues")';
 var URL_DEPTS = '/Sys_Dept/List';
 
 (function(){
@@ -73,37 +62,6 @@ var URL_DEPTS = '/Sys_Dept/List';
     function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
     function fmtDate(v){ return v ? String(v).replace('T',' ').substring(0,10) : ''; }
     function fmtDateTime(v){ return v ? String(v).replace('T',' ').substring(0,19) : ''; }
-
-    // ---- 去重值缓存：表头下拉数据按列懒加载，仅请求一次 ----
-    var distinctCache = {};
-    function fetchDistinct(field){
-        if (distinctCache[field]) return distinctCache[field];
-        var p = new Promise(function(resolve){
-            $.ajax({ url: URL_DISTINCT, data: { field: field }, dataType: 'json' })
-                .done(function(res){
-                    var arr = (res && (res.code===0 || res.code===200) && res.data) ? res.data : [];
-                    resolve(arr.map(function(v){ return { label: String(v), value: String(v) }; }));
-                })
-                .fail(function(){ resolve([]); });
-        });
-        distinctCache[field] = p;
-        return p;
-    }
-    // 文本列：输入框 + 去重下拉（可输入模糊匹配，可从列表选择），服务端 like 过滤
-    function listFilter(field){
-        return {
-            headerFilter: "list",
-            headerFilterFunc: "like",
-            headerFilterParams: {
-                valuesLookup: function(){ return fetchDistinct(field); },
-                autocomplete: true,
-                freetext: true,
-                listOnEmpty: true,
-                clearable: true,
-                placeholderEmpty: "无可选值"
-            }
-        };
-    }
 
     // 先取部门，构造 {id:name} 与下拉值，再初始化表格
     $.get(URL_DEPTS, function(res){
@@ -142,19 +100,19 @@ var URL_DEPTS = '/Sys_Dept/List';
             filterMode: "remote",
             // 服务端返回 { last_page, last_row, data }
             columns: [
-                Object.assign({ title: "设备编码", field: "FacilityCode", width: 140, frozen: true }, listFilter("FacilityCode")),
-                Object.assign({ title: "设备名称", field: "FacilityName", minWidth: 160, frozen: true }, listFilter("FacilityName")),
-                Object.assign({ title: "型号", field: "Model", width: 130 }, listFilter("Model")),
-                Object.assign({ title: "设备类型", field: "FacilityType", width: 120 }, listFilter("FacilityType")),
-                Object.assign({ title: "厂内编号", field: "ManufactureNumber", width: 130 }, listFilter("ManufactureNumber")),
-                Object.assign({ title: "序列号", field: "SerialNumber", width: 130 }, listFilter("SerialNumber")),
-                Object.assign({ title: "制造商", field: "Manufacturer", width: 130 }, listFilter("Manufacturer")),
-                Object.assign({ title: "安装位置", field: "Location", width: 130 }, listFilter("Location")),
+                { title: "设备编码", field: "FacilityCode", width: 140, frozen: true, headerFilter: "input" },
+                { title: "设备名称", field: "FacilityName", minWidth: 160, frozen: true, headerFilter: "input" },
+                { title: "型号", field: "Model", width: 130, headerFilter: "input" },
+                { title: "设备类型", field: "FacilityType", width: 120, headerFilter: "input" },
+                { title: "厂内编号", field: "ManufactureNumber", width: 130, headerFilter: "input" },
+                { title: "序列号", field: "SerialNumber", width: 130, headerFilter: "input" },
+                { title: "制造商", field: "Manufacturer", width: 130, headerFilter: "input" },
+                { title: "安装位置", field: "Location", width: 130, headerFilter: "input" },
                 { title: "工作中心", field: "DeptId", width: 120, formatter: deptFormatter(deptMap),
                   headerFilter: "list", headerFilterFunc: "=",
                   headerFilterParams: { values: Object.assign({ "": "全部" }, deptValues), clearable: true } },
                 { title: "购置日期", field: "PurchaseDate", width: 110, formatter: dateFormatter, headerFilter: false },
-                Object.assign({ title: "资产编号", field: "AssetNumber", width: 130 }, listFilter("AssetNumber")),
+                { title: "资产编号", field: "AssetNumber", width: 130, headerFilter: "input" },
                 { title: "状态", field: "Status", width: 90, hozAlign: "center", formatter: statusFormatter,
                   headerFilter: "list", headerFilterFunc: "=",
                   headerFilterParams: { values: { "": "全部", "0": "运行", "1": "闲置", "2": "停机", "3": "报废" }, clearable: true } }
@@ -162,45 +120,7 @@ var URL_DEPTS = '/Sys_Dept/List';
         });
 
         table.on("rowClick", function(e, row){ openDetail(row.getData(), deptMap); });
-        table.on("tableBuilt", function(){ buildColPanel(); });
     }
-
-    // ---- 列设置面板：显示/隐藏 + 冻结切换 ----
-    function buildColPanel(){
-        var $list = $('#colList');
-        $list.empty();
-        table.getColumns().forEach(function(col){
-            var def = col.getDefinition();
-            var field = col.getField();
-            if (!field) return;
-            var visible = col.isVisible();
-            var frozen = !!def.frozen;
-            var $row = $(
-                '<div class="flex items-center justify-between gap-2 px-1 py-1 rounded hover:bg-slate-50">'
-              +   '<label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer flex-1">'
-              +     '<input type="checkbox" class="col-vis" '+(visible?'checked':'')+'>'
-              +     '<span>'+esc(def.title||field)+'</span>'
-              +   '</label>'
-              +   '<button class="col-pin text-xs px-1.5 py-0.5 rounded '+(frozen?'bg-brand-700 text-white':'text-slate-400 hover:bg-slate-100')+'" title="冻结此列">冻结</button>'
-              + '</div>'
-            );
-            $row.find('.col-vis').on('change', function(){
-                if (this.checked) col.show(); else col.hide();
-            });
-            $row.find('.col-pin').on('click', function(){
-                var nowFrozen = !col.getDefinition().frozen;
-                try { col.updateDefinition({ frozen: nowFrozen }); } catch(e){}
-                $(this).toggleClass('bg-brand-700 text-white', nowFrozen)
-                       .toggleClass('text-slate-400', !nowFrozen);
-            });
-            $list.append($row);
-        });
-    }
-
-    $('#btnCols').on('click', function(e){ e.stopPropagation(); $('#colPanel').toggleClass('hidden'); });
-    $('#colPanel').on('click', function(e){ e.stopPropagation(); });
-    $(document).on('click', function(){ $('#colPanel').addClass('hidden'); });
-    $('#btnColReset').on('click', function(){ window.location.reload(); });
 
     $('#btnReload').on('click', function(){ if (table) table.replaceData(); });
     $('#btnClear').on('click', function(){ if (table) table.clearHeaderFilter(); });

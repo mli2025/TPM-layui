@@ -17,6 +17,7 @@
                 <div class="layui-col-md4" style="text-align:right;">
                     <button class="layui-btn layui-btn-sm" id="btnSearch"><i class="layui-icon layui-icon-search"></i> 查询</button>
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-warm" id="btnExport"><i class="layui-icon layui-icon-download-circle"></i> 导出</button>
                 </div>
             </div>
             <table id="GridMain" lay-filter="GridMain"></table>
@@ -27,44 +28,42 @@
 @section Script {
 <script>
 (function(){
-    layui.use(['table'], function(){
-        var table = layui.table, $ = layui.$;
-        function build(){
-            var arr = [];
-            var kw = ($('#kw').val()||'').trim();
-            var wh = ($('#whId').val()||'').trim();
-            if (kw) arr.push({ field:'Kw', value: kw });
-            if (wh) arr.push({ field:'WarehouseId', value: wh, conditional:'=' });
-            return JSON.stringify(arr);
-        }
-        function load(){
-            table.render({
-                elem:'#GridMain', url:'@Url.Action("GetMainList")', method:'post',
-                where:{ searchParam: build() },
-                contentType:'application/x-www-form-urlencoded',
-                page:true, limit:20, even:true,
-                response:{ statusCode:0, statusName:'code', countName:'count', dataName:'data', msgName:'msg' },
+    var $ = layui.$;
+    function build(){
+        var arr = [];
+        var kw = ($('#kw').val()||'').trim();
+        var wh = ($('#whId').val()||'').trim();
+        if (kw) arr.push({ field:'Kw', value: kw });
+        if (wh) arr.push({ field:'WarehouseId', value: wh, conditional:'=' });
+        return JSON.stringify(arr);
+    }
+    function load(){
+        SoulGrid.loadAll('@Url.Action("GetMainList")', { searchParam: build() }, function(rows){
+            SoulGrid.render({
+                elem:'#GridMain', id:'GridMain', data: rows, height:'full-180', filename:'备件库存',
+                totalRow: true,
                 cols:[[
-                    { field:'SpareCode', title:'备件编码', width:160 },
-                    { field:'SpareName', title:'备件名称', width:200 },
-                    { field:'Specs', title:'规格型号', width:160 },
-                    { field:'Danwei', title:'单位', width:80 },
-                    { field:'WarehouseId', title:'仓库Id', width:100 },
-                    { field:'Qty', title:'当前库存', width:120, templet: function(d){
+                    { field:'SpareCode', title:'备件编码', width:160, fixed:'left', sort:true, filter:true, totalRowText:'合计' },
+                    { field:'SpareName', title:'备件名称', width:200, fixed:'left', sort:true, filter:true },
+                    { field:'Specs', title:'规格型号', width:160, sort:true, filter:true },
+                    { field:'Danwei', title:'单位', width:80, sort:true, filter:true },
+                    { field:'WarehouseId', title:'仓库Id', width:100, sort:true, filter:true },
+                    { field:'Qty', title:'当前库存', width:120, align:'right', sort:true, totalRow:true, templet: function(d){
                         var qty = parseFloat(d.Qty)||0;
                         var safe = parseFloat(d.SafeStock)||0;
                         var color = (safe > 0 && qty < safe) ? 'color:#dc2626;font-weight:600;' : '';
-                        return '<span style="' + color + '">' + qty + '</span>';
+                        return '<span style="' + color + '">' + SoulGrid.fmtThousand(qty) + '</span>';
                     }},
-                    { field:'SafeStock', title:'安全库存', width:120 }
+                    { field:'SafeStock', title:'安全库存', width:120, align:'right', sort:true, templet:function(d){ return SoulGrid.fmtThousand(d.SafeStock); } }
                 ]]
             });
-        }
-        $('#btnSearch').on('click', load);
-        $('#btnReload').on('click', load);
-        $('#kw').on('keyup', function(e){ if (e.keyCode===13) load(); });
-        load();
-    });
+        });
+    }
+    $('#btnSearch').on('click', load);
+    $('#btnReload').on('click', load);
+    $('#btnExport').on('click', function(){ SoulGrid.export('GridMain'); });
+    $('#kw').on('keyup', function(e){ if (e.keyCode===13) load(); });
+    load();
 })();
 </script>
 }

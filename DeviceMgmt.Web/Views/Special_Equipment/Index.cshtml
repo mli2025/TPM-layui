@@ -18,6 +18,7 @@
                 <div class="layui-col-md3" style="text-align:right;">
                     <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-search"></i> 查询</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-warm" id="btnExport"><i class="layui-icon layui-icon-download-circle"></i> 导出</button>
                 </div>
             </div>
             <table id="GridMain" lay-filter="GridMain"></table>
@@ -78,19 +79,25 @@ layui.use(['table','form','layer','laydate'],function(){
         if(k)l.push({field:'Category',conditional:'like',value:k});
         if(s!==''&&s!=null)l.push({field:'Status',conditional:'eq',value:s});
         return {page:1,limit:20,searchParam:l};}
-    function render(){table.render({elem:'#GridMain',id:'GridMain',url:URL_LIST,method:'post',where:getWhere(),page:true,height:'full-180',cols:[[
-        {type:'numbers',title:'#'},
-        {field:'EquipCode',title:'设备代码',width:140},
-        {field:'Category',title:'类别',width:120},
-        {field:'RegisterNo',title:'注册登记号',width:150},
-        {field:'UseCertNo',title:'使用证号',width:140},
-        {field:'SafetyLevel',title:'安全等级',width:110},
-        {field:'NextInspectDate',title:'下次检验日',width:120,templet:function(d){var t=dt(d.NextInspectDate);return overdue(d.NextInspectDate)?'<span style="color:#e53935;font-weight:600;">'+t+'</span>':t;}},
-        {field:'InspectOrg',title:'检验机构',minWidth:160},
-        {field:'Status',title:'状态',width:80,templet:function(d){return d.Status===1?'<span class="layui-badge layui-bg-green">启用</span>':'<span class="layui-badge layui-bg-gray">停用</span>';}},
-        {title:'操作',width:150,toolbar:'#barRow',fixed:'right'}
-    ]]});}
-    $('#btnReload').on('click',function(){table.reload('GridMain',{where:getWhere()});});
+    function decorate(rows){(rows||[]).forEach(function(r){r.StatusName=r.Status===1?'启用':'停用';r.NextInspectDate=dt(r.NextInspectDate);});return rows;}
+    function loadData(){
+        SoulGrid.loadAll(URL_LIST,getWhere(),function(rows){
+            SoulGrid.render({elem:'#GridMain',id:'GridMain',data:decorate(rows),height:'full-180',filename:'特种设备台账',cols:[[
+                {type:'numbers',title:'#',width:50,fixed:'left'},
+                {field:'EquipCode',title:'设备代码',width:140,fixed:'left',sort:true,filter:true},
+                {field:'Category',title:'类别',width:120,sort:true,filter:true},
+                {field:'RegisterNo',title:'注册登记号',width:150,sort:true,filter:true},
+                {field:'UseCertNo',title:'使用证号',width:140,sort:true,filter:true},
+                {field:'SafetyLevel',title:'安全等级',width:110,sort:true,filter:true},
+                {field:'NextInspectDate',title:'下次检验日',width:120,align:'center',sort:true,filter:true,templet:function(d){var t=d.NextInspectDate;return overdue(t)?'<span style="color:#e53935;font-weight:600;">'+t+'</span>':t;}},
+                {field:'InspectOrg',title:'检验机构',minWidth:160,sort:true,filter:true},
+                {field:'StatusName',title:'状态',width:90,sort:true,filter:true,templet:function(d){return d.Status===1?'<span class="layui-badge layui-bg-green">启用</span>':'<span class="layui-badge layui-bg-gray">停用</span>';}},
+                {title:'操作',width:150,toolbar:'#barRow',fixed:'right'}
+            ]]});
+        });
+    }
+    $('#btnReload').on('click',function(){loadData();});
+    $('#btnExport').on('click',function(){SoulGrid.export('GridMain');});
     form.on('select(fltStatus)',function(){$('#btnReload').click();});
     $('#btnAdd').on('click',function(){openForm({});});
     table.on('tool(GridMain)',function(obj){
@@ -99,14 +106,14 @@ layui.use(['table','form','layer','laydate'],function(){
     });
     form.on('submit(submitForm)',function(data){var f=data.field;
         var payload={Id:(f.Id&&String(f.Id).trim()!=='')?f.Id:0,EquipCode:(f.EquipCode||'').trim(),Category:f.Category||null,RegisterNo:f.RegisterNo||null,UseCertNo:f.UseCertNo||null,DesignLife:f.DesignLife?parseFloat(f.DesignLife):null,SafetyLevel:f.SafetyLevel||null,NextInspectDate:f.NextInspectDate||null,InspectOrg:f.InspectOrg||null,Status:parseInt(f.Status||1,10)};
-        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();table.reload('GridMain');}else layer.msg(res.msg||'失败',{icon:2});});
+        $.ajax({url:URL_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(payload)}).done(function(res){if(ok(res)){layer.msg('保存成功',{icon:1});layer.closeAll();loadData();}else layer.msg(res.msg||'失败',{icon:2});});
         return false;});
     function openForm(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑特种设备':'新增特种设备',content:$('#tplForm').html(),success:function(layero,idx){
         laydate.render({elem:$(layero).find('#fld_next')[0],type:'date'});
         try{form.val('theForm',{Id:row.Id||0,EquipCode:row.EquipCode||'',Category:row.Category||'',RegisterNo:row.RegisterNo||'',UseCertNo:row.UseCertNo||'',DesignLife:row.DesignLife!=null?row.DesignLife:'',SafetyLevel:row.SafetyLevel||'',NextInspectDate:row.NextInspectDate?dt(row.NextInspectDate):'',InspectOrg:row.InspectOrg||'',Status:row.Status!=null?String(row.Status):'1'});form.render();}catch(e){}
         $(layero).find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
     }});}
-    render();
+    loadData();
 });
 </script>
 }

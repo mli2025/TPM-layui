@@ -38,6 +38,7 @@
 
     @* 旧 layui 资源 - 业务视图过渡期需要，P0.7 完成后可移除 *@
     <link href="~/js/layui/css/layui.css" rel="stylesheet" />
+    <link href="~/js/soul-table/soulTable.css" rel="stylesheet" />
     <link href="~/js/layui/css/main.css" rel="stylesheet" />
     <link href="~/js/font-awesome/css/font-awesome.css" rel="stylesheet" />
     <link href="~/js/select2/css/select2.min.css" rel="stylesheet" />
@@ -60,6 +61,7 @@
     <script src="~/js/app.js"></script>
     <script src="~/js/components/attachment.js"></script>
     <script src="~/js/components/native-scan.js"></script>
+    <script src="~/js/components/soul-grid.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.428.0/dist/umd/lucide.min.js"></script>
 
     <script>
@@ -88,7 +90,13 @@
         }).extend({
             extend_table: "extend_table",
             tableSelect: "tableSelect",
-            step: "step"
+            step: "step",
+            // soul-table 扩展（用 {/} 绝对路径，不受上面的 base 影响）
+            excel: "{/}@(Url.Content("~/js/soul-table/excel"))",
+            tableMerge: "{/}@(Url.Content("~/js/soul-table/tableMerge"))",
+            tableChild: "{/}@(Url.Content("~/js/soul-table/tableChild"))",
+            tableFilter: "{/}@(Url.Content("~/js/soul-table/tableFilter"))",
+            soulTable: "{/}@(Url.Content("~/js/soul-table/soulTable"))"
         });
 
         var TableLimit = 20;
