@@ -28,6 +28,23 @@ public class Basic_SpareController : BaseController
     public IActionResult GetMainInfo([FromQuery] long Id) => Json(new ResponseData { code = 200, data = _app.Get(Id) });
 
     [HttpPost]
+    public IActionResult Save([FromBody] Basic_Spare model)
+    {
+        if (model == null) return Json(new ResponseData { code = 400, msg = "no data" });
+        if (string.IsNullOrWhiteSpace(model.Code)) return Json(new ResponseData { code = 400, msg = "编码不能为空" });
+        var id = _app.Save(model);
+        return Json(new ResponseData { code = 0, data = id, msg = "ok" });
+    }
+
+    [HttpPost]
+    public IActionResult Delete([FromForm] long id)
+    {
+        if (id <= 0) return Json(new ResponseData { code = 400, msg = "invalid id" });
+        _app.Delete(id);
+        return Json(new ResponseData { code = 0, msg = "ok" });
+    }
+
+    [HttpPost]
     public IActionResult ExportExcel([FromForm] PageReq req)
     {
         req.page = 1;

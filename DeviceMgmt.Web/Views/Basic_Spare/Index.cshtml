@@ -10,6 +10,7 @@
                     <div class="demoTable pull-right no-print">
                         <div class="layui-inline" id="searchPanel"></div>
                         <div class="layui-btn-group">
+                            <button class="layui-btn layui-btn-sm" id="btnAddSpare">新增</button>
                             <button class="layui-btn layui-btn-sm layui-btn-warm" id="btn_Export">@("\u5bfc\u51fa")</button>
                         </div>
                     </div>
@@ -25,7 +26,43 @@
 </div>
 @section Script{
     <script type='text/html' class="no-print" id='barDemo'>
-        <a class='layui-btn layui-btn-xs layui-btn-normal' lay-event='viewModel'>&#x67e5;&#x770b;</a>
+        <a class='layui-btn layui-btn-xs layui-btn-normal' lay-event='viewModel'>查看</a>
+        <a class='layui-btn layui-btn-xs' lay-event='editSpare'>编辑</a>
+        <a class='layui-btn layui-btn-xs layui-btn-danger' lay-event='delSpare'>删除</a>
+    </script>
+    <script type="text/html" id="tplSpare">
+        <div style="padding:14px;">
+            <form class="layui-form" lay-filter="spareForm">
+                <input type="hidden" name="Id" />
+                <div class="layui-form-item">
+                    <div class="layui-inline"><label class="layui-form-label"><span style="color:#e53935;">*</span>编码</label><div class="layui-input-inline"><input type="text" name="Code" class="layui-input" lay-verify="required"></div></div>
+                    <div class="layui-inline"><label class="layui-form-label">名称</label><div class="layui-input-inline"><input type="text" name="Name" class="layui-input"></div></div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-inline"><label class="layui-form-label">规格</label><div class="layui-input-inline"><input type="text" name="Specs" class="layui-input"></div></div>
+                    <div class="layui-inline"><label class="layui-form-label">类别</label><div class="layui-input-inline"><input type="text" name="Leibie" class="layui-input"></div></div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-inline"><label class="layui-form-label">单位</label><div class="layui-input-inline"><input type="text" name="Danwei" class="layui-input"></div></div>
+                    <div class="layui-inline"><label class="layui-form-label">安全库存</label><div class="layui-input-inline"><input type="number" step="0.001" name="SafeStock" class="layui-input"></div></div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-inline"><label class="layui-form-label">单价</label><div class="layui-input-inline"><input type="number" step="0.01" name="Danjia" class="layui-input"></div></div>
+                    <div class="layui-inline"><label class="layui-form-label">客户</label><div class="layui-input-inline"><input type="text" name="Kehu" class="layui-input"></div></div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <input type="radio" name="Status" value="1" title="启用" checked />
+                        <input type="radio" name="Status" value="0" title="禁用" />
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:10px;">
+                    <button class="layui-btn" lay-submit lay-filter="spareSubmit">保存</button>
+                    <button class="layui-btn layui-btn-primary" type="button" id="spareCancel">关闭</button>
+                </div>
+            </form>
+        </div>
     </script>
     <script>
         window.SoulFront = true; // 启用 soul-table 前端模式（去重下拉/固定列/列显隐/导出筛选后）
@@ -44,16 +81,69 @@
             { field: 'Remark', title: '备注', minWidth: 160, sort: true, filter: true },
             { fixed: 'right', title: '操作', width: 90, align: 'center', toolbar: '#barDemo' }
         ];
+        var URL_SAVE_SPARE = '@Url.Action("Save")', URL_DEL_SPARE = '@Url.Action("Delete")';
         function viewModel(obj) {
             var Id = obj.data.Id || obj.data.id;
             layui.layer.open({
-                title: '\u5907\u4ef6\u8d44\u6599 Basic_Spare - \u67e5\u770b',
+                title: '备件资料 - 查看',
                 content: '@Url.Action("ViewList")?id=' + Id,
                 type: 2,
                 area: ['90%', '90%'],
-                btn: ['\u5173\u95ed']
+                btn: ['关闭']
             });
         }
+        function editSpare(obj) { openSpareForm(obj.data); }
+        function delSpare(obj) {
+            layui.layer.confirm('确认删除「' + (obj.data.Code || '') + '」?', function (idx) {
+                layui.$.post(URL_DEL_SPARE, { id: obj.data.Id }, function (res) {
+                    layui.layer.close(idx);
+                    if (res && (res.code === 0 || res.code === 200)) { obj.del(); layui.layer.msg('已删除', { icon: 1 }); }
+                    else layui.layer.msg((res && res.msg) || '失败', { icon: 2 });
+                });
+            });
+        }
+        function openSpareForm(row) {
+            row = row || {};
+            layui.use(['layer', 'form'], function () {
+                var layer = layui.layer, form = layui.form, $ = layui.$;
+                layer.open({
+                    type: 1, area: ['720px', 'auto'], title: row.Id ? '编辑备件' : '新增备件',
+                    content: $('#tplSpare').html(),
+                    success: function (layero, idx) {
+                        try {
+                            form.val('spareForm', {
+                                Id: row.Id || 0, Code: row.Code || '', Name: row.Name || '', Specs: row.Specs || '',
+                                Leibie: row.Leibie || '', Danwei: row.Danwei || '',
+                                SafeStock: row.SafeStock != null ? row.SafeStock : '', Danjia: row.Danjia != null ? row.Danjia : '',
+                                Kehu: row.Kehu || '', Status: row.Status != null ? String(row.Status) : '1'
+                            });
+                            form.render();
+                        } catch (e) { }
+                        $(layero).find('#spareCancel').off('click').on('click', function () { layer.close(idx); });
+                        form.on('submit(spareSubmit)', function (data) {
+                            var f = data.field;
+                            var payload = {
+                                Id: (f.Id && String(f.Id).trim() !== '') ? parseInt(f.Id, 10) : 0,
+                                Code: (f.Code || '').trim(), Name: f.Name || null, Specs: f.Specs || null,
+                                Leibie: f.Leibie || null, Danwei: f.Danwei || null,
+                                SafeStock: f.SafeStock ? parseFloat(f.SafeStock) : null,
+                                Danjia: f.Danjia ? parseFloat(f.Danjia) : null,
+                                Kehu: f.Kehu || null, Status: parseInt(f.Status || 1, 10)
+                            };
+                            $.ajax({ url: URL_SAVE_SPARE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) })
+                                .done(function (res) {
+                                    if (res && (res.code === 0 || res.code === 200)) { layer.msg('保存成功', { icon: 1 }); layer.close(idx); if (window.__reloadGrid__) window.__reloadGrid__(); }
+                                    else layer.msg((res && res.msg) || '失败', { icon: 2 });
+                                });
+                            return false;
+                        });
+                    }
+                });
+            });
+        }
+        layui.use(['layer'], function () {
+            layui.$('#btnAddSpare').on('click', function () { openSpareForm({}); });
+        });
     </script>
     <script src="~/js/Page/NomalListPage.js"></script>
 }

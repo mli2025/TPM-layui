@@ -37,6 +37,9 @@ public class BaseController : Controller
             return;
         }
 
+        // 滑动续期：每次受保护请求刷新会话有效期，实现空闲超时自动注销（URS 407）
+        _authUtil.RenewToken(token);
+
         var user = _authUtil.GetCurrentUser(token);
         if (user != null)
         {

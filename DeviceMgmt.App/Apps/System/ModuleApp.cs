@@ -9,16 +9,22 @@ public class ModuleApp : BaseApp<Sys_Module>
     private readonly IRepository<Sys_ModuleButtons> _buttonRepo;
     private readonly IRepository<Sys_UserRole> _userRoleRepo;
     private readonly IRepository<Sys_RoleModule> _roleModuleRepo;
+    private readonly IRepository<Sys_UserGroupUser> _groupUserRepo;
+    private readonly IRepository<Sys_UserGroupModule> _groupModuleRepo;
 
     public ModuleApp(IUnitWork unitWork,
         IRepository<Sys_Module> repository,
         IRepository<Sys_ModuleButtons> buttonRepo,
         IRepository<Sys_UserRole> userRoleRepo,
-        IRepository<Sys_RoleModule> roleModuleRepo) : base(unitWork, repository)
+        IRepository<Sys_RoleModule> roleModuleRepo,
+        IRepository<Sys_UserGroupUser> groupUserRepo,
+        IRepository<Sys_UserGroupModule> groupModuleRepo) : base(unitWork, repository)
     {
         _buttonRepo = buttonRepo;
         _userRoleRepo = userRoleRepo;
         _roleModuleRepo = roleModuleRepo;
+        _groupUserRepo = groupUserRepo;
+        _groupModuleRepo = groupModuleRepo;
     }
 
     public List<Sys_Module> GetModulesByUser(long userId)
@@ -34,23 +40,37 @@ public class ModuleApp : BaseApp<Sys_Module>
             return Repository.Find().ToList();
         }
 
-        if (roleIds.Length == 0) return Repository.Find().ToList();
+        // URS 408：用户最终权限 = 直属角色权限 ∪ 所属各用户组权限（并集）
+        var moduleIdSet = new HashSet<long>();
 
-        long[] moduleIds;
+        if (roleIds.Length > 0)
+        {
+            try
+            {
+                foreach (var mid in _roleModuleRepo.Find("[RoleId] IN @rids", new { rids = roleIds }).Select(x => x.ModuleId))
+                    moduleIdSet.Add(mid);
+            }
+            catch (SqlException ex) when (ex.Number == 208) { return Repository.Find().ToList(); }
+        }
+
         try
         {
-            moduleIds = _roleModuleRepo.Find("[RoleId] IN @rids", new { rids = roleIds }).Select(x => x.ModuleId).Distinct().ToArray();
+            var groupIds = _groupUserRepo.Find("[UserId]=@uid", new { uid = userId }).Select(x => x.GroupId).ToArray();
+            if (groupIds.Length > 0)
+            {
+                foreach (var mid in _groupModuleRepo.Find("[GroupId] IN @gids", new { gids = groupIds }).Select(x => x.ModuleId))
+                    moduleIdSet.Add(mid);
+            }
         }
-        catch (SqlException ex) when (ex.Number == 208)
-        {
-            return Repository.Find().ToList();
-        }
+        catch (SqlException ex) when (ex.Number == 208) { /* 用户组表缺失则忽略组权限 */ }
 
-        if (moduleIds.Length == 0) return new List<Sys_Module>();
+        // 既无角色也无用户组绑定：默认放开全部菜单（兼容旧库/admin 初始）
+        if (roleIds.Length == 0 && moduleIdSet.Count == 0) return Repository.Find().ToList();
+        if (moduleIdSet.Count == 0) return new List<Sys_Module>();
 
         try
         {
-            return Repository.Find("[Id] IN @mids", new { mids = moduleIds }, "[Sort] ASC").ToList();
+            return Repository.Find("[Id] IN @mids", new { mids = moduleIdSet.ToArray() }, "[Sort] ASC").ToList();
         }
         catch (SqlException ex) when (ex.Number == 208)
         {

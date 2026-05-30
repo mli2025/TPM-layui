@@ -30,7 +30,9 @@ public class AccountController : Controller
     [HttpPost]
     public IActionResult DoLogin([FromForm] string account, [FromForm] string password, [FromForm] string? returnUrl)
     {
-        var result = _auth.Login("Web", account, password);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var ua = Request.Headers.UserAgent.ToString();
+        var result = _auth.Login("Web", account, password, true, ip, ua);
         if (!result.success || string.IsNullOrEmpty(result.Token))
         {
             return Json(new { code = result.code, msg = result.msg });
