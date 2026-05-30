@@ -143,6 +143,9 @@ try
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Repair.Facility_AlarmRuleApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Repair.Facility_AlarmRecordApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Repair.RepairStatApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Spare.Spare_AlarmConfigApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Spare.Spare_LifeCycleApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Spare.Spare_StockCheckApp>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.ImportService>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.IImportHandler, DeviceMgmt.Web.Services.Import.SpareImportHandler>();
 

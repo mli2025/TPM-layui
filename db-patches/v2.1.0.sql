@@ -230,3 +230,85 @@ SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管�
 GO
 PRINT '==== Batch8: repair enhance menus ready ====';
 GO
+
+/* =============================================================================
+   批次9 · 备件增强：多级预警 / 生命周期 / 盘点 / 可出库量
+   新增表 Spare_AlarmConfig / Spare_LifeCycle / Spare_StockCheck / Spare_StockCheckSub
+   ============================================================================= */
+IF OBJECT_ID(N'[Spare_AlarmConfig]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [Spare_AlarmConfig] (
+        [Id] bigint IDENTITY(1,1) PRIMARY KEY,
+        [SpareId] bigint NOT NULL,
+        [MinStock] decimal(18,3) NULL,
+        [ReorderPoint] decimal(18,3) NULL,
+        [SafeStock] decimal(18,3) NULL,
+        [MaxStock] decimal(18,3) NULL,
+        [Enabled] int NOT NULL DEFAULT(1)
+    );
+    CREATE INDEX IX_Spare_AlarmConfig_Spare ON [Spare_AlarmConfig]([SpareId]);
+END
+GO
+IF OBJECT_ID(N'[Spare_LifeCycle]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [Spare_LifeCycle] (
+        [Id] bigint IDENTITY(1,1) PRIMARY KEY,
+        [SpareId] bigint NOT NULL,
+        [EventType] nvarchar(50) NULL,
+        [EventDate] datetime NOT NULL DEFAULT(GETDATE()),
+        [Qty] decimal(18,3) NULL,
+        [RefBillNo] nvarchar(100) NULL,
+        [Operator] nvarchar(50) NULL,
+        [Remark] nvarchar(300) NULL
+    );
+    CREATE INDEX IX_Spare_LifeCycle_Spare ON [Spare_LifeCycle]([SpareId]);
+END
+GO
+IF OBJECT_ID(N'[Spare_StockCheck]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [Spare_StockCheck] (
+        [Id] bigint IDENTITY(1,1) PRIMARY KEY,
+        [PlanNo] nvarchar(100) NULL,
+        [PlanName] nvarchar(200) NULL,
+        [PlanDate] datetime NULL,
+        [Owner] nvarchar(50) NULL,
+        [Status] int NOT NULL DEFAULT(0),
+        [CreateDate] datetime NOT NULL DEFAULT(GETDATE())
+    );
+END
+GO
+IF OBJECT_ID(N'[Spare_StockCheckSub]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [Spare_StockCheckSub] (
+        [Id] bigint IDENTITY(1,1) PRIMARY KEY,
+        [MainId] bigint NOT NULL,
+        [SpareId] bigint NOT NULL,
+        [BookQty] decimal(18,3) NULL,
+        [RealQty] decimal(18,3) NULL,
+        [DiffQty] decimal(18,3) NULL,
+        [Remark] nvarchar(300) NULL
+    );
+    CREATE INDEX IX_Spare_StockCheckSub_Main ON [Spare_StockCheckSub]([MainId]);
+END
+GO
+/* 菜单挂在 备品备件 spare 下（code=spare） */
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT v.[Name],v.[Code],v.[Url],sp.[Id],v.[Sort],1,v.[Icon]
+  FROM (VALUES
+        (N'库存预警','spare-alarm','/Spare_Alarm/Index',20,'notice'),
+        (N'生命周期','spare-life','/Spare_LifeCycle/Index',21,'log'),
+        (N'备件盘点','spare-stockcheck','/Spare_StockCheck/Index',22,'cols')
+       ) v([Name],[Code],[Url],[Sort],[Icon])
+  CROSS JOIN (SELECT TOP 1 [Id] FROM [Sys_Module] WHERE [Code]='spare') sp
+ WHERE NOT EXISTS (SELECT 1 FROM [Sys_Module] m WHERE m.[Code]=v.[Code]);
+GO
+INSERT INTO [Sys_RoleModule] ([RoleId], [ModuleId])
+SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id]), m.[Id]
+  FROM [Sys_Module] m
+ WHERE m.[Code] IN ('spare-alarm','spare-life','spare-stockcheck')
+   AND NOT EXISTS (SELECT 1 FROM [Sys_RoleModule] rm
+        WHERE rm.RoleId = (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id])
+          AND rm.ModuleId = m.[Id]);
+GO
+PRINT '==== Batch9: spare enhance tables & menus ready ====';
+GO

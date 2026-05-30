@@ -1,0 +1,84 @@
+@{
+    ViewData["Title"] = "备件库存预警";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>备件库存预警</strong></div>
+        <div class="layui-card-body">
+            <div class="layui-tab layui-tab-brief" lay-filter="t">
+                <ul class="layui-tab-title">
+                    <li class="layui-this" lay-id="alarm">预警清单</li>
+                    <li lay-id="avail">可出库量</li>
+                    <li lay-id="cfg">阈值配置</li>
+                </ul>
+                <div class="layui-tab-content">
+                    <div class="layui-tab-item layui-show"><table id="GridAlarm" lay-filter="GridAlarm"></table></div>
+                    <div class="layui-tab-item"><table id="GridAvail" lay-filter="GridAvail"></table></div>
+                    <div class="layui-tab-item">
+                        <button class="layui-btn layui-btn-sm" id="btnAddCfg" style="margin-bottom:8px;">新增配置</button>
+                        <table id="GridCfg" lay-filter="GridCfg"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/html" id="barCfg">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="lvlTpl">
+    {{# var m={'严重':'#dc2626','警告':'#f59e0b','提示':'#2563eb','超储':'#9333ea','正常':'#16a34a'};var c=m[d.AlarmLevel]||'#64748b';}}
+    <span style="color:{{=c}};font-weight:600;">{{=d.AlarmLevel||''}}</span>
+</script>
+<script type="text/html" id="tplCfg">
+    <div style="padding:16px;"><form class="layui-form" lay-filter="f">
+        <input type="hidden" name="Id" />
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">备件Id</label><div class="layui-input-inline"><input type="number" name="SpareId" class="layui-input" lay-verify="required"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">启用</label><div class="layui-input-inline" style="width:90px;"><select name="Enabled"><option value="1">启用</option><option value="0">停用</option></select></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">最低(严重)</label><div class="layui-input-inline"><input type="number" step="0.001" name="MinStock" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">再订货(警告)</label><div class="layui-input-inline"><input type="number" step="0.001" name="ReorderPoint" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">安全(提示)</label><div class="layui-input-inline"><input type="number" step="0.001" name="SafeStock" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">最高(超储)</label><div class="layui-input-inline"><input type="number" step="0.001" name="MaxStock" class="layui-input"></div></div>
+        </div>
+        <div style="text-align:center;margin-top:10px;"><button class="layui-btn" lay-submit lay-filter="save">保存</button><button class="layui-btn layui-btn-primary" type="button" id="cancel">关闭</button></div>
+    </form></div>
+</script>
+@section Script{
+<script>
+    var U_CFGLIST='@Url.Action("GetMainList")',U_ALARM='@Url.Action("AlarmList")',U_AVAIL='@Url.Action("AvailableList")',U_SAVE='@Url.Action("Save")',U_DEL='@Url.Action("Delete")';
+    layui.use(['table','form','layer','element'],function(){
+        var table=layui.table,form=layui.form,layer=layui.layer,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        var alarmLoaded=false,availLoaded=false,cfgLoaded=false;
+        function renderAlarm(){$.get(U_ALARM,function(res){table.render({elem:'#GridAlarm',data:(res&&res.data)||[],page:true,limit:20,height:'full-220',cols:[[
+            {field:'Code',title:'编码',width:140},{field:'Name',title:'名称',width:180},{field:'Specs',title:'规格',width:140},
+            {field:'Qty',title:'现存量',width:110,align:'right'},{field:'MinStock',title:'最低',width:90,align:'right'},{field:'ReorderPoint',title:'再订货',width:90,align:'right'},
+            {field:'SafeStock',title:'安全',width:90,align:'right'},{field:'AlarmLevel',title:'预警级别',width:110,templet:'#lvlTpl'}
+        ]]});});}
+        function renderAvail(){$.get(U_AVAIL,function(res){table.render({elem:'#GridAvail',data:(res&&res.data)||[],page:true,limit:20,height:'full-220',cols:[[
+            {field:'Code',title:'编码',width:140},{field:'Name',title:'名称',width:200},{field:'Specs',title:'规格',width:160},
+            {field:'OnHandQty',title:'现存量',width:120,align:'right'},{field:'ReservedQty',title:'预留(留接口)',width:130,align:'right'},{field:'AvailableQty',title:'可出库量',width:130,align:'right'}
+        ]]});});}
+        function renderCfg(){table.render({elem:'#GridCfg',id:'GridCfg',url:U_CFGLIST,method:'post',where:{page:1,limit:20,searchParam:[]},page:true,height:'full-260',cols:[[
+            {type:'numbers',title:'#'},{field:'SpareId',title:'备件Id',width:110},{field:'MinStock',title:'最低',width:100,align:'right'},{field:'ReorderPoint',title:'再订货',width:100,align:'right'},
+            {field:'SafeStock',title:'安全',width:100,align:'right'},{field:'MaxStock',title:'最高',width:100,align:'right'},{field:'Enabled',title:'状态',width:80,templet:function(d){return d.Enabled==1?'启用':'停用';}},
+            {title:'操作',width:140,toolbar:'#barCfg',fixed:'right'}]]});}
+        function openCfg(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑配置':'新增配置',content:$('#tplCfg').html(),success:function(l,idx){
+            form.val('f',{Id:row.Id||0,SpareId:row.SpareId||'',Enabled:String(row.Enabled!=null?row.Enabled:1),MinStock:row.MinStock||'',ReorderPoint:row.ReorderPoint||'',SafeStock:row.SafeStock||'',MaxStock:row.MaxStock||''});form.render();
+            $('#cancel').on('click',function(){layer.close(idx);});
+            form.on('submit(save)',function(data){var f=data.field;var num=function(v){return v===''||v==null?null:parseFloat(v);};var p={Id:parseInt(f.Id||0,10),SpareId:parseInt(f.SpareId||0,10),Enabled:parseInt(f.Enabled||1,10),MinStock:num(f.MinStock),ReorderPoint:num(f.ReorderPoint),SafeStock:num(f.SafeStock),MaxStock:num(f.MaxStock)};
+                $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridCfg');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
+        }});}
+        $('#btnAddCfg').on('click',function(){openCfg({});});
+        table.on('tool(GridCfg)',function(o){if(o.event==='edit')openCfg(o.data);else if(o.event==='del')layer.confirm('确认删除?',function(idx){$.post(U_DEL,{id:o.data.Id},function(){layer.close(idx);o.del();});});});
+        layui.element.on('tab(t)',function(){var id=this.getAttribute('lay-id');if(id==='avail'&&!availLoaded){availLoaded=true;renderAvail();}if(id==='cfg'&&!cfgLoaded){cfgLoaded=true;renderCfg();}});
+        renderAlarm();alarmLoaded=true;
+    });
+</script>
+}

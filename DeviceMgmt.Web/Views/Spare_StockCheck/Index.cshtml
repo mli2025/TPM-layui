@@ -1,0 +1,65 @@
+@{
+    ViewData["Title"] = "备件盘点";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>备件盘点</strong>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增盘点</button>
+        </div>
+        <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="stTpl">
+    {{# var m={0:['计划','#64748b'],1:['执行中','#2563eb'],2:['完成','#16a34a']};var s=m[d.Status]||['',''];}}
+    <span style="color:{{=s[1]}};font-weight:600;">{{=s[0]}}</span>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;"><form class="layui-form" lay-filter="f">
+        <input type="hidden" name="Id" />
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">盘点单号</label><div class="layui-input-inline"><input type="text" name="PlanNo" class="layui-input" placeholder="自动生成"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">盘点名称</label><div class="layui-input-inline"><input type="text" name="PlanName" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">盘点日期</label><div class="layui-input-inline"><input type="text" name="PlanDate" id="fD" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">负责人</label><div class="layui-input-inline"><input type="text" name="Owner" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">状态</label><div class="layui-input-inline"><select name="Status"><option value="0">计划</option><option value="1">执行中</option><option value="2">完成</option></select></div></div>
+        </div>
+        <fieldset class="layui-elem-field layui-field-title"><legend>盘点明细<button class="layui-btn layui-btn-xs" type="button" id="btnAddSub" style="margin-left:10px;">添加备件</button></legend></fieldset>
+        <table class="layui-table" style="margin:0;"><thead><tr><th style="width:110px;">备件Id</th><th style="width:120px;">账面数</th><th style="width:120px;">实盘数</th><th>备注</th><th style="width:50px;"></th></tr></thead><tbody id="SubsBody"></tbody></table>
+        <div style="text-align:center;margin-top:14px;"><button class="layui-btn" lay-submit lay-filter="save">保存</button><button class="layui-btn layui-btn-primary" type="button" id="cancel">关闭</button></div>
+    </form></div>
+</script>
+@section Script{
+<script>
+    var U_LIST='@Url.Action("GetMainList")',U_GET='@Url.Action("GetDetail")',U_SAVE='@Url.Action("Save")',U_DEL='@Url.Action("Delete")';
+    layui.use(['table','form','layer','laydate'],function(){
+        var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        function dc(d,f){return d[f]?String(d[f]).replace('T',' ').substring(0,10):'';}
+        function addSub(s){s=s||{};$('#SubsBody').append('<tr><td><input class="layui-input s-sid" type="number" value="'+(s.SpareId||'')+'"></td><td><input class="layui-input s-bk" type="number" step="0.001" value="'+(s.BookQty!=null?s.BookQty:'')+'"></td><td><input class="layui-input s-rl" type="number" step="0.001" value="'+(s.RealQty!=null?s.RealQty:'')+'"></td><td><input class="layui-input s-rk" value="'+(s.Remark||'')+'"></td><td style="text-align:center;"><a class="layui-btn layui-btn-xs layui-btn-danger sub-del">删</a></td></tr>');}
+        function collect(){var a=[];$('#SubsBody tr').each(function(){var sid=$(this).find('.s-sid').val();if(!sid)return;a.push({SpareId:parseInt(sid,10),BookQty:$(this).find('.s-bk').val()?parseFloat($(this).find('.s-bk').val()):null,RealQty:$(this).find('.s-rl').val()?parseFloat($(this).find('.s-rl').val()):null,Remark:$(this).find('.s-rk').val()});});return a;}
+        function render(){table.render({elem:'#GridMain',id:'GridMain',url:U_LIST,method:'post',where:{page:1,limit:20,searchParam:[]},page:true,height:'full-150',cols:[[
+            {type:'numbers',title:'#'},{field:'PlanNo',title:'盘点单号',width:180},{field:'PlanName',title:'名称',width:180},
+            {field:'PlanDate',title:'盘点日期',width:120,templet:function(d){return dc(d,'PlanDate');}},{field:'Owner',title:'负责人',width:110},{field:'Status',title:'状态',width:100,templet:'#stTpl'},
+            {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
+        function openForm(row){row=row||{};layer.open({type:1,area:['820px','auto'],title:row.Id?'编辑盘点':'新增盘点',content:$('#tplForm').html(),success:function(l,idx){
+            $('#SubsBody').empty();laydate.render({elem:'#fD',type:'date'});
+            $('#btnAddSub').on('click',function(){addSub({});});
+            $('#SubsBody').on('click','.sub-del',function(){$(this).closest('tr').remove();});
+            $('#cancel').on('click',function(){layer.close(idx);});
+            function fill(m,subs){form.val('f',{Id:m.Id||0,PlanNo:m.PlanNo||'',PlanName:m.PlanName||'',PlanDate:dc(m,'PlanDate'),Owner:m.Owner||'',Status:String(m.Status||0)});(subs||[]).forEach(addSub);form.render();}
+            if(row.Id){$.get(U_GET,{id:row.Id},function(res){var d=res.data||{};fill(d.Main||{},d.Subs||[]);});}else{fill({},[]);}
+            form.on('submit(save)',function(data){var f=data.field;var p={Main:{Id:parseInt(f.Id||0,10),PlanNo:f.PlanNo||null,PlanName:f.PlanName||null,PlanDate:f.PlanDate||null,Owner:f.Owner||null,Status:parseInt(f.Status||0,10)},Subs:collect()};
+                $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
+        }});}
+        $('#btnAdd').on('click',function(){openForm({});});
+        table.on('tool(GridMain)',function(o){if(o.event==='edit')openForm(o.data);else if(o.event==='del')layer.confirm('确认删除(含明细)?',function(idx){$.post(U_DEL,{id:o.data.Id},function(){layer.close(idx);o.del();});});});
+        render();
+    });
+</script>
+}
