@@ -1,0 +1,52 @@
+@{
+    ViewData["Title"] = "设备标签";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>设备标签（二维码 / 条码）</strong>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">生成标签</button>
+        </div>
+        <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="print">打印</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;"><form class="layui-form" lay-filter="f">
+        <input type="hidden" name="Id" />
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input" lay-verify="required"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">标签类型</label><div class="layui-input-inline">
+                <select name="LabelType"><option value="qrcode">二维码</option><option value="barcode">条码</option><option value="nfc">NFC</option><option value="rfid">RFID</option></select>
+            </div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">标签编码</label><div class="layui-input-inline" style="width:280px;"><input type="text" name="LabelCode" class="layui-input" placeholder="留空自动生成"></div></div>
+        </div>
+        <div style="text-align:center;margin-top:10px;"><button class="layui-btn" lay-submit lay-filter="save">保存</button><button class="layui-btn layui-btn-primary" type="button" id="cancel">关闭</button></div>
+    </form></div>
+</script>
+@section Script{
+<script>
+    var U_LIST='@Url.Action("GetMainList")',U_SAVE='@Url.Action("Save")',U_DEL='@Url.Action("Delete")';
+    layui.use(['table','form','layer'],function(){
+        var table=layui.table,form=layui.form,layer=layui.layer,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        function render(){table.render({elem:'#GridMain',id:'GridMain',url:U_LIST,method:'post',where:{page:1,limit:20,searchParam:[]},page:true,height:'full-150',cols:[[
+            {type:'numbers',title:'#'},{field:'FacilityId',title:'设备Id',width:110},{field:'LabelType',title:'类型',width:110},
+            {field:'LabelCode',title:'标签编码',minWidth:240},{field:'GenTime',title:'生成时间',width:170,templet:function(d){return d.GenTime?String(d.GenTime).replace('T',' ').substring(0,19):'';}},
+            {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
+        function openForm(){layer.open({type:1,area:['600px','auto'],title:'生成标签',content:$('#tplForm').html(),success:function(l,idx){
+            form.render();$('#cancel').on('click',function(){layer.close(idx);});
+            form.on('submit(save)',function(data){var f=data.field;var p={Id:0,FacilityId:parseInt(f.FacilityId||0,10),LabelType:f.LabelType,LabelCode:f.LabelCode||null};
+                $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已生成',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
+        }});}
+        function printLabel(d){var w=window.open('','_blank','width=420,height=320');w.document.write('<div style="text-align:center;font-family:sans-serif;padding:24px;"><h3>设备标签</h3><p>设备Id：'+d.FacilityId+'</p><div style="font-size:22px;font-weight:700;letter-spacing:2px;border:2px dashed #333;padding:14px;margin:12px;">'+(d.LabelCode||'')+'</div><p style="color:#888;">'+(d.LabelType||'')+'</p></div>');w.document.close();w.focus();w.print();}
+        $('#btnAdd').on('click',openForm);
+        table.on('tool(GridMain)',function(o){if(o.event==='print')printLabel(o.data);else if(o.event==='del')layer.confirm('确认删除?',function(idx){$.post(U_DEL,{id:o.data.Id},function(){layer.close(idx);o.del();});});});
+        render();
+    });
+</script>
+}

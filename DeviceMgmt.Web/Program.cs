@@ -131,6 +131,13 @@ try
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Inspect.Inspect_StandardApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Inspect.Inspect_PlanApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Inspect.Inspect_RecordApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_AcceptanceApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_StockCheckApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_AssetCardApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_CertApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_LabelApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_LubeStandardApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_LubeRecordApp>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.ImportService>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.IImportHandler, DeviceMgmt.Web.Services.Import.SpareImportHandler>();
 

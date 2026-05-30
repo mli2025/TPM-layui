@@ -1,0 +1,60 @@
+@{
+    ViewData["Title"] = "证书/许可时效";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>证书 / 许可时效</strong>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px;"><span style="color:#16a34a;">正常</span> / <span style="color:#f59e0b;">临近</span> / <span style="color:#dc2626;">已过期</span></span>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增</button>
+        </div>
+        <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;"><form class="layui-form" lay-filter="f">
+        <input type="hidden" name="Id" />
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">证书名称</label><div class="layui-input-inline"><input type="text" name="CertName" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">发证机构</label><div class="layui-input-inline"><input type="text" name="Issuer" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">预警(天)</label><div class="layui-input-inline"><input type="number" name="WarnDays" class="layui-input" value="30"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">生效日期</label><div class="layui-input-inline"><input type="text" name="EffectDate" id="fE" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">到期日期</label><div class="layui-input-inline"><input type="text" name="ExpireDate" id="fX" class="layui-input"></div></div>
+        </div>
+        <div style="text-align:center;margin-top:10px;"><button class="layui-btn" lay-submit lay-filter="save">保存</button><button class="layui-btn layui-btn-primary" type="button" id="cancel">关闭</button></div>
+    </form></div>
+</script>
+@section Script{
+<script>
+    var U_LIST='@Url.Action("GetMainList")',U_SAVE='@Url.Action("Save")',U_DEL='@Url.Action("Delete")';
+    layui.use(['table','form','layer','laydate'],function(){
+        var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        function dc(d,f){return d[f]?String(d[f]).replace('T',' ').substring(0,10):'';}
+        function expCell(d){if(!d.ExpireDate)return'';var exp=new Date(String(d.ExpireDate).replace('T',' ').substring(0,19).replace(/-/g,'/'));var days=Math.floor((exp-new Date())/86400000);var w=d.WarnDays||30;var c=days<0?'#dc2626':(days<=w?'#f59e0b':'#16a34a');var t=days<0?'已过期':(days<=w?('剩'+days+'天'):'正常');return'<span style="color:'+c+';font-weight:600;">'+dc(d,'ExpireDate')+' ('+t+')</span>';}
+        function render(){table.render({elem:'#GridMain',id:'GridMain',url:U_LIST,method:'post',where:{page:1,limit:20,searchParam:[]},page:true,height:'full-150',cols:[[
+            {type:'numbers',title:'#'},{field:'CertName',title:'证书名称',width:180},{field:'FacilityId',title:'设备Id',width:100},
+            {field:'Issuer',title:'发证机构',width:160},{field:'EffectDate',title:'生效',width:120,templet:function(d){return dc(d,'EffectDate');}},
+            {field:'ExpireDate',title:'到期',width:200,templet:expCell},{field:'WarnDays',title:'预警天',width:90,align:'right'},
+            {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
+        function openForm(row){row=row||{};layer.open({type:1,area:['620px','auto'],title:row.Id?'编辑':'新增',content:$('#tplForm').html(),success:function(l,idx){
+            laydate.render({elem:'#fE',type:'date'});laydate.render({elem:'#fX',type:'date'});
+            form.val('f',{Id:row.Id||0,FacilityId:row.FacilityId||'',CertName:row.CertName||'',Issuer:row.Issuer||'',WarnDays:row.WarnDays||30,EffectDate:dc(row,'EffectDate'),ExpireDate:dc(row,'ExpireDate')});form.render();
+            $('#cancel').on('click',function(){layer.close(idx);});
+            form.on('submit(save)',function(data){var f=data.field;var p={Id:parseInt(f.Id||0,10),FacilityId:f.FacilityId?parseInt(f.FacilityId,10):0,CertName:f.CertName||null,Issuer:f.Issuer||null,WarnDays:parseInt(f.WarnDays||30,10),EffectDate:f.EffectDate||null,ExpireDate:f.ExpireDate||null,Status:1};
+                $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
+        }});}
+        $('#btnAdd').on('click',function(){openForm({});});
+        table.on('tool(GridMain)',function(o){if(o.event==='edit')openForm(o.data);else if(o.event==='del')layer.confirm('确认删除?',function(idx){$.post(U_DEL,{id:o.data.Id},function(){layer.close(idx);o.del();});});});
+        render();
+    });
+</script>
+}

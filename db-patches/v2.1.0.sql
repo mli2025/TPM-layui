@@ -174,3 +174,32 @@ SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管�
 GO
 PRINT '==== Batch6: inspection menus & Inspect_RecordSub ready ====';
 GO
+
+/* =============================================================================
+   批次7 · 设备档案：FAT/SAT验收 / 盘点 / 资产卡片 / 证书 / 标签 / 润滑标准 / 润滑记录
+   菜单挂在 设备台账 ledger 下
+   ============================================================================= */
+INSERT INTO [Sys_Module] ([Name],[Code],[Url],[ParentId],[Sort],[Status],[Icon])
+SELECT v.[Name],v.[Code],v.[Url],l.[Id],v.[Sort],1,v.[Icon]
+  FROM (VALUES
+        (N'FAT/SAT验收','fac-accept','/Facility_Acceptance/Index',20,'auz'),
+        (N'设备盘点','fac-stockcheck','/Facility_StockCheck/Index',21,'cols'),
+        (N'资产卡片','fac-asset','/Facility_AssetCard/Index',22,'note'),
+        (N'证书时效','fac-cert','/Facility_Cert/Index',23,'survey'),
+        (N'设备标签','fac-label','/Facility_Label/Index',24,'template-1'),
+        (N'润滑标准','fac-lubestd','/Facility_LubeStandard/Index',25,'set'),
+        (N'润滑记录','fac-luberec','/Facility_LubeRecord/Index',26,'form')
+       ) v([Name],[Code],[Url],[Sort],[Icon])
+  CROSS JOIN (SELECT TOP 1 [Id] FROM [Sys_Module] WHERE [Code]='ledger') l
+ WHERE NOT EXISTS (SELECT 1 FROM [Sys_Module] m WHERE m.[Code]=v.[Code]);
+GO
+INSERT INTO [Sys_RoleModule] ([RoleId], [ModuleId])
+SELECT (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id]), m.[Id]
+  FROM [Sys_Module] m
+ WHERE m.[Code] IN ('fac-accept','fac-stockcheck','fac-asset','fac-cert','fac-label','fac-lubestd','fac-luberec')
+   AND NOT EXISTS (SELECT 1 FROM [Sys_RoleModule] rm
+        WHERE rm.RoleId = (SELECT TOP 1 [Id] FROM [Sys_Role] WHERE [Name] IN (N'admin',N'系统管理员') ORDER BY [Id])
+          AND rm.ModuleId = m.[Id]);
+GO
+PRINT '==== Batch7: archive menus ready ====';
+GO

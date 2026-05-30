@@ -1,0 +1,63 @@
+@{
+    ViewData["Title"] = "资产卡片";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>资产卡片</strong>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增</button>
+        </div>
+        <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;"><form class="layui-form" lay-filter="f">
+        <input type="hidden" name="Id" />
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">卡片编号</label><div class="layui-input-inline"><input type="text" name="CardNo" class="layui-input" placeholder="留空自动生成"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">资产名称</label><div class="layui-input-inline"><input type="text" name="AssetName" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">规格</label><div class="layui-input-inline"><input type="text" name="Specs" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">存放位置</label><div class="layui-input-inline"><input type="text" name="Location" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">原值</label><div class="layui-input-inline"><input type="number" step="0.01" name="OriginalValue" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">折旧方法</label><div class="layui-input-inline"><input type="text" name="DepreMethod" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">折旧年限</label><div class="layui-input-inline"><input type="number" step="0.1" name="DepreYears" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">净值</label><div class="layui-input-inline"><input type="number" step="0.01" name="NetValue" class="layui-input"></div></div>
+        </div>
+        <div style="text-align:center;margin-top:10px;"><button class="layui-btn" lay-submit lay-filter="save">保存</button><button class="layui-btn layui-btn-primary" type="button" id="cancel">关闭</button></div>
+    </form></div>
+</script>
+@section Script{
+<script>
+    var U_LIST='@Url.Action("GetMainList")',U_SAVE='@Url.Action("Save")',U_DEL='@Url.Action("Delete")';
+    layui.use(['table','form','layer'],function(){
+        var table=layui.table,form=layui.form,layer=layui.layer,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        function render(){table.render({elem:'#GridMain',id:'GridMain',url:U_LIST,method:'post',where:{page:1,limit:20,searchParam:[]},page:true,height:'full-150',cols:[[
+            {type:'numbers',title:'#'},{field:'CardNo',title:'卡片编号',width:160},{field:'AssetName',title:'资产名称',width:160},
+            {field:'FacilityId',title:'设备Id',width:90},{field:'Specs',title:'规格',width:130},{field:'Location',title:'位置',width:130},
+            {field:'OriginalValue',title:'原值',width:110,align:'right'},{field:'NetValue',title:'净值',width:110,align:'right'},
+            {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
+        function openForm(row){row=row||{};layer.open({type:1,area:['640px','auto'],title:row.Id?'编辑':'新增',content:$('#tplForm').html(),success:function(l,idx){
+            form.val('f',{Id:row.Id||0,CardNo:row.CardNo||'',FacilityId:row.FacilityId||'',AssetName:row.AssetName||'',Specs:row.Specs||'',Location:row.Location||'',OriginalValue:row.OriginalValue||'',DepreMethod:row.DepreMethod||'',DepreYears:row.DepreYears||'',NetValue:row.NetValue||''});form.render();
+            $('#cancel').on('click',function(){layer.close(idx);});
+            form.on('submit(save)',function(data){var f=data.field;var num=function(v){return v===''||v==null?null:parseFloat(v);};var p={Id:parseInt(f.Id||0,10),CardNo:f.CardNo||null,FacilityId:f.FacilityId?parseInt(f.FacilityId,10):null,AssetName:f.AssetName||null,Specs:f.Specs||null,Location:f.Location||null,OriginalValue:num(f.OriginalValue),DepreMethod:f.DepreMethod||null,DepreYears:num(f.DepreYears),NetValue:num(f.NetValue)};
+                $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
+        }});}
+        $('#btnAdd').on('click',function(){openForm({});});
+        table.on('tool(GridMain)',function(o){if(o.event==='edit')openForm(o.data);else if(o.event==='del')layer.confirm('确认删除?',function(idx){$.post(U_DEL,{id:o.data.Id},function(){layer.close(idx);o.del();});});});
+        render();
+    });
+</script>
+}

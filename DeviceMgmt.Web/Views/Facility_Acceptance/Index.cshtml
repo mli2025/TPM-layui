@@ -1,0 +1,73 @@
+@{
+    ViewData["Title"] = "FAT/SAT 验收";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>FAT / SAT 验收</strong>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增验收</button>
+        </div>
+        <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="resTpl">
+    {{# var m={0:['待验收','#64748b'],1:['通过','#16a34a'],2:['不通过','#dc2626']};var s=m[d.Result]||['',''];}}
+    <span style="color:{{=s[1]}};font-weight:600;">{{=s[0]}}</span>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;"><form class="layui-form" lay-filter="f">
+        <input type="hidden" name="Id" />
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">单号</label><div class="layui-input-inline"><input type="text" name="BillNo" class="layui-input" placeholder="自动生成"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">类型</label><div class="layui-input-inline"><select name="AcceptType"><option value="FAT">FAT</option><option value="SAT">SAT</option></select></div></div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">验收项</label>
+            <div class="layui-input-block">
+                <input type="checkbox" name="AppearanceOK" title="外观" lay-skin="primary"><input type="checkbox" name="QtyOK" title="数量" lay-skin="primary"><input type="checkbox" name="DocOK" title="资料" lay-skin="primary"><input type="checkbox" name="FunctionOK" title="功能" lay-skin="primary">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">结论</label><div class="layui-input-inline"><select name="Result"><option value="0">待验收</option><option value="1">通过</option><option value="2">不通过</option></select></div></div>
+            <div class="layui-inline"><label class="layui-form-label">验收日期</label><div class="layui-input-inline"><input type="text" name="AcceptDate" id="fD" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">验收人</label><div class="layui-input-inline"><input type="text" name="Acceptor" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item layui-form-text"><label class="layui-form-label">备注</label><div class="layui-input-block"><textarea name="Remark" class="layui-textarea"></textarea></div></div>
+        <fieldset class="layui-elem-field layui-field-title"><legend>问题跟踪<button class="layui-btn layui-btn-xs" type="button" id="btnAddSub" style="margin-left:10px;">添加</button></legend></fieldset>
+        <table class="layui-table" style="margin:0;"><thead><tr><th>问题描述</th><th>解决措施</th><th style="width:110px;">责任人</th><th style="width:90px;">状态</th><th style="width:50px;"></th></tr></thead><tbody id="SubsBody"></tbody></table>
+        <div style="text-align:center;margin-top:14px;"><button class="layui-btn" lay-submit lay-filter="save">保存</button><button class="layui-btn layui-btn-primary" type="button" id="cancel">关闭</button></div>
+    </form></div>
+</script>
+@section Script{
+<script>
+    var U_LIST='@Url.Action("GetMainList")',U_GET='@Url.Action("GetDetail")',U_SAVE='@Url.Action("Save")',U_DEL='@Url.Action("Delete")';
+    layui.use(['table','form','layer','laydate'],function(){
+        var table=layui.table,form=layui.form,layer=layui.layer,laydate=layui.laydate,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        function dc(d,f){return d[f]?String(d[f]).replace('T',' ').substring(0,10):'';}
+        function addSub(s){s=s||{};$('#SubsBody').append('<tr><td><input class="layui-input s-d" value="'+(s.IssueDesc||'')+'"></td><td><input class="layui-input s-s" value="'+(s.Solution||'')+'"></td><td><input class="layui-input s-o" value="'+(s.Owner||'')+'"></td><td><select class="s-st"><option value="0"'+(s.Status==0?' selected':'')+'>未关闭</option><option value="1"'+(s.Status==1?' selected':'')+'>已关闭</option></select></td><td style="text-align:center;"><a class="layui-btn layui-btn-xs layui-btn-danger sub-del">删</a></td></tr>');}
+        function collect(){var a=[];$('#SubsBody tr').each(function(){var d=$(this).find('.s-d').val();if(!d)return;a.push({IssueDesc:d,Solution:$(this).find('.s-s').val(),Owner:$(this).find('.s-o').val(),Status:parseInt($(this).find('.s-st').val()||0,10)});});return a;}
+        function render(){table.render({elem:'#GridMain',id:'GridMain',url:U_LIST,method:'post',where:{page:1,limit:20,searchParam:[]},page:true,height:'full-150',cols:[[
+            {type:'numbers',title:'#'},{field:'BillNo',title:'单号',width:170},{field:'FacilityId',title:'设备Id',width:90},{field:'AcceptType',title:'类型',width:80},
+            {field:'Result',title:'结论',width:100,templet:'#resTpl'},{field:'AcceptDate',title:'验收日期',width:120,templet:function(d){return dc(d,'AcceptDate');}},{field:'Acceptor',title:'验收人',width:110},{field:'Remark',title:'备注',minWidth:140},
+            {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
+        function openForm(row){row=row||{};layer.open({type:1,area:['860px','auto'],title:row.Id?'编辑验收':'新增验收',content:$('#tplForm').html(),success:function(l,idx){
+            $('#SubsBody').empty();laydate.render({elem:'#fD',type:'date'});
+            $('#btnAddSub').on('click',function(){addSub({});});
+            $('#SubsBody').on('click','.sub-del',function(){$(this).closest('tr').remove();});
+            $('#cancel').on('click',function(){layer.close(idx);});
+            function fill(m,issues){form.val('f',{Id:m.Id||0,BillNo:m.BillNo||'',FacilityId:m.FacilityId||'',AcceptType:m.AcceptType||'FAT',AppearanceOK:!!m.AppearanceOK,QtyOK:!!m.QtyOK,DocOK:!!m.DocOK,FunctionOK:!!m.FunctionOK,Result:String(m.Result||0),AcceptDate:dc(m,'AcceptDate'),Acceptor:m.Acceptor||'',Remark:m.Remark||''});(issues||[]).forEach(addSub);form.render();}
+            if(row.Id){$.get(U_GET,{id:row.Id},function(res){var d=res.data||{};fill(d.Main||{},d.Issues||[]);});}else{fill({},[]);}
+            form.on('submit(save)',function(data){var f=data.field;var p={Main:{Id:parseInt(f.Id||0,10),BillNo:f.BillNo||null,FacilityId:f.FacilityId?parseInt(f.FacilityId,10):0,AcceptType:f.AcceptType,AppearanceOK:f.AppearanceOK==='on',QtyOK:f.QtyOK==='on',DocOK:f.DocOK==='on',FunctionOK:f.FunctionOK==='on',Result:parseInt(f.Result||0,10),AcceptDate:f.AcceptDate||null,Acceptor:f.Acceptor||null,Remark:f.Remark||null},Issues:collect()};
+                $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
+        }});}
+        $('#btnAdd').on('click',function(){openForm({});});
+        table.on('tool(GridMain)',function(o){if(o.event==='edit')openForm(o.data);else if(o.event==='del')layer.confirm('确认删除?',function(idx){$.post(U_DEL,{id:o.data.Id},function(){layer.close(idx);o.del();});});});
+        render();
+    });
+</script>
+}
