@@ -239,7 +239,8 @@
                         toolbar: '#tableToolbar',
                         defaultToolbar: ['filter'],
                         // 每列下拉只保留：去重筛选(data) + 条件筛选(condition)
-                        filter: { cache: true, bottom: false, items: ['data', 'condition'] },
+                        // cache:false 关闭列布局本地缓存，避免列结构变更后 updateCols 读取旧缓存崩溃
+                        filter: { cache: false, bottom: false, items: ['data', 'condition'] },
                         cols: buildCols(),
                         done: function () {
                             try { soulTable.render(this); } catch (e) { console.error('soulTable render error', e); }
