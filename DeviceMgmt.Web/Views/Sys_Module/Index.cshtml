@@ -114,6 +114,8 @@
     layui.use(['layer','form'], function(){
         var layer = layui.layer, form = layui.form, $ = layui.$;
         var allMods = [], currentMod = null;
+        // 该 layui 版本 form 无 .off 方法，提交回调只绑定一次
+        var modSubmitBound = false, btnSubmitBound = false;
         function ok(r){ return r && (r.code === 0 || r.code === 200); }
         function load(){
             $.get('@Url.Action("List")', function(res){
@@ -222,7 +224,9 @@
                     try { form.render(); } catch(e){}
                 }
             });
-            form.off('submit(submitMod)').on('submit(submitMod)', function(data){
+            if (modSubmitBound) return;
+            modSubmitBound = true;
+            form.on('submit(submitMod)', function(data){
                 var f = data.field;
                 var payload = { Id:parseInt(f.Id||0,10), ParentId:parseInt(f.ParentId||0,10),
                     Name:f.Name||'', Code:f.Code||'', Url:f.Url||'', Icon:f.Icon||'',
@@ -257,7 +261,9 @@
                     }
                 }
             });
-            form.off('submit(submitBtn)').on('submit(submitBtn)', function(data){
+            if (btnSubmitBound) return;
+            btnSubmitBound = true;
+            form.on('submit(submitBtn)', function(data){
                 var f = data.field;
                 var payload = { Id:parseInt(f.Id||0,10), ModuleId:parseInt(f.ModuleId||0,10), Name:f.Name||'', DomId:f.DomId||'' };
                 $.ajax({ url:'@Url.Action("SaveButton")', method:'POST', contentType:'application/json', data: JSON.stringify(payload) })

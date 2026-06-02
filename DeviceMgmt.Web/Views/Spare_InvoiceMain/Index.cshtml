@@ -141,6 +141,8 @@
         var table = layui.table, layer = layui.layer, form = layui.form, laydate = layui.laydate, $ = layui.$;
         var fixedBillType = @billType; // 0 = all, 1 = in, 2 = out
         var currentStatus = '';
+        // 该 layui 版本 form 无 .off 方法，提交回调只绑定一次
+        var invSubmitBound = false;
 
         function ok(r){ return r && (r.code === 0 || r.code === 200); }
         function build(){
@@ -304,7 +306,9 @@
                 }
             });
 
-            form.off('submit(submitInv)').on('submit(submitInv)', function(data){
+            if (invSubmitBound) return;
+            invSubmitBound = true;
+            form.on('submit(submitInv)', function(data){
                 var f = data.field;
                 var subs = collectSubs();
                 if (!subs.length){ layer.msg('请添加明细',{icon:3}); return false; }
