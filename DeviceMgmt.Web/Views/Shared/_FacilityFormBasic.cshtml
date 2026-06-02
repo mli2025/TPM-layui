@@ -14,13 +14,11 @@
     </div>
     <div class="@L">
         <div class="layui-form-item">
-            <label class="layui-form-label">生产资源 *</label>
-            <div class="layui-input-block ref-resource-wrap">
+            <label class="layui-form-label">生产资源</label>
+            <div class="layui-input-block ref-resource-wrap" style="position:relative;">
                 <input type="hidden" name="ResourceId" />
-                <div style="display:flex;gap:4px;">
-                    <input type="text" readonly class="layui-input ref-resource-display" placeholder="点击右侧选择生产资源" style="flex:1;" />
-                    <button type="button" class="layui-btn layui-btn-primary ref-resource-btn" title="选择生产资源"><i class="layui-icon layui-icon-search"></i></button>
-                </div>
+                <input type="text" readonly class="layui-input ref-resource-display" placeholder="点击选择生产资源（可留空）" style="padding-right:38px;cursor:pointer;background:#fff;" />
+                <i class="layui-icon layui-icon-search ref-resource-btn" title="选择生产资源" style="position:absolute;right:1px;top:1px;width:36px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i>
             </div>
         </div>
     </div>
@@ -47,13 +45,11 @@
     </div>
     <div class="@L">
         <div class="layui-form-item">
-            <label class="layui-form-label">工作中心 *</label>
-            <div class="layui-input-block ref-dept-wrap">
+            <label class="layui-form-label">工作中心</label>
+            <div class="layui-input-block ref-dept-wrap" style="position:relative;">
                 <input type="hidden" name="DeptId" />
-                <div style="display:flex;gap:4px;">
-                    <input type="text" readonly class="layui-input ref-dept-display" placeholder="点击右侧选择部门" style="flex:1;" />
-                    <button type="button" class="layui-btn layui-btn-primary ref-dept-btn" title="选择部门"><i class="layui-icon layui-icon-search"></i></button>
-                </div>
+                <input type="text" readonly class="layui-input ref-dept-display" placeholder="点击选择工作中心" style="padding-right:38px;cursor:pointer;background:#fff;" />
+                <i class="layui-icon layui-icon-search ref-dept-btn" title="选择部门" style="position:absolute;right:1px;top:1px;width:36px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i>
             </div>
         </div>
     </div>

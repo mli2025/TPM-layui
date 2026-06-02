@@ -12,8 +12,7 @@ public static class FacilityResourceDetailSaveHelper
         if (string.IsNullOrWhiteSpace(e.FacilityCode)) return "设备编码不能为空";
         if (string.IsNullOrWhiteSpace(e.FacilityName)) return "设备名称不能为空";
         if (string.IsNullOrWhiteSpace(e.FacilityType)) return "设备类型不能为空";
-        if (isNew && e.DeptId <= 0) return "请选择工作中心（部门）";
-        if (isNew && e.ResourceId <= 0) return "请选择生产资源";
+        // ResourceId / DeptId 库内为 NOT NULL DEFAULT(0)，允许 0（未选），不强制必填
         return null;
     }
 
