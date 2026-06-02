@@ -201,6 +201,82 @@
         }
     }
 
+    // 通用设备放大镜：在 $wrap 内需含 input[type=hidden].(hiddenName) + .disp(显示框) + .btn(图标)
+    function mountDevicePicker(opts) {
+        opts = opts || {};
+        var $hid = opts.$hidden;      // 隐藏域(存 FacilityId)
+        var $disp = opts.$display;    // 只读显示框
+        var $btn = opts.$btn;         // 放大镜图标
+        var url = opts.url || '/Facility_RepairBillMain/GetDevicePickerList';
+        if (!$hid || !$hid.length || !$disp || !$disp.length) return;
+
+        function setVal(id, text) { $hid.val(id || ''); $disp.val(text || ''); }
+
+        function openPicker() {
+            if ($disp.is('[disabled]')) return;
+            layui.use(['layer', 'table'], function () {
+                var layer = layui.layer, table = layui.table;
+                var tid = 'devPick_' + new Date().getTime();
+                var html = '<div style="padding:10px 14px;">'
+                    + '<div class="layui-form" style="margin-bottom:8px;">'
+                    + '<div class="layui-input-inline" style="width:220px;">'
+                    + '<input type="text" id="' + tid + '_kw" class="layui-input" placeholder="按编码/名称/型号搜索" autocomplete="off" /></div>'
+                    + '<button type="button" class="layui-btn layui-btn-sm" id="' + tid + '_search"><i class="layui-icon layui-icon-search"></i> 搜索</button>'
+                    + '</div><table id="' + tid + '" lay-filter="' + tid + '"></table></div>';
+                var selected = null;
+                layer.open({
+                    type: 1, title: '选择设备', area: ['680px', '580px'], content: html, shadeClose: false,
+                    btn: ['确定', '取消'],
+                    success: function () {
+                        function renderTable(kw) {
+                            table.render({
+                                elem: '#' + tid, url: url, method: 'post',
+                                where: { query: kw || '' }, page: true, limit: 10, height: 400,
+                                cols: [[
+                                    { type: 'radio', width: 50 },
+                                    { field: 'FacilityCode', title: '设备编码', width: 150 },
+                                    { field: 'FacilityName', title: '设备名称', minWidth: 180 },
+                                    { field: 'Model', title: '型号', width: 130 }
+                                ]],
+                                parseData: function (res) { if (res && res.code === 200) res.code = 0; return res; },
+                                text: { none: '暂无设备数据' }
+                            });
+                        }
+                        renderTable('');
+                        table.on('radio(' + tid + ')', function (obj) { selected = obj.data; });
+                        table.on('rowDouble(' + tid + ')', function (obj) {
+                            selected = obj.data;
+                            setVal(selected.Id, (selected.FacilityName || '') + ' (' + (selected.FacilityCode || '') + ')');
+                            layer.closeAll();
+                        });
+                        $('#' + tid + '_search').on('click', function () { renderTable($('#' + tid + '_kw').val()); });
+                        $('#' + tid + '_kw').on('keydown', function (e) { if (e.keyCode === 13) { renderTable($(this).val()); return false; } });
+                    },
+                    yes: function (idx) {
+                        if (!selected) { layer.msg('请选择一台设备', { icon: 0 }); return; }
+                        setVal(selected.Id, (selected.FacilityName || '') + ' (' + (selected.FacilityCode || '') + ')');
+                        layer.close(idx);
+                    }
+                });
+            });
+        }
+
+        $btn && $btn.off('click.devPick').on('click.devPick', openPicker);
+        $disp.off('click.devPick').on('click.devPick', openPicker);
+
+        if (opts.value && opts.text) {
+            setVal(opts.value, opts.text);
+        } else if (opts.value) {
+            $hid.val(opts.value);
+            $.post(url, { page: 1, limit: 1, Id: opts.value }, function (res) {
+                if (ok(res) && res.data && res.data[0]) {
+                    var r = res.data[0];
+                    $disp.val((r.FacilityName || '') + ' (' + (r.FacilityCode || '') + ')');
+                } else { $disp.val('ID:' + opts.value); }
+            }).fail(function () { $disp.val('ID:' + opts.value); });
+        }
+    }
+
     function initFacilityFormPickers($form, entity, deptMap) {
         mountDeptPicker($form.find('.ref-dept-wrap'), {
             value: entity && entity.DeptId,
@@ -216,6 +292,7 @@
     global.RefPicker = {
         mountDeptPicker: mountDeptPicker,
         mountResourcePicker: mountResourcePicker,
+        mountDevicePicker: mountDevicePicker,
         initFacilityFormPickers: initFacilityFormPickers
     };
 })(window);

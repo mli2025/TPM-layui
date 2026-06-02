@@ -51,9 +51,19 @@ public class Facility_RepairBillMainController : BaseController
     public IActionResult SaveBill([FromBody] SaveRepairBillReq req)
     {
         if (req == null || req.Main == null) return Json(new ResponseData { code = 400, msg = "请求为空" });
-        var uid = CurrentUser?.User?.Id ?? 0;
-        var id = _app.SaveBill(req.Main, req.Subs ?? new List<Facility_RepairBillSub>(), uid);
-        return Json(new ResponseData { code = 0, data = id, msg = "ok" });
+        if (req.Main.FacilityId == null || req.Main.FacilityId <= 0)
+            return Json(new ResponseData { code = 400, msg = "请选择报修设备" });
+        try
+        {
+            var uid = CurrentUser?.User?.Id ?? 0;
+            var id = _app.SaveBill(req.Main, req.Subs ?? new List<Facility_RepairBillSub>(), uid);
+            return Json(new ResponseData { code = 0, data = id, msg = "ok" });
+        }
+        catch (Exception ex)
+        {
+            var msg = ex.InnerException?.Message ?? ex.Message;
+            return Json(new ResponseData { code = 500, msg = "保存失败：" + msg });
+        }
     }
 
     [HttpPost]
@@ -135,6 +145,43 @@ public class Facility_RepairBillMainController : BaseController
             .Select(d => new { Id = d.Id, FacilityCode = d.FacilityCode, FacilityName = d.FacilityName, Model = d.Model })
             .ToList();
         return Json(new TableData { code = 0, count = rows.Count, data = rows });
+    }
+
+    /// <summary>设备放大镜分页查询（按编码/名称/型号搜索）</summary>
+    [HttpPost]
+    public IActionResult GetDevicePickerList()
+    {
+        var page = int.TryParse(Request.Form["page"], out var pg) && pg > 0 ? pg : 1;
+        var limit = int.TryParse(Request.Form["limit"], out var lim) && lim > 0 ? lim : 10;
+        var q = Request.Form["query"].ToString();
+        if (string.IsNullOrWhiteSpace(q)) q = Request.Form["key"].ToString();
+        var idEq = Request.Form["Id"].ToString();
+
+        string where;
+        object param;
+        if (!string.IsNullOrWhiteSpace(idEq) && long.TryParse(idEq, out var did))
+        {
+            where = "[Id]=@id";
+            param = new { id = did, __skip = (page - 1) * limit, __take = limit };
+        }
+        else if (!string.IsNullOrWhiteSpace(q))
+        {
+            where = "([FacilityCode] LIKE @q OR [FacilityName] LIKE @q OR [Model] LIKE @q)";
+            param = new { q = "%" + q.Trim() + "%", __skip = (page - 1) * limit, __take = limit };
+        }
+        else
+        {
+            where = "1=1";
+            param = new { __skip = (page - 1) * limit, __take = limit };
+        }
+
+        var total = _deviceRepo.Count(where, param);
+        var rows = _deviceRepo.Query<Facility_ResourceDetail>(
+            $"SELECT * FROM [Facility_ResourceDetail] WHERE {where} ORDER BY [Id] DESC OFFSET @__skip ROWS FETCH NEXT @__take ROWS ONLY",
+            param)
+            .Select(d => new { d.Id, d.FacilityCode, d.FacilityName, d.Model, d.DeptId })
+            .ToList();
+        return Json(new TableData { code = 0, count = total, data = rows });
     }
 
     [HttpPost]
