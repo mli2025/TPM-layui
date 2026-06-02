@@ -124,7 +124,13 @@
                 renderTree();
             });
         }
-        function findById(id){ for (var i=0;i<allMods.length;i++){ if (allMods[i].Id === id) return allMods[i]; } return null; }
+        function findById(id){
+            var sid = String(id);
+            for (var i=0;i<allMods.length;i++){
+                if (String(allMods[i].Id) === sid) return allMods[i];
+            }
+            return null;
+        }
         function renderTree(){
             var byParent = {};
             allMods.forEach(function(m){ var p = m.ParentId||0; (byParent[p] = byParent[p] || []).push(m); });
