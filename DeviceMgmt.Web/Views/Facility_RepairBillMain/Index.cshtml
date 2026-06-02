@@ -348,6 +348,8 @@
 
     var currentStatus = '';
     var deviceCache = [];
+    var dlgMode = 'add';
+    var submitBound = false;
 
     layui.use(['table','layer','form','laydate'], function () {
         var table = layui.table, layer = layui.layer, form = layui.form, laydate = layui.laydate, $ = layui.$;
@@ -508,6 +510,7 @@
         }
 
         function openBillDialog(id, mode){
+            dlgMode = mode;
             layer.open({
                 type:1, area:['1100px','86%'], title: (mode==='add'?'新增报修单':(mode==='edit'?'编辑报修单':'查看报修单')),
                 content: $('#tplBillDetail').html(), shadeClose:false,
@@ -558,11 +561,14 @@
                 }
             });
 
-            form.off('submit(submitBill)').on('submit(submitBill)', function(data){
+            // 该 layui 版本的 form 无 .off 方法，提交回调只绑定一次，靠 dlgMode 区分新增/编辑
+            if (submitBound) return;
+            submitBound = true;
+            form.on('submit(submitBill)', function(data){
                 var f = data.field;
                 var payload = {
                     Main: {
-                        Id: (mode === 'add') ? 0 : parseInt(f.Id||0,10),
+                        Id: (dlgMode === 'add') ? 0 : parseInt(f.Id||0,10),
                         BillNo: f.BillNo,
                         BillDate: f.BillDate || null,
                         FacilityId: f.FacilityId ? parseInt(f.FacilityId,10) : null,

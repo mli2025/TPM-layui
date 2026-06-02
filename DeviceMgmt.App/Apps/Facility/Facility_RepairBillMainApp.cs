@@ -26,12 +26,8 @@ public class Facility_RepairBillMainApp : BaseApp<Facility_RepairBillMain>
     public long SaveBill(Facility_RepairBillMain main, List<Facility_RepairBillSub> subs, long currentUserId)
     {
         var now = DateTime.Now;
-        // 以"行是否真实存在"判定新增/更新，避免前端误带 Id 时走更新分支、
-        // 更新到不存在的行（影响 0 行、不报错）造成"提示成功但库里没有"。
-        var existing = main.Id > 0 ? Repository.FindSingle(main.Id) : null;
-        if (existing == null)
+        if (main.Id == 0)
         {
-            main.Id = 0;
             if (string.IsNullOrEmpty(main.BillNo)) main.BillNo = NextRepairBillNo();
             if (main.BillDate == null) main.BillDate = now;
             if (main.Status == null) main.Status = 0;
