@@ -1,4 +1,5 @@
 using System.Text;
+using DeviceMgmt.App.Apps.Facility;
 using DeviceMgmt.Repository.Domain;
 using DeviceMgmt.Repository.Interface;
 using DeviceMgmt.Web.Common;
@@ -68,7 +69,8 @@ public sealed class ImportService
             catch (Exception ex)
             {
                 result.Fail++;
-                result.Errors.Add($"第{lineNo}行: {ex.Message}");
+                var msg = FacilityResourceDetailSaveHelper.ToFriendlyMessage(ex);
+                result.Errors.Add($"第{lineNo}行: {msg}");
             }
         }
 

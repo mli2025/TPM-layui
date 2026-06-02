@@ -2,6 +2,7 @@ using System.Globalization;
 using DeviceMgmt.App.Apps.Facility;
 using DeviceMgmt.Repository.Domain;
 using DeviceMgmt.Repository.Interface;
+using Microsoft.Data.SqlClient;
 
 namespace DeviceMgmt.Web.Services.Import;
 
@@ -11,6 +12,9 @@ public sealed class FacilityImportHandler : IImportHandler
     private readonly IRepository<Facility_ResourceDetail> _repo;
     private readonly IRepository<Sys_Dept> _deptRepo;
     private readonly IRepository<Basic_Resource> _resourceRepo;
+
+    /// <summary>null=未检测；true=有表；false=无表</summary>
+    private bool? _resourceTableExists;
 
     public FacilityImportHandler(
         IRepository<Facility_ResourceDetail> repo,
@@ -44,10 +48,12 @@ public sealed class FacilityImportHandler : IImportHandler
         entity.Manufacturer = Get(row, "制造厂商", "Manufacturer") ?? entity.Manufacturer;
         entity.ManufactureCountry = Get(row, "制造国家", "ManufactureCountry") ?? entity.ManufactureCountry;
         entity.Supplier = Get(row, "供应商", "Supplier") ?? entity.Supplier;
-        entity.FacilityType = Get(row, "设备分类", "FacilityType") ?? entity.FacilityType;
+        entity.FacilityType = Get(row, "设备分类", "FacilityType", "设备类型") ?? entity.FacilityType;
         entity.AssetNumber = Get(row, "资产编码", "AssetNumber");
         entity.Location = Get(row, "放置区域", "Location") ?? entity.Location;
         entity.Remark = Get(row, "备注", "Remark");
+
+        if (string.IsNullOrWhiteSpace(entity.FacilityType)) entity.FacilityType = "未分类";
 
         var statusText = Get(row, "使用状态", "Status");
         if (!string.IsNullOrWhiteSpace(statusText) && TryParseStatus(statusText, out var st)) entity.Status = st;
@@ -55,31 +61,69 @@ public sealed class FacilityImportHandler : IImportHandler
         var keyText = Get(row, "关键设备", "KeyFlag");
         if (!string.IsNullOrWhiteSpace(keyText)) entity.KeyFlag = ParseKeyFlag(keyText);
 
-        var resCode = Get(row, "生产资源编码", "ResourceCode");
+        var resCode = Get(row, "生产资源编码", "生产资源组", "ResourceCode");
         if (!string.IsNullOrWhiteSpace(resCode))
         {
-            var res = _resourceRepo.FindSingle("[Code]=@c", new { c = resCode.Trim() });
-            if (res == null) return (false, false, $"生产资源编码「{resCode}」不存在");
-            entity.ResourceId = res.Id;
+            if (!TryResolveResourceId(resCode.Trim(), out var rid, out var resErr))
+                return (false, false, resErr);
+            if (rid > 0) entity.ResourceId = rid;
         }
-        else if (entity.Id == 0) return (false, false, "生产资源编码不能为空");
 
-        var deptName = Get(row, "车间名称", "DeptName");
+        var deptName = Get(row, "车间名称", "DeptName", "工作中心");
         if (!string.IsNullOrWhiteSpace(deptName))
         {
             var dept = _deptRepo.FindSingle("[DeptName]=@n", new { n = deptName.Trim() });
             if (dept == null) return (false, false, $"车间名称「{deptName}」在部门表中不存在");
             entity.DeptId = dept.Id;
         }
-        else if (entity.Id == 0) return (false, false, "车间名称不能为空");
 
-        var err = FacilityResourceDetailSaveHelper.Validate(entity, entity.Id == 0);
+        var err = FacilityResourceDetailSaveHelper.ValidateForImport(entity, entity.Id == 0);
         if (err != null) return (false, false, err);
         FacilityResourceDetailSaveHelper.Normalize(entity);
 
         if (entity.Id == 0) _repo.Insert(entity);
         else _repo.Update(entity);
         return (true, false, null);
+    }
+
+    private bool TryResolveResourceId(string code, out long resourceId, out string? error)
+    {
+        resourceId = 0;
+        error = null;
+        EnsureResourceTableChecked();
+        if (_resourceTableExists == false)
+            return true;
+
+        try
+        {
+            var res = _resourceRepo.FindSingle("[Code]=@c", new { c = code });
+            if (res == null)
+            {
+                error = $"生产资源编码「{code}」不存在（请填 Basic_Resource 表中的编码，或留空）";
+                return false;
+            }
+            resourceId = res.Id;
+            return true;
+        }
+        catch (SqlException ex) when (ex.Number == 208)
+        {
+            _resourceTableExists = false;
+            return true;
+        }
+    }
+
+    private void EnsureResourceTableChecked()
+    {
+        if (_resourceTableExists.HasValue) return;
+        try
+        {
+            _resourceRepo.Count(null);
+            _resourceTableExists = true;
+        }
+        catch (SqlException ex) when (ex.Number == 208)
+        {
+            _resourceTableExists = false;
+        }
     }
 
     private static string? Get(IDictionary<string, string> row, params string[] keys)

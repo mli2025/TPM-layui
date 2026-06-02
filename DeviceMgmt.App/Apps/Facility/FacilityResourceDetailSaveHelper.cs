@@ -17,6 +17,16 @@ public static class FacilityResourceDetailSaveHelper
         return null;
     }
 
+    /// <summary>Excel 导入校验（不要求生产资源；车间名称必填）</summary>
+    public static string? ValidateForImport(Facility_ResourceDetail e, bool isNew)
+    {
+        if (string.IsNullOrWhiteSpace(e.FacilityCode)) return "设备编码不能为空";
+        if (string.IsNullOrWhiteSpace(e.FacilityName)) return "设备名称不能为空";
+        if (string.IsNullOrWhiteSpace(e.FacilityType)) return "设备分类不能为空";
+        if (isNew && e.DeptId <= 0) return "车间名称不能为空，或系统中不存在该部门";
+        return null;
+    }
+
     public static void Normalize(Facility_ResourceDetail e)
     {
         e.FacilityCode = NullToEmpty(e.FacilityCode);
@@ -59,6 +69,12 @@ public static class FacilityResourceDetailSaveHelper
     private static string? MapSql(SqlException sql)
     {
         if (sql.Number is 2627 or 2601) return "保存失败：设备编码已存在，请更换编码";
+        if (sql.Number == 208)
+        {
+            if (sql.Message.Contains("Basic_Resource", StringComparison.OrdinalIgnoreCase))
+                return "生产资源表(Basic_Resource)未部署，可留空生产资源列或联系管理员建表";
+            return "数据库对象不存在，请联系管理员检查表结构";
+        }
         return MapNullInsert(sql.Message);
     }
 
