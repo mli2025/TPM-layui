@@ -593,11 +593,11 @@ SELECT N'保养工单',     'mt-bill',     '/Facility_BillMain/Index',       [Id
 INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
 SELECT N'维修工单',     'rp-bill',     '/Facility_RepairBillMain/Index', [Id], 1, 1, NULL FROM [Sys_Module] WHERE [Code]='repair';
 INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
-SELECT N'点检项目',     'chk-item',    '/Facility_CheckItem/Index',      [Id], 1, 1, NULL FROM [Sys_Module] WHERE [Code]='inspection';
+SELECT N'点检标准库',   'ins-standard','/Inspect_Standard/Index',        [Id], 1, 1, 'template-1' FROM [Sys_Module] WHERE [Code]='inspection';
 INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
-SELECT N'点检模板',     'chk-template','/Facility_CheckTemplate/Index',  [Id], 2, 1, NULL FROM [Sys_Module] WHERE [Code]='inspection';
+SELECT N'点检计划',     'ins-plan',    '/Inspect_Plan/Index',            [Id], 2, 1, 'date' FROM [Sys_Module] WHERE [Code]='inspection';
 INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
-SELECT N'点检工单',     'chk-bill',    '/Facility_CheckBill/Index',      [Id], 3, 1, NULL FROM [Sys_Module] WHERE [Code]='inspection';
+SELECT N'点检执行单',   'ins-record',  '/Inspect_Record/Index',          [Id], 3, 1, 'form' FROM [Sys_Module] WHERE [Code]='inspection';
 INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
 SELECT N'备件主数据',   'spare-basic', '/Basic_Spare/Index',             [Id], 1, 1, NULL FROM [Sys_Module] WHERE [Code]='spare';
 INSERT INTO [Sys_Module] ([Name], [Code], [Url], [ParentId], [Sort], [Status], [Icon])
@@ -654,7 +654,7 @@ INSERT INTO [Sys_Version] ([Version], [ReleaseDate], [Title], [Content], [IsCurr
   N'- 设备台账（含 6 个保养/点检模板挂载、维修历史）' + CHAR(10) +
   N'- 设备保养（项目/模板/工单 + 看板/日历/甘特视图）' + CHAR(10) +
   N'- 设备维修（工单 + 派工 + 批量派工 + 移动端报修）' + CHAR(10) +
-  N'- 设备点检（项目/模板/工单 只读）' + CHAR(10) +
+  N'- 设备点检（点检标准库 / 点检计划 / 点检执行单）' + CHAR(10) +
   N'- 备品备件（备件主数据 / 库存查询 / 入库 / 出库 / 全部单据）' + CHAR(10) +
   N'- 系统管理（用户 / 角色 / 部门 / 菜单 / 全局设置 / 版本记录）' + CHAR(10) +
   N'- 移动端（保养扫码 / 报修拍照上传）' + CHAR(10) +

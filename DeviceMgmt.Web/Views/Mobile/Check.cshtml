@@ -4,11 +4,10 @@
 <div class="p-3">
     <div class="flex gap-2 mb-2" x-data="{ s: new URL(location.href).searchParams.get('status') || '' }">
         <a class="m-btn flex-1" :class="s===''  ? 'primary' : ''" href="/m/check">全部</a>
-        <a class="m-btn flex-1" :class="s==='0' ? 'primary' : ''" href="/m/check?status=0">新建</a>
-        <a class="m-btn flex-1" :class="s==='2' ? 'primary' : ''" href="/m/check?status=2">进行中</a>
+        <a class="m-btn flex-1" :class="s==='0' ? 'primary' : ''" href="/m/check?status=0">待执行</a>
         <a class="m-btn flex-1" :class="s==='3' ? 'primary' : ''" href="/m/check?status=3">已完成</a>
     </div>
-    <input class="m-input mb-2" id="kw" placeholder="单号 / 备注 搜索" />
+    <input class="m-input mb-2" id="kw" placeholder="单号 / 执行人 搜索" />
     <div id="list" class="m-list">
         <div class="text-center text-slate-400 text-xs py-6">加载中...</div>
     </div>
@@ -18,11 +17,10 @@
 <script>
 (function(){
     var status = new URL(location.href).searchParams.get('status') || '';
-    function statusBadge(s){
-        var map = { 0:'新建',2:'进行中',3:'已完成',4:'已审核' };
-        var cls = { 0:'new',2:'doing',3:'done',4:'audited' };
-        var k = s == null ? 0 : s;
-        return '<span class="m-badge ' + (cls[k]||'') + '">' + (map[k]||k) + '</span>';
+    function statusBadge(s, kind){
+        if (kind === 'plan' && (s === 0 || s === '0')) return '<span class="m-badge new">待执行</span>';
+        if (s === 3 || s === '3') return '<span class="m-badge done">已完成</span>';
+        return '<span class="m-badge">' + (s == null ? '-' : s) + '</span>';
     }
     function fmt(s){ return s ? String(s).substring(0,16).replace('T',' ') : ''; }
     function load(){
@@ -31,12 +29,17 @@
             .then(function(res){
                 if (!M.ok(res)){ document.getElementById('list').innerHTML = '<div class="text-center text-red-500 text-xs py-6">' + (res.msg||'加载失败') + '</div>'; return; }
                 var arr = res.data || [];
-                if (!arr.length){ document.getElementById('list').innerHTML = '<div class="text-center text-slate-400 text-xs py-6">暂无数据</div>'; return; }
+                if (!arr.length){ document.getElementById('list').innerHTML = '<div class="text-center text-slate-400 text-xs py-6">暂无点检执行单</div>'; return; }
                 document.getElementById('list').innerHTML = arr.map(function(b){
-                    return '<a class="m-list-item" href="/m/check/detail?id=' + b.Id + '">'
+                    var href = b.TaskKind === 'plan'
+                        ? '/m/check/detail?planId=' + b.Id
+                        : '/m/check/detail?id=' + b.Id;
+                    var no = b.BillNo || ('#' + b.Id);
+                    var dev = b.FacilityName || b.FacilityID || '-';
+                    return '<a class="m-list-item" href="' + href + '">'
                         + '<div class="flex-1 min-w-0">'
-                        + '<div class="flex items-center gap-2"><span class="font-medium truncate">' + (b.BillNo||'-') + '</span>' + statusBadge(b.Status) + '</div>'
-                        + '<div class="text-xs text-slate-500 mt-1 truncate">设备: ' + (b.FacilityID||'-') + ' · 计划: ' + fmt(b.BeginDate) + '</div>'
+                        + '<div class="flex items-center gap-2"><span class="font-medium truncate">' + no + '</span>' + statusBadge(b.Status, b.TaskKind) + '</div>'
+                        + '<div class="text-xs text-slate-500 mt-1 truncate">设备: ' + dev + ' · ' + fmt(b.BeginDate) + (b.Executor ? ' · ' + b.Executor : '') + '</div>'
                         + '</div>'
                         + '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 mt-1"></i>'
                         + '</a>';

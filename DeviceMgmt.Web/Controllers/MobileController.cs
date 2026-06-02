@@ -1,4 +1,5 @@
 using DeviceMgmt.App.Apps.Facility;
+using DeviceMgmt.App.Apps.Inspect;
 using DeviceMgmt.App.Interface;
 using DeviceMgmt.App.Response;
 using DeviceMgmt.Repository.Domain;
@@ -25,6 +26,12 @@ public class MobileController : BaseController
     private readonly IRepository<Special_Equipment> _specialRepo;
     private readonly IRepository<Safety_Accessory> _safetyRepo;
     private readonly IWebHostEnvironment _env;
+    private readonly Inspect_RecordApp _inspectRecordApp;
+    private readonly Inspect_PlanApp _inspectPlanApp;
+    private readonly Inspect_StandardApp _inspectStdApp;
+    private readonly IRepository<Inspect_Plan> _inspectPlanRepo;
+    private readonly IRepository<Inspect_Record> _inspectRecordRepo;
+    private readonly IRepository<Inspect_Standard> _inspectStdRepo;
 
     public MobileController(
         IAuth auth,
@@ -39,7 +46,13 @@ public class MobileController : BaseController
         IRepository<Meter> meterRepo,
         IRepository<Special_Equipment> specialRepo,
         IRepository<Safety_Accessory> safetyRepo,
-        IWebHostEnvironment env) : base(auth)
+        IWebHostEnvironment env,
+        Inspect_RecordApp inspectRecordApp,
+        Inspect_PlanApp inspectPlanApp,
+        Inspect_StandardApp inspectStdApp,
+        IRepository<Inspect_Plan> inspectPlanRepo,
+        IRepository<Inspect_Record> inspectRecordRepo,
+        IRepository<Inspect_Standard> inspectStdRepo) : base(auth)
     {
         _billApp = billApp;
         _repairApp = repairApp;
@@ -53,6 +66,12 @@ public class MobileController : BaseController
         _specialRepo = specialRepo;
         _safetyRepo = safetyRepo;
         _env = env;
+        _inspectRecordApp = inspectRecordApp;
+        _inspectPlanApp = inspectPlanApp;
+        _inspectStdApp = inspectStdApp;
+        _inspectPlanRepo = inspectPlanRepo;
+        _inspectRecordRepo = inspectRecordRepo;
+        _inspectStdRepo = inspectStdRepo;
     }
 
     [HttpGet("")]
@@ -83,19 +102,20 @@ public class MobileController : BaseController
     [HttpGet("check")]
     public IActionResult Check()
     {
-        ViewBag.PageTitle = "点检待办";
+        ViewBag.PageTitle = "点检执行单";
         ViewBag.ActiveTab = "check";
         return View("Check");
     }
 
     [HttpGet("check/detail")]
-    public IActionResult CheckDetail([FromQuery] long id)
+    public IActionResult CheckDetail([FromQuery] long? id, [FromQuery] long? planId)
     {
-        ViewBag.PageTitle = "点检单详情";
+        ViewBag.PageTitle = "点检执行单";
         ViewBag.ActiveTab = "check";
         ViewBag.ShowBack = true;
         ViewBag.HideTabBar = true;
-        ViewBag.Id = id;
+        ViewBag.Id = id ?? 0;
+        ViewBag.PlanId = planId ?? 0;
         return View("CheckDetail");
     }
 
@@ -236,20 +256,131 @@ public class MobileController : BaseController
     [HttpGet("api/check")]
     public IActionResult ApiCheckList([FromQuery] string? status = null, [FromQuery] string? kw = null)
     {
-        var conds = new List<string> { "[BillType]='INSPECTION'" };
-        var p = new Dictionary<string, object?>();
-        if (!string.IsNullOrEmpty(status))
+        var rows = new List<object>();
+        var donePlanIds = _inspectRecordRepo.Find("[ExecTime] IS NOT NULL", null, "[Id] DESC")
+            .Where(r => r.PlanId.HasValue).Select(r => r.PlanId!.Value).Distinct().ToHashSet();
+
+        if (string.IsNullOrEmpty(status) || status == "0")
         {
-            conds.Add("[Status]=@status");
-            p["status"] = int.Parse(status);
+            var plans = _inspectPlanRepo.Find("([Status] IS NULL OR [Status]=0)", null, "[PlanDate] DESC").Take(200).ToList();
+            foreach (var plan in plans)
+            {
+                if (donePlanIds.Contains(plan.Id)) continue;
+                if (!string.IsNullOrWhiteSpace(kw))
+                {
+                    var k = kw.Trim();
+                    if ((plan.PlanNo ?? "").IndexOf(k, StringComparison.OrdinalIgnoreCase) < 0
+                        && (plan.Executor ?? "").IndexOf(k, StringComparison.OrdinalIgnoreCase) < 0)
+                        continue;
+                }
+                var std = _inspectStdRepo.FindSingle(plan.StandardId);
+                rows.Add(new
+                {
+                    TaskKind = "plan",
+                    Id = plan.Id,
+                    BillNo = plan.PlanNo,
+                    FacilityID = std?.FacilityId,
+                    FacilityName = std?.FacilityName,
+                    BeginDate = plan.PlanDate,
+                    Status = 0,
+                    Executor = plan.Executor
+                });
+            }
         }
-        if (!string.IsNullOrWhiteSpace(kw))
+
+        if (string.IsNullOrEmpty(status) || status == "3")
         {
-            conds.Add("([BillNo] LIKE @k OR [Remark] LIKE @k)");
-            p["k"] = "%" + kw + "%";
+            var recConds = new List<string> { "[ExecTime] IS NOT NULL" };
+            var rp = new Dictionary<string, object?>();
+            if (!string.IsNullOrWhiteSpace(kw))
+            {
+                recConds.Add("([RecordNo] LIKE @k OR [Remark] LIKE @k OR [Executor] LIKE @k)");
+                rp["k"] = "%" + kw.Trim() + "%";
+            }
+            var records = _inspectRecordRepo.Find(string.Join(" AND ", recConds), rp, "[ExecTime] DESC").Take(100);
+            foreach (var rec in records)
+            {
+                rows.Add(new
+                {
+                    TaskKind = "record",
+                    Id = rec.Id,
+                    BillNo = rec.RecordNo,
+                    FacilityID = rec.FacilityId,
+                    BeginDate = rec.ExecTime,
+                    Status = 3,
+                    Executor = rec.Executor,
+                    Result = rec.Result
+                });
+            }
         }
-        var rows = _billRepo.Find(string.Join(" AND ", conds), p, "[Id] DESC").Take(100).ToList();
-        return Json(new ResponseData { code = 0, data = rows });
+
+        var sorted = rows
+            .Select(x =>
+            {
+                var t = x.GetType();
+                var dt = t.GetProperty("BeginDate")?.GetValue(x) as DateTime?;
+                return (Key: dt ?? DateTime.MinValue, Row: x);
+            })
+            .OrderByDescending(x => x.Key)
+            .Take(100)
+            .Select(x => x.Row)
+            .ToList();
+        return Json(new ResponseData { code = 0, data = sorted });
+    }
+
+    [HttpGet("api/check/detail")]
+    public IActionResult ApiCheckDetail([FromQuery] long? id, [FromQuery] long? planId)
+    {
+        if (planId > 0)
+        {
+            var plan = _inspectPlanApp.Get(planId.Value);
+            if (plan == null) return Json(new ResponseData { code = 404, msg = "计划不存在" });
+            var std = _inspectStdRepo.FindSingle(plan.StandardId);
+            var items = _inspectStdApp.GetSubs(plan.StandardId);
+            return Json(new ResponseData
+            {
+                code = 0,
+                data = new
+                {
+                    taskKind = "plan",
+                    plan,
+                    main = new Inspect_Record { PlanId = plan.Id, FacilityId = std?.FacilityId },
+                    subs = items.Select(i => new { ItemName = i.ItemName, Method = i.Method, Standard = i.Standard })
+                }
+            });
+        }
+
+        if (id > 0)
+        {
+            var main = _inspectRecordApp.Get(id.Value);
+            if (main == null) return Json(new ResponseData { code = 404, msg = "执行单不存在" });
+            var subs = _inspectRecordApp.GetSubs(id.Value);
+            return Json(new ResponseData { code = 0, data = new { taskKind = "record", main, subs } });
+        }
+
+        return Json(new ResponseData { code = 400, msg = "缺少 id 或 planId" });
+    }
+
+    [HttpPost("api/check/submit")]
+    public IActionResult ApiCheckSubmit([FromBody] CheckSubmitReq req)
+    {
+        if (req?.Main == null) return Json(new ResponseData { code = 400, msg = "参数错误" });
+        if (string.IsNullOrWhiteSpace(req.Main.Executor))
+            req.Main.Executor = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account;
+        var items = (req.Items ?? new List<CheckSubmitItem>()).Select(i => new Inspect_RecordSub
+        {
+            ItemName = i.ItemName,
+            ResultValue = i.ResultValue,
+            IsNormal = i.IsNormal,
+            Remark = i.Remark
+        });
+        var rid = _inspectRecordApp.Submit(req.Main, items);
+        if (req.Main.PlanId > 0)
+        {
+            var plan = _inspectPlanApp.Get(req.Main.PlanId.Value);
+            if (plan != null) { plan.Status = 1; _inspectPlanRepo.Update(plan); }
+        }
+        return Json(new ResponseData { code = 0, data = rid, msg = "ok" });
     }
 
     [HttpGet("api/repair")]
@@ -496,5 +627,19 @@ public class RepairFinishReq
     public string? RepairDescr { get; set; }
     public string? FaultAnalysis { get; set; }
     public string? PreventiveMeasure { get; set; }
+    public string? Remark { get; set; }
+}
+
+public class CheckSubmitReq
+{
+    public Inspect_Record? Main { get; set; }
+    public List<CheckSubmitItem>? Items { get; set; }
+}
+
+public class CheckSubmitItem
+{
+    public string? ItemName { get; set; }
+    public string? ResultValue { get; set; }
+    public bool IsNormal { get; set; } = true;
     public string? Remark { get; set; }
 }
