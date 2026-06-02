@@ -8,6 +8,7 @@ using DeviceMgmt.Repository.Domain;
 using DeviceMgmt.Repository.Interface;
 using DeviceMgmt.Web.Common;
 using DeviceMgmt.Web.Controllers.Base;
+using DeviceMgmt.Web.Services.Import;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DeviceMgmt.Web.Controllers.Facility;
@@ -18,18 +19,27 @@ public class Facility_ResourceDetailController : BaseController
     private readonly EmployeeApp _empApp;
     private readonly IRepository<Facility_TheTemplateMain> _tplRepo;
     private readonly IRepository<Facility_BillMain> _billRepo;
+    private readonly IRepository<Sys_Dept> _deptRepo;
+    private readonly IRepository<Basic_Resource> _resourceRepo;
+    private readonly ImportService _import;
 
     public Facility_ResourceDetailController(
         IAuth auth,
         Facility_ResourceDetailApp app,
         EmployeeApp empApp,
         IRepository<Facility_TheTemplateMain> tplRepo,
-        IRepository<Facility_BillMain> billRepo) : base(auth)
+        IRepository<Facility_BillMain> billRepo,
+        IRepository<Sys_Dept> deptRepo,
+        IRepository<Basic_Resource> resourceRepo,
+        ImportService import) : base(auth)
     {
         _app = app;
         _empApp = empApp;
         _tplRepo = tplRepo;
         _billRepo = billRepo;
+        _deptRepo = deptRepo;
+        _resourceRepo = resourceRepo;
+        _import = import;
     }
 
     public IActionResult Index() => View();
@@ -119,7 +129,104 @@ public class Facility_ResourceDetailController : BaseController
     public IActionResult GetMainInfo([FromQuery] long Id)
     {
         var data = _app.Get(Id);
-        return Json(new ResponseData { code = 0, data = data });
+        if (data == null) return Json(new ResponseData { code = 404, msg = "记录不存在" });
+        string? deptName = null;
+        if (data.DeptId > 0)
+        {
+            var dept = _deptRepo.FindSingle(data.DeptId);
+            deptName = dept?.DeptName;
+        }
+        string? resourceDisplay = null;
+        if (data.ResourceId > 0)
+        {
+            try
+            {
+                var res = _resourceRepo.FindSingle(data.ResourceId);
+                if (res != null) resourceDisplay = (res.Code ?? "") + " / " + (res.Name ?? "");
+            }
+            catch { /* Basic_Resource 表可能不存在于部分环境 */ }
+        }
+        return Json(new ResponseData
+        {
+            code = 0,
+            data = new
+            {
+                data.Id,
+                data.FacilityCode,
+                data.FacilityName,
+                data.FacilityType,
+                data.ResourceId,
+                ResourceDisplay = resourceDisplay,
+                data.Manufacturer,
+                data.Supplier,
+                data.ManufacturerDate,
+                data.ManufactureCountry,
+                data.Model,
+                data.ExpireDate,
+                data.PurchasePrice,
+                data.PurchaseDate,
+                data.SerialNumber,
+                data.EquipmentManual,
+                data.EquipmentDrawing,
+                data.Location,
+                data.DeptId,
+                DeptName = deptName,
+                data.AssetNumber,
+                data.Voltage,
+                data.Size,
+                data.Weight,
+                data.The5STemplateMainId,
+                data.TheTemplateMainId,
+                data.UseCondition,
+                data.LastCheckDate,
+                data.NextCheckDate,
+                data.LastRepairDate,
+                data.AssetManager,
+                data.FacilitySign,
+                data.Continuous_WorkTime,
+                data.RunTime,
+                data.ElectrifyTime,
+                data.Continuous_Qty,
+                data.Status,
+                data.InWarehouseUserId,
+                data.InWarehouseDate,
+                data.CreateDate,
+                data.CreateUserId,
+                data.TerminalAddress,
+                data.FormulaIds,
+                data.MonthTempId,
+                data.SeasonTempId,
+                data.HalfYearTempId,
+                data.WeekTempId,
+                data.YearTempId,
+                data.LastMonthMainTainDate,
+                data.LastYSeasonMainTainDate,
+                data.LastHalfYearMainTainDate,
+                data.LastYearMainTainDate,
+                data.Type,
+                data.Standard,
+                data.Keeper,
+                data.MonthPlanDay,
+                data.MonthWeek,
+                data.Remark,
+                data.AcceptanceDate,
+                data.NWXCode,
+                data.KeyFlag,
+                data.StandardYears,
+                data.EntityId,
+                data.ManufactureNumber,
+                data.EquipmentBodyNumber,
+                data.MeasurementRange,
+                data.Resolution,
+                data.Accuracy,
+                data.CalibrationDate,
+                data.CalibrationCycle,
+                data.CalibrationExpirationDate,
+                data.CalibrationExpirationWarningDays,
+                data.Custodian,
+                data.ActualValue
+            }
+        });
     }
 
     [HttpGet]
@@ -166,15 +273,41 @@ public class Facility_ResourceDetailController : BaseController
         var res = new ResponseData();
         try
         {
-            if (entity.Id == 0) _app.Add(entity);
+            var isNew = entity.Id == 0;
+            var err = FacilityResourceDetailSaveHelper.Validate(entity, isNew);
+            if (err != null) return Json(new ResponseData { code = 400, msg = err });
+            FacilityResourceDetailSaveHelper.Normalize(entity);
+            if (isNew) _app.Add(entity);
             else _app.Update(entity);
         }
         catch (Exception ex)
         {
             res.code = 500;
-            res.msg = ex.Message;
+            res.msg = FacilityResourceDetailSaveHelper.ToFriendlyMessage(ex);
         }
         return Json(res);
+    }
+
+    [HttpGet]
+    public IActionResult ImportTemplate()
+    {
+        var bytes = _import.BuildTemplate(FacilityImportHandler.BizTypeConst);
+        if (bytes == null) return Json(new ResponseData { code = 400, msg = "导入模板不可用" });
+        return File(bytes, "application/vnd.ms-excel", "设备台账导入模板.xls");
+    }
+
+    [HttpPost]
+    public IActionResult ImportExcel(IFormFile? file)
+    {
+        if (file == null || file.Length == 0) return Json(new ResponseData { code = 400, msg = "请选择 Excel 文件" });
+        using var stream = file.OpenReadStream();
+        var result = _import.Import(FacilityImportHandler.BizTypeConst, stream, file.FileName, CurrentUser?.User?.Id);
+        return Json(new ResponseData
+        {
+            code = 0,
+            msg = "ok",
+            data = new { result.Total, result.Success, result.Fail, result.Skip, errors = result.Errors.Take(50) }
+        });
     }
 
     [HttpPost]

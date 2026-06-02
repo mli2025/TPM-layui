@@ -44,6 +44,8 @@
                 <div class="layui-col-md4" style="text-align:right;">
                     <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 查询</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnImportTpl"><i class="layui-icon layui-icon-template-1"></i> 导入模板</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnImport"><i class="layui-icon layui-icon-upload"></i> 导入</button>
                     <button class="layui-btn layui-btn-sm layui-btn-warm" id="btnExport"><i class="layui-icon layui-icon-download-circle"></i> 导出</button>
                 </div>
             </div>
@@ -150,10 +152,12 @@
         var URL_EXPORT         = '@Url.Action("ExportExcel")';
         var URL_TPL_OPTS       = '@Url.Action("GetTemplateOptions")';
         var URL_HISTORY        = '@Url.Action("GetFacilityHistory")';
+        var URL_IMPORT_TPL     = '@Url.Action("ImportTemplate")';
+        var URL_IMPORT         = '@Url.Action("ImportExcel")';
 
         // soul-table 模块已在布局 _LayoutInner.cshtml 全局注册，这里直接使用
-        layui.use(['table', 'form', 'layer', 'laydate', 'element', 'soulTable'], function () {
-            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, element = layui.element;
+        layui.use(['table', 'form', 'layer', 'laydate', 'element', 'soulTable', 'upload'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, element = layui.element, upload = layui.upload;
             function ok(res) { return res && (res.code === 0 || res.code === 200); }
             function toast(msg) { layer.msg(msg || ''); }
             function toastOk(msg) { layer.msg(msg || '操作成功', { icon: 1 }); }
@@ -234,6 +238,16 @@
                 if (!id) return '';
                 for (var i=0;i<__DEPTS__.length;i++){ if (String(__DEPTS__[i].Id) === String(id)) return __DEPTS__[i].DeptName; }
                 return id;
+            }
+            function deptMapObj() {
+                var m = {};
+                __DEPTS__.forEach(function (d) { m[String(d.Id)] = d.DeptName || ''; });
+                return m;
+            }
+            function bindFacilityPickers(entity) {
+                try {
+                    if (window.RefPicker) RefPicker.initFacilityFormPickers($('#facilityForm'), entity || null, deptMapObj());
+                } catch (e) { }
             }
             function loadDepts(){
                 return $.get('/Sys_Dept/List', function(res){
@@ -353,6 +367,7 @@
                         try { element.render('tab'); } catch (e) {}
                         try { bindDates(); } catch (e) {}
                         try { form.render(); } catch (e) {}
+                        bindFacilityPickers(null);
 
                         // 模板下拉：立即开始异步加载（不等主数据）
                         loadTemplatesForEntity(null);
@@ -362,6 +377,7 @@
                                 if (!ok(res) || !res.data) { toastErr(res && res.msg || '加载失败'); return; }
                                 __dialogState.entity = res.data;
                                 fillForm(res.data);
+                                bindFacilityPickers(res.data);
                                 if (isView) lockForm();
                                 // 主数据到了，再次设置一遍模板下拉值（防止模板比主数据先到导致没选中）
                                 TPL_CYCLES.forEach(function (c) {
@@ -373,7 +389,7 @@
                                 try { if (window.AttachmentWidget) AttachmentWidget.mount({ container: '#facilityAttachPanel', businessType: 'facility', businessId: row.Id, readonly: isView }); } catch (e) {}
                             }).fail(function () { toastErr('加载失败，请检查网络或服务'); });
                         } else {
-                            fillForm({ Id: 0, Status: 0, EntityId: 1 });
+                            fillForm({ Id: 0, Status: 0, KeyFlag: 0 });
                             $('#facilityAttachPanel').html('<div style="color:#999;padding:8px">保存后可上传附件</div>');
                         }
 
@@ -388,6 +404,7 @@
                     yes: function (idx) {
                         if (isView) { layer.close(idx); return; }
                         var data = collectForm();
+                        if (!data) return;
                         $.post(URL_SAVE, data, function (res) {
                             if (ok(res)) {
                                 layer.close(idx);
@@ -422,17 +439,44 @@
                 form.render();
             }
 
+            var INT_FIELDS = {
+                ResourceId: 1, DeptId: 1, KeyFlag: 1, Type: 1, Status: 1, EntityId: 1,
+                Voltage: 1, Weight: 1, Continuous_WorkTime: 1, RunTime: 1, ElectrifyTime: 1,
+                Continuous_Qty: 1, MonthWeek: 1, CalibrationExpirationWarningDays: 1,
+                The5STemplateMainId: 1, TheTemplateMainId: 1, MonthTempId: 1, SeasonTempId: 1,
+                HalfYearTempId: 1, WeekTempId: 1, YearTempId: 1, MonthPlanDay: 1
+            };
+
             function collectForm() {
                 var data = {};
+                var invalid = false;
                 $('#facilityForm *[name]').each(function () {
                     var $el = $(this);
                     var name = $el.attr('name');
                     if (!name) return;
                     var v = $el.val();
                     if ($el.is('select') && v === '') v = null;
+                    if (INT_FIELDS[name]) {
+                        if (v === '' || v == null) {
+                            data[name] = null;
+                            return;
+                        }
+                        var n = parseInt(v, 10);
+                        if (isNaN(n)) {
+                            if (name === 'CalibrationExpirationWarningDays') {
+                                toastErr('过期预警天数必须为整数');
+                                invalid = true;
+                            } else {
+                                data[name] = null;
+                            }
+                            return;
+                        }
+                        data[name] = n;
+                        return;
+                    }
                     data[name] = v;
                 });
-                return data;
+                return invalid ? null : data;
             }
 
             function bindHistoryTab(facilityId) {
@@ -472,6 +516,26 @@
 
             // 导出当前“筛选后/排序后/列顺序”的表格（前端导出，所见即所得）
             $('#btnExport').on('click', function () { SoulGrid.export('GridMain'); });
+
+            $('#btnImportTpl').on('click', function () { window.location.href = URL_IMPORT_TPL; });
+
+            upload.render({
+                elem: '#btnImport', url: URL_IMPORT, auto: true, accept: 'file',
+                exts: 'xls|xlsx|csv', field: 'file',
+                before: function () { layer.load(2); },
+                done: function (res) {
+                    layer.closeAll('loading');
+                    if (!ok(res)) { toastErr((res && res.msg) || '导入失败'); return; }
+                    var d = res.data || {};
+                    var errs = (d.errors || []).join('<br>');
+                    layer.open({
+                        type: 1, title: '导入结果', area: ['560px', 'auto'],
+                        content: '<div style="padding:14px;">总数 ' + (d.Total || 0) + '，成功 <b style="color:#16a34a;">' + (d.Success || 0) + '</b>，失败 <b style="color:#dc2626;">' + (d.Fail || 0) + '</b>，跳过 ' + (d.Skip || 0) + '<hr>' + (errs || '无错误') + '</div>'
+                    });
+                    loadData();
+                },
+                error: function () { layer.closeAll('loading'); toastErr('上传出错'); }
+            });
 
             table.on('tool(GridMain)', function (obj) {
                 if (obj.event === 'view') openDialog('view', obj.data);

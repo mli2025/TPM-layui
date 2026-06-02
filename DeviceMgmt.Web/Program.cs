@@ -148,6 +148,7 @@ try
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Spare.Spare_StockCheckApp>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.ImportService>();
     builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.IImportHandler, DeviceMgmt.Web.Services.Import.SpareImportHandler>();
+    builder.Services.AddScoped<DeviceMgmt.Web.Services.Import.IImportHandler, DeviceMgmt.Web.Services.Import.FacilityImportHandler>();
 
     // Facility
     builder.Services.AddScoped<Facility_ResourceDetailApp>();
