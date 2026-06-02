@@ -27,6 +27,10 @@ public class ModuleApp : BaseApp<Sys_Module>
         _groupModuleRepo = groupModuleRepo;
     }
 
+    /// <summary>仅返回启用菜单（Status=1），停用项不进入侧边栏。</summary>
+    private static List<Sys_Module> OnlyEnabled(IEnumerable<Sys_Module> modules)
+        => modules.Where(m => m.Status == 1).ToList();
+
     public List<Sys_Module> GetModulesByUser(long userId)
     {
         long[] roleIds;
@@ -37,7 +41,7 @@ public class ModuleApp : BaseApp<Sys_Module>
         catch (SqlException ex) when (ex.Number == 208)
         {
             // Table missing (e.g. hamaton DB has Sys_User but not Sys_UserRole) — show all modules
-            return Repository.Find().ToList();
+            return OnlyEnabled(Repository.Find());
         }
 
         // URS 408：用户最终权限 = 直属角色权限 ∪ 所属各用户组权限（并集）
@@ -50,7 +54,7 @@ public class ModuleApp : BaseApp<Sys_Module>
                 foreach (var mid in _roleModuleRepo.Find("[RoleId] IN @rids", new { rids = roleIds }).Select(x => x.ModuleId))
                     moduleIdSet.Add(mid);
             }
-            catch (SqlException ex) when (ex.Number == 208) { return Repository.Find().ToList(); }
+            catch (SqlException ex) when (ex.Number == 208) { return OnlyEnabled(Repository.Find()); }
         }
 
         try
@@ -64,17 +68,17 @@ public class ModuleApp : BaseApp<Sys_Module>
         }
         catch (SqlException ex) when (ex.Number == 208) { /* 用户组表缺失则忽略组权限 */ }
 
-        // 既无角色也无用户组绑定：默认放开全部菜单（兼容旧库/admin 初始）
-        if (roleIds.Length == 0 && moduleIdSet.Count == 0) return Repository.Find().ToList();
+        // 既无角色也无用户组绑定：默认放开全部启用菜单（兼容旧库/admin 初始）
+        if (roleIds.Length == 0 && moduleIdSet.Count == 0) return OnlyEnabled(Repository.Find());
         if (moduleIdSet.Count == 0) return new List<Sys_Module>();
 
         try
         {
-            return Repository.Find("[Id] IN @mids", new { mids = moduleIdSet.ToArray() }, "[Sort] ASC").ToList();
+            return OnlyEnabled(Repository.Find("[Id] IN @mids", new { mids = moduleIdSet.ToArray() }, "[Sort] ASC"));
         }
         catch (SqlException ex) when (ex.Number == 208)
         {
-            return Repository.Find().ToList();
+            return OnlyEnabled(Repository.Find());
         }
     }
 

@@ -3,7 +3,7 @@
    Target: SQL Server 2017+   Database: [TPM]
    内容：
      1) 点检新流程菜单迁至「设备点检」顶级模块（ins-standard / ins-plan / ins-record）
-     2) 停用旧版点检菜单（chk-item / chk-template / chk-bill）
+     2) 删除旧版点检菜单（chk-item / chk-template / chk-bill）及角色/组权限绑定
    幂等：可重复执行。
    ============================================================================= */
 SET NOCOUNT ON;
@@ -45,8 +45,23 @@ UPDATE m SET m.[ParentId] = p.[Id]
    AND m.[ParentId] <> p.[Id];
 GO
 
-/* 停用旧版点检（Facility 只读链路） */
-UPDATE [Sys_Module] SET [Status] = 0 WHERE [Code] IN ('chk-item','chk-template','chk-bill');
+/* 删除旧版点检菜单（Facility 遗留链路；页面代码保留仅供历史数据查阅） */
+IF OBJECT_ID(N'[Sys_UserGroupModule]', N'U') IS NOT NULL
+BEGIN
+    DELETE ugm FROM [Sys_UserGroupModule] ugm
+     INNER JOIN [Sys_Module] m ON m.[Id] = ugm.[ModuleId]
+     WHERE m.[Code] IN ('chk-item','chk-template','chk-bill');
+END
+GO
+DELETE rm FROM [Sys_RoleModule] rm
+ INNER JOIN [Sys_Module] m ON m.[Id] = rm.[ModuleId]
+ WHERE m.[Code] IN ('chk-item','chk-template','chk-bill');
+GO
+DELETE b FROM [Sys_ModuleButtons] b
+ INNER JOIN [Sys_Module] m ON m.[Id] = b.[ModuleId]
+ WHERE m.[Code] IN ('chk-item','chk-template','chk-bill');
+GO
+DELETE FROM [Sys_Module] WHERE [Code] IN ('chk-item','chk-template','chk-bill');
 GO
 
 INSERT INTO [Sys_RoleModule] ([RoleId], [ModuleId])
@@ -64,9 +79,9 @@ IF EXISTS (SELECT 1 FROM [Sys_Version] WHERE [Version] = 'v2.1.2')
 BEGIN
     UPDATE [Sys_Version]
        SET [ReleaseDate] = getdate(),
-           [Title]   = N'点检菜单独立：新流程迁至设备点检，停用旧点检项目/模板/工单',
+           [Title]   = N'点检菜单独立：新流程迁至设备点检，删除旧点检项目/模板/工单',
            [Content] = N'- 保留 URS 701-706 点检标准库 / 点检计划 / 点检执行单，菜单挂「设备点检」' + CHAR(10) +
-                       N'- 停用旧版点检项目、点检模板、点检工单（Facility 只读链路）' + CHAR(10) +
+                       N'- 删除旧版点检项目、点检模板、点检工单菜单及权限绑定' + CHAR(10) +
                        N'- PC 与移动端统一使用「点检执行单」名称',
            [IsCurrent] = 1, [Author] = N'arbore'
      WHERE [Version] = 'v2.1.2';
@@ -75,9 +90,9 @@ ELSE
 BEGIN
     INSERT INTO [Sys_Version] ([Version],[ReleaseDate],[Title],[Content],[IsCurrent],[Author])
     VALUES ('v2.1.2', getdate(),
-        N'点检菜单独立：新流程迁至设备点检，停用旧点检项目/模板/工单',
+        N'点检菜单独立：新流程迁至设备点检，删除旧点检项目/模板/工单',
         N'- 保留 URS 701-706 点检标准库 / 点检计划 / 点检执行单，菜单挂「设备点检」' + CHAR(10) +
-        N'- 停用旧版点检项目、点检模板、点检工单（Facility 只读链路）' + CHAR(10) +
+        N'- 删除旧版点检项目、点检模板、点检工单菜单及权限绑定' + CHAR(10) +
         N'- PC 与移动端统一使用「点检执行单」名称',
         1, N'arbore');
 END
