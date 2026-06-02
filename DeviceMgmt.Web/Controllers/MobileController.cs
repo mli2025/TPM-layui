@@ -1,5 +1,6 @@
 using DeviceMgmt.App.Apps.Facility;
 using DeviceMgmt.App.Apps.Inspect;
+using DeviceMgmt.App.Apps.System;
 using DeviceMgmt.App.Interface;
 using DeviceMgmt.App.Response;
 using DeviceMgmt.Repository.Domain;
@@ -32,6 +33,8 @@ public class MobileController : BaseController
     private readonly IRepository<Inspect_Plan> _inspectPlanRepo;
     private readonly IRepository<Inspect_Record> _inspectRecordRepo;
     private readonly IRepository<Inspect_Standard> _inspectStdRepo;
+    private readonly IRepository<Inspect_PlanRole> _inspectPlanRoleRepo;
+    private readonly RoleApp _roleApp;
 
     public MobileController(
         IAuth auth,
@@ -52,7 +55,9 @@ public class MobileController : BaseController
         Inspect_StandardApp inspectStdApp,
         IRepository<Inspect_Plan> inspectPlanRepo,
         IRepository<Inspect_Record> inspectRecordRepo,
-        IRepository<Inspect_Standard> inspectStdRepo) : base(auth)
+        IRepository<Inspect_Standard> inspectStdRepo,
+        IRepository<Inspect_PlanRole> inspectPlanRoleRepo,
+        RoleApp roleApp) : base(auth)
     {
         _billApp = billApp;
         _repairApp = repairApp;
@@ -72,6 +77,8 @@ public class MobileController : BaseController
         _inspectPlanRepo = inspectPlanRepo;
         _inspectRecordRepo = inspectRecordRepo;
         _inspectStdRepo = inspectStdRepo;
+        _inspectPlanRoleRepo = inspectPlanRoleRepo;
+        _roleApp = roleApp;
     }
 
     [HttpGet("")]
@@ -253,14 +260,45 @@ public class MobileController : BaseController
         return Json(new ResponseData { code = 0, msg = "ok" });
     }
 
+    /// <summary>移动端点检待办：按「当前登录人所属角色」加载计划下的执行单（当期 + 之前未点检=漏检）。
+    /// 支持扫码/输入设备编码 code 定位该设备的待检单。多人可见，提交时原子防重。</summary>
     [HttpGet("api/check")]
-    public IActionResult ApiCheckList([FromQuery] string? status = null, [FromQuery] string? kw = null)
+    public IActionResult ApiCheckList([FromQuery] string? status = null, [FromQuery] string? kw = null, [FromQuery] string? code = null)
     {
         // 执行单维度：ExecTime 为空=待执行(0)，非空=已完成(3)
         var conds = new List<string>();
         var p = new Dictionary<string, object?>();
-        if (status == "0") conds.Add("[ExecTime] IS NULL");
+
+        // 按角色过滤：取当前用户角色 -> 角色关联的计划 -> 仅这些计划的执行单。无角色则不限制（兼容未配置角色场景）。
+        var uid = CurrentUser?.User?.Id ?? 0;
+        var roleIds = uid > 0 ? _roleApp.GetUserRoleIds(uid) : Array.Empty<long>();
+        if (roleIds.Length > 0)
+        {
+            var planIds = _inspectPlanRoleRepo.Find("[RoleId] IN @r", new { r = roleIds })
+                .Select(x => x.PlanId).Distinct().ToArray();
+            if (planIds.Length == 0) return Json(new ResponseData { code = 0, data = Array.Empty<object>() });
+            conds.Add("[PlanId] IN @pids");
+            p["pids"] = planIds;
+        }
+
+        if (status == "0")
+        {
+            conds.Add("[ExecTime] IS NULL");
+            // 待执行只显示当期与漏检（计划日期 <= 今天），未来排程不打扰
+            conds.Add("([PlanDate] IS NULL OR [PlanDate] < @tomorrow)");
+            p["tomorrow"] = DateTime.Now.Date.AddDays(1);
+        }
         else if (status == "3") conds.Add("[ExecTime] IS NOT NULL");
+
+        // 扫码/输入设备编码：解析为设备Id后过滤
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            var dev = _deviceRepo.Find("[FacilityCode]=@c", new { c = code.Trim() }, "[Id] DESC").FirstOrDefault();
+            if (dev == null) return Json(new ResponseData { code = 404, msg = "未找到设备编码: " + code.Trim() });
+            conds.Add("[FacilityId]=@fid");
+            p["fid"] = dev.Id;
+        }
+
         if (!string.IsNullOrWhiteSpace(kw))
         {
             conds.Add("([RecordNo] LIKE @k OR [FacilityName] LIKE @k OR [Executor] LIKE @k)");
@@ -268,14 +306,18 @@ public class MobileController : BaseController
         }
         var where = conds.Count == 0 ? null : string.Join(" AND ", conds);
         var records = _inspectRecordRepo.Find(where, p, "[ExecTime] DESC, [PlanDate] ASC, [Id] DESC").Take(100).ToList();
+        var today = DateTime.Now.Date;
         var rows = records.Select(rec => new
         {
             Id = rec.Id,
             BillNo = rec.RecordNo,
             FacilityID = rec.FacilityId,
             FacilityName = rec.FacilityName,
+            Shift = rec.Shift,
+            PlanDate = rec.PlanDate,
             BeginDate = rec.ExecTime ?? rec.PlanDate,
             Status = rec.ExecTime == null ? 0 : 3,
+            Overdue = rec.ExecTime == null && rec.PlanDate.HasValue && rec.PlanDate.Value.Date < today,
             Executor = rec.Executor,
             Result = rec.Result
         }).ToList();
@@ -320,6 +362,7 @@ public class MobileController : BaseController
             Remark = i.Remark
         });
         var rid = _inspectRecordApp.Submit(req.Main, items);
+        if (rid == Inspect_RecordApp.AlreadyDone) return Json(new ResponseData { code = 409, msg = "该点检已被他人完成，无需重复提交" });
         return Json(new ResponseData { code = 0, data = rid, msg = "ok" });
     }
 

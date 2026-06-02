@@ -7,7 +7,14 @@
         <a class="m-btn flex-1" :class="s==='0' ? 'primary' : ''" href="/m/check?status=0">待执行</a>
         <a class="m-btn flex-1" :class="s==='3' ? 'primary' : ''" href="/m/check?status=3">已完成</a>
     </div>
-    <input class="m-input mb-2" id="kw" placeholder="单号 / 执行人 搜索" />
+    <div class="flex gap-2 mb-2">
+        <input class="m-input flex-1" id="kw" placeholder="单号 / 设备 / 执行人 搜索" />
+        <button class="m-btn primary px-3" id="btnScan" type="button"><i data-lucide="scan-line" class="w-4 h-4 inline-block align-text-bottom"></i> 扫码</button>
+    </div>
+    <div id="codeTip" class="hidden mb-2 text-xs flex items-center justify-between bg-emerald-50 text-emerald-700 rounded px-2 py-1">
+        <span>按设备筛选：<b id="codeVal"></b></span>
+        <a href="javascript:;" id="codeClear" class="text-emerald-700 underline">清除</a>
+    </div>
     <div id="list" class="m-list">
         <div class="text-center text-slate-400 text-xs py-6">加载中...</div>
     </div>
@@ -17,15 +24,19 @@
 <script>
 (function(){
     var status = new URL(location.href).searchParams.get('status') || '';
+    var codeFilter = '';
     function statusBadge(s){
         if (s === 0 || s === '0') return '<span class="m-badge new">待执行</span>';
         if (s === 3 || s === '3') return '<span class="m-badge done">已完成</span>';
         return '<span class="m-badge">' + (s == null ? '-' : s) + '</span>';
     }
     function fmt(s){ return s ? String(s).substring(0,16).replace('T',' ') : ''; }
+    function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
     function load(){
         var kw = document.getElementById('kw').value.trim();
-        M.ajax({ url: '/m/api/check?status=' + encodeURIComponent(status) + '&kw=' + encodeURIComponent(kw), contentType:false })
+        var url = '/m/api/check?status=' + encodeURIComponent(status) + '&kw=' + encodeURIComponent(kw);
+        if (codeFilter) url += '&code=' + encodeURIComponent(codeFilter);
+        M.ajax({ url: url, contentType:false })
             .then(function(res){
                 if (!M.ok(res)){ document.getElementById('list').innerHTML = '<div class="text-center text-red-500 text-xs py-6">' + (res.msg||'加载失败') + '</div>'; return; }
                 var arr = res.data || [];
@@ -33,11 +44,13 @@
                 document.getElementById('list').innerHTML = arr.map(function(b){
                     var href = '/m/check/detail?id=' + b.Id;
                     var no = b.BillNo || ('#' + b.Id);
-                    var dev = b.FacilityName || b.FacilityID || '-';
+                    var dev = esc(b.FacilityName || b.FacilityID || '-');
+                    var shift = b.Shift ? ' · ' + esc(b.Shift) : '';
+                    var overdue = b.Overdue ? '<span class="m-badge danger">漏检</span>' : '';
                     return '<a class="m-list-item" href="' + href + '">'
                         + '<div class="flex-1 min-w-0">'
-                        + '<div class="flex items-center gap-2"><span class="font-medium truncate">' + no + '</span>' + statusBadge(b.Status) + '</div>'
-                        + '<div class="text-xs text-slate-500 mt-1 truncate">设备: ' + dev + ' · ' + fmt(b.BeginDate) + (b.Executor ? ' · ' + b.Executor : '') + '</div>'
+                        + '<div class="flex items-center gap-2"><span class="font-medium truncate">' + esc(no) + '</span>' + statusBadge(b.Status) + overdue + '</div>'
+                        + '<div class="text-xs text-slate-500 mt-1 truncate">设备: ' + dev + shift + ' · ' + fmt(b.BeginDate) + (b.Executor ? ' · ' + esc(b.Executor) : '') + '</div>'
                         + '</div>'
                         + '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 mt-1"></i>'
                         + '</a>';
@@ -45,7 +58,22 @@
                 if (window.lucide) lucide.createIcons();
             });
     }
+    function setCode(code){
+        codeFilter = (code || '').trim();
+        var tip = document.getElementById('codeTip');
+        if (codeFilter){ document.getElementById('codeVal').textContent = codeFilter; tip.classList.remove('hidden'); }
+        else tip.classList.add('hidden');
+        load();
+    }
     document.getElementById('kw').addEventListener('keyup', function(e){ if (e.key === 'Enter') load(); });
+    document.getElementById('codeClear').addEventListener('click', function(){ setCode(''); });
+    document.getElementById('btnScan').addEventListener('click', function(){
+        if (window.ArboreShell && window.ArboreShell.scan){
+            window.ArboreShell.scan({ onWebFallback: function(){ return Promise.resolve(window.prompt('请输入设备编码') || ''); } })
+                .then(function(code){ if (code) setCode(code); })
+                .catch(function(err){ var msg = err && err.message; if (msg && msg !== 'CANCELLED' && msg !== 'NO_BRIDGE') M.toast('扫码失败: ' + msg, 'err'); else if (msg === 'NO_BRIDGE'){ var c = window.prompt('请输入设备编码'); if (c) setCode(c); } });
+        } else { var c = window.prompt('请输入设备编码'); if (c) setCode(c); }
+    });
     load();
 })();
 </script>

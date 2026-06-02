@@ -90,6 +90,7 @@
                         { field: 'RecordNo', title: '记录号', width: 180 },
                         { field: 'FacilityName', title: '设备', minWidth: 150, templet: function (d) { return esc(d.FacilityName || (d.FacilityId ? ('#' + d.FacilityId) : '')); } },
                         { field: 'PlanDate', title: '计划日期', width: 120, templet: function (d) { return d.PlanDate ? dcell(d.PlanDate).substring(0, 10) : ''; } },
+                        { field: 'Shift', title: '班次', width: 80, templet: function (d) { return d.Shift || '-'; } },
                         { field: 'Executor', title: '执行人', width: 110 },
                         { field: 'ExecTime', title: '执行时间', width: 160, templet: function (d) { return dcell(d.ExecTime); } },
                         { title: '状态', width: 90, templet: '#statusTpl' },

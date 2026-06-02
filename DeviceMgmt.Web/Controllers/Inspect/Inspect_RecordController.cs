@@ -68,6 +68,7 @@ public class Inspect_RecordController : BaseController
         if (req?.Main == null) return Json(new ResponseData { code = 400, msg = "no data" });
         if (string.IsNullOrWhiteSpace(req.Main.Executor)) req.Main.Executor = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account;
         var id = _app.Submit(req.Main, req.Items);
+        if (id == Inspect_RecordApp.AlreadyDone) return Json(new ResponseData { code = 409, msg = "该点检已被他人完成，无需重复提交" });
         return Json(new ResponseData { code = 0, data = id, msg = "ok" });
     }
 

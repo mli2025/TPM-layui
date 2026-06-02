@@ -91,7 +91,7 @@
             readOnly = !!d.readOnly;
 
             document.getElementById('billNo').textContent = mainData.RecordNo || '-';
-            document.getElementById('facility').textContent = mainData.FacilityName || mainData.FacilityId || '-';
+            document.getElementById('facility').textContent = (mainData.FacilityName || mainData.FacilityId || '-') + (mainData.Shift ? ' · ' + mainData.Shift : '');
             document.getElementById('executor').textContent = mainData.Executor || '-';
             document.getElementById('execTime').textContent = fmt(mainData.ExecTime || mainData.PlanDate);
             document.getElementById('remark').value = mainData.Remark || '';
