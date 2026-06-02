@@ -58,5 +58,35 @@ GO
 PRINT '==== Batch2: workflow(n8n) setting titles renamed ====';
 GO
 
+/* =============================================================================
+   批次3 · 版本记录 v2.1.1
+   ============================================================================= */
+UPDATE [Sys_Version] SET [IsCurrent] = 0 WHERE [IsCurrent] = 1;
+GO
+IF EXISTS (SELECT 1 FROM [Sys_Version] WHERE [Version] = 'v2.1.1')
+BEGIN
+    UPDATE [Sys_Version]
+       SET [ReleaseDate] = getdate(),
+           [Title]   = N'交互优化：ID 选择器统一 + 仓库主数据 + 工作流文案统一',
+           [Content] = N'- 全量替换手工 ID 输入：设备/备件/部门/员工/维修工单统一改为下拉或放大镜选择' + CHAR(10) +
+                       N'- 新增仓库主数据模块：Basic_Warehouse（建表、管理页面、菜单、角色绑定）' + CHAR(10) +
+                       N'- 出入库与库存查询接入仓库选择器，减少手工录入错误' + CHAR(10) +
+                       N'- 界面文案统一：n8n 调整为“工作流”（保留内部 Key 标识不变）',
+           [IsCurrent] = 1, [Author] = N'arbore'
+     WHERE [Version] = 'v2.1.1';
+END
+ELSE
+BEGIN
+    INSERT INTO [Sys_Version] ([Version],[ReleaseDate],[Title],[Content],[IsCurrent],[Author])
+    VALUES ('v2.1.1', getdate(),
+        N'交互优化：ID 选择器统一 + 仓库主数据 + 工作流文案统一',
+        N'- 全量替换手工 ID 输入：设备/备件/部门/员工/维修工单统一改为下拉或放大镜选择' + CHAR(10) +
+        N'- 新增仓库主数据模块：Basic_Warehouse（建表、管理页面、菜单、角色绑定）' + CHAR(10) +
+        N'- 出入库与库存查询接入仓库选择器，减少手工录入错误' + CHAR(10) +
+        N'- 界面文案统一：n8n 调整为“工作流”（保留内部 Key 标识不变）',
+        1, N'arbore');
+END
+GO
+
 PRINT '==== v2.1.1 patch applied ====';
 GO
