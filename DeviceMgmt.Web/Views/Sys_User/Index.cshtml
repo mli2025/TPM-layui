@@ -96,7 +96,7 @@
                 cols:[[
                     { field:'Account', title:'账号', width:160 },
                     { field:'Name', title:'姓名', width:160 },
-                    { field:'EmployeeId', title:'员工号', width:120 },
+                    { field:'EmployeeNumber', title:'员工号', width:120 },
                     { field:'DeptName', title:'部门', width:180 },
                     { field:'Status', title:'状态', width:100, templet:function(d){ return d.Status===1?'<span class="layui-badge layui-bg-green">启用</span>':'<span class="layui-badge layui-bg-gray">停用</span>'; } },
                     { field:'CreateDate', title:'创建时间', width:160, templet:function(d){ return d.CreateDate ? String(d.CreateDate).substring(0,16).replace('T',' ') : ''; } },
