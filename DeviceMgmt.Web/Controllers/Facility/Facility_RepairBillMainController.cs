@@ -57,7 +57,11 @@ public class Facility_RepairBillMainController : BaseController
         {
             var uid = CurrentUser?.User?.Id ?? 0;
             var id = _app.SaveBill(req.Main, req.Subs ?? new List<Facility_RepairBillSub>(), uid);
-            return Json(new ResponseData { code = 0, data = id, msg = "ok" });
+            // 回读校验：确认确实落库（排查"提示成功但库里没有"）
+            var saved = _app.Get(id);
+            if (saved == null)
+                return Json(new ResponseData { code = 500, msg = $"保存未生效：未在数据库中找到单据(Id={id})，请检查数据库连接是否一致" });
+            return Json(new ResponseData { code = 0, data = id, msg = "保存成功，单号 " + (saved.BillNo ?? id.ToString()) });
         }
         catch (Exception ex)
         {

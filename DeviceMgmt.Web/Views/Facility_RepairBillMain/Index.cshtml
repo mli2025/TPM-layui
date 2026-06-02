@@ -562,7 +562,7 @@
                 var f = data.field;
                 var payload = {
                     Main: {
-                        Id: parseInt(f.Id||0,10),
+                        Id: (mode === 'add') ? 0 : parseInt(f.Id||0,10),
                         BillNo: f.BillNo,
                         BillDate: f.BillDate || null,
                         FacilityId: f.FacilityId ? parseInt(f.FacilityId,10) : null,
