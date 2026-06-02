@@ -537,7 +537,10 @@
                 var s = String(title).trim();
                 if (!s) return false;
                 if (s.indexOf("�") >= 0) return false;
-                if (s.indexOf("Facility_") >= 0 || s.indexOf("Mold_") >= 0) return false;
+                var ctrlPrefixes = ["Facility_", "Mold_", "Basic_", "Spare_", "Inspect_", "Maint_", "Meter_", "Energy_", "Safety_", "Special_", "Sys_", "Wf_"];
+                for (var i = 0; i < ctrlPrefixes.length; i++) {
+                    if (s.indexOf(ctrlPrefixes[i]) >= 0) return false;
+                }
                 if (/^[\w\s\-\|:\/.]+$/.test(s)) return false;
                 return true;
             },

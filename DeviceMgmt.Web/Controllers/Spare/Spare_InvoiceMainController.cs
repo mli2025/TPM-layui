@@ -21,7 +21,7 @@ public class Spare_InvoiceMainController : BaseController
         _spareRepo = spareRepo;
     }
 
-    public IActionResult Index() => View();
+    public IActionResult Index() { ViewBag.TypeName = "全部单据"; return View(); }
     public IActionResult In() { ViewBag.BillType = 1; ViewBag.TypeName = "入库单"; return View("Index"); }
     public IActionResult Out() { ViewBag.BillType = 2; ViewBag.TypeName = "出库单"; return View("Index"); }
     public IActionResult ViewList(long id) { ViewBag.Id = id; return View(); }

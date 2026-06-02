@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = (ViewBag.TypeName as string) ?? "备件出入库单";
+    ViewData["Title"] = (ViewBag.TypeName as string) ?? "全部单据";
     var billType = (ViewBag.BillType as int?) ?? 0; // 0=all, 1=in, 2=out
     var typeName = ViewBag.TypeName as string ?? "出入库单";
 }

@@ -1,12 +1,12 @@
 @{
-    ViewData["Title"] = "\u5907\u4ef6\u8d44\u6599 Basic_Spare";
+    ViewData["Title"] = "备件主数据";
 }
 <div class="layui-fluid" style="padding:0;margin-top:10px">
     <div class="layui-row layui-col-space15">
         <div class="layui-col-md12">
             <div class="layui-card">
                 <div class="layui-card-header">
-                    <div class="pull-left">@("\u5907\u4ef6\u8d44\u6599 Basic_Spare")</div>
+                    <div class="pull-left"><strong>备件主数据</strong></div>
                     <div class="demoTable pull-right no-print">
                         <div class="layui-inline" id="searchPanel"></div>
                         <div class="layui-btn-group">
@@ -85,7 +85,7 @@
         function viewModel(obj) {
             var Id = obj.data.Id || obj.data.id;
             layui.layer.open({
-                title: '备件资料 - 查看',
+                title: '备件主数据 - 查看',
                 content: '@Url.Action("ViewList")?id=' + Id,
                 type: 2,
                 area: ['90%', '90%'],
