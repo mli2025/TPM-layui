@@ -68,7 +68,7 @@
                         + '<div id="' + wrapId + '" style="max-height:400px;overflow:auto;border:1px solid #eee;border-radius:2px;">'
                         + treeHtml + '</div></div>';
                     var selected = null;
-                    layer.open({
+                    var pickerIdx = layer.open({
                         type: 1, title: '选择部门', area: ['420px', '520px'],
                         content: html, shadeClose: false,
                         btn: ['确定', '清空'],
@@ -81,7 +81,7 @@
                             });
                             $box.on('dblclick', '.ref-dept-node', function () {
                                 setVal($(this).data('id'), $(this).data('name'));
-                                layer.closeAll();
+                                layer.close(pickerIdx);
                             });
                         },
                         yes: function (idx) {
@@ -145,7 +145,7 @@
                     + '<table id="' + tableId + '" lay-filter="' + tableId + '"></table>'
                     + '</div>';
                 var selected = null;
-                layer.open({
+                var pickerIdx = layer.open({
                     type: 1, title: '选择生产资源', area: ['620px', '560px'],
                     content: html, shadeClose: false,
                     btn: ['确定', '清空'],
@@ -176,7 +176,7 @@
                         table.on('rowDouble(' + tableId + ')', function (obj) {
                             selected = obj.data;
                             setVal(selected.Id, (selected.Code || '') + ' / ' + (selected.Name || ''));
-                            layer.closeAll();
+                            layer.close(pickerIdx);
                         });
                         $('#' + tableId + '_search').on('click', function () {
                             renderTable($('#' + tableId + '_kw').val());
@@ -236,7 +236,7 @@
                     + '<button type="button" class="layui-btn layui-btn-sm" id="' + tid + '_search"><i class="layui-icon layui-icon-search"></i> 搜索</button>'
                     + '</div><table id="' + tid + '" lay-filter="' + tid + '"></table></div>';
                 var selected = null;
-                layer.open({
+                var pickerIdx = layer.open({
                     type: 1, title: '选择设备', area: ['680px', '580px'], content: html, shadeClose: false,
                     btn: ['确定', '取消'],
                     success: function () {
@@ -259,7 +259,7 @@
                         table.on('rowDouble(' + tid + ')', function (obj) {
                             selected = obj.data;
                             setVal(selected.Id, (selected.FacilityName || '') + ' (' + (selected.FacilityCode || '') + ')');
-                            layer.closeAll();
+                            layer.close(pickerIdx);
                         });
                         $('#' + tid + '_search').on('click', function () { renderTable($('#' + tid + '_kw').val()); });
                         $('#' + tid + '_kw').on('keydown', function (e) { if (e.keyCode === 13) { renderTable($(this).val()); return false; } });
@@ -338,7 +338,7 @@
                     + '<button type="button" class="layui-btn layui-btn-sm" id="' + tid + '_search"><i class="layui-icon layui-icon-search"></i> 搜索</button>'
                     + '</div><table id="' + tid + '" lay-filter="' + tid + '"></table></div>';
                 var all = [], selected = null;
-                layer.open({
+                var pickerIdx = layer.open({
                     type: 1, title: opts.title || '选择', area: opts.area || ['640px', '560px'],
                     content: html, shadeClose: false,
                     btn: ['确定', opts.allowClear ? '清空' : '取消'],
@@ -359,7 +359,7 @@
                         }
                         $.post(opts.url, { page: 1, limit: 9999 }, function (res) { all = (res && res.data) || []; renderTable(all); }).fail(function () { renderTable([]); });
                         table.on('radio(' + tid + ')', function (obj) { selected = obj.data; });
-                        table.on('rowDouble(' + tid + ')', function (obj) { selected = obj.data; setVal(selected[idField], fmt(selected)); layer.closeAll(); });
+                        table.on('rowDouble(' + tid + ')', function (obj) { selected = obj.data; setVal(selected[idField], fmt(selected)); layer.close(pickerIdx); });
                         $('#' + tid + '_search').on('click', function () { renderTable(doFilter($('#' + tid + '_kw').val())); });
                         $('#' + tid + '_kw').on('keydown', function (e) { if (e.keyCode === 13) { renderTable(doFilter($(this).val())); return false; } });
                     },
