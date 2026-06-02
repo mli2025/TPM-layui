@@ -5,7 +5,6 @@ using DeviceMgmt.App.Response;
 using DeviceMgmt.Repository.Domain;
 using DeviceMgmt.Web.Common;
 using DeviceMgmt.Web.Controllers.Base;
-using DeviceMgmt.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DeviceMgmt.Web.Controllers.Spare;
@@ -13,12 +12,10 @@ namespace DeviceMgmt.Web.Controllers.Spare;
 public class Basic_SpareController : BaseController
 {
     private readonly Basic_SpareApp _app;
-    private readonly AuditService _audit;
 
-    public Basic_SpareController(IAuth auth, Basic_SpareApp app, AuditService audit) : base(auth)
+    public Basic_SpareController(IAuth auth, Basic_SpareApp app) : base(auth)
     {
         _app = app;
-        _audit = audit;
     }
 
     public IActionResult Index() => View();
@@ -36,10 +33,9 @@ public class Basic_SpareController : BaseController
         if (model == null) return Json(new ResponseData { code = 400, msg = "no data" });
         if (string.IsNullOrWhiteSpace(model.Code)) return Json(new ResponseData { code = 400, msg = "编码不能为空" });
 
-        var old = model.Id > 0 ? _app.Get(model.Id) : null;
+        // 操作理由交由全局审计(Repository层)统一记录
+        if (!string.IsNullOrWhiteSpace(reason)) HttpContext.Items["AuditReason"] = reason;
         var id = _app.Save(model);
-        _audit.WriteDiff("Basic_Spare", id.ToString(), old, model,
-            CurrentUser?.User?.Id, CurrentUser?.User?.Account, "spare", reason);
         return Json(new ResponseData { code = 0, data = id, msg = "ok" });
     }
 
@@ -47,9 +43,8 @@ public class Basic_SpareController : BaseController
     public IActionResult Delete([FromForm] long id, [FromForm] string? reason)
     {
         if (id <= 0) return Json(new ResponseData { code = 400, msg = "invalid id" });
+        if (!string.IsNullOrWhiteSpace(reason)) HttpContext.Items["AuditReason"] = reason;
         _app.Delete(id);
-        _audit.WriteDelete("Basic_Spare", id.ToString(),
-            CurrentUser?.User?.Id, CurrentUser?.User?.Account, "spare", reason);
         return Json(new ResponseData { code = 0, msg = "ok" });
     }
 

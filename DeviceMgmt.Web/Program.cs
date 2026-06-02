@@ -85,6 +85,8 @@ try
     builder.Services.AddSingleton<ICacheContext, MemoryCacheContext>();
 
     builder.Services.AddScoped<IUnitWork, UnitWork>();
+    // 字段级审计上下文（全局自动审计：URS 301-306）
+    builder.Services.AddScoped<IAuditContext, DeviceMgmt.Web.Services.HttpAuditContext>();
     builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
     // System
