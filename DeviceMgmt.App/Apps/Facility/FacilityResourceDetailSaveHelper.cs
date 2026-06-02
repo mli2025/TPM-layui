@@ -22,7 +22,7 @@ public static class FacilityResourceDetailSaveHelper
         if (string.IsNullOrWhiteSpace(e.FacilityCode)) return "设备编码不能为空";
         if (string.IsNullOrWhiteSpace(e.FacilityName)) return "设备名称不能为空";
         if (string.IsNullOrWhiteSpace(e.FacilityType)) return "设备分类不能为空";
-        if (isNew && e.DeptId <= 0) return "车间名称不能为空，或系统中不存在该部门";
+        if (isNew && e.DeptId <= 0) return "部门不能为空，或系统中不存在该部门";
         return null;
     }
 
@@ -98,7 +98,7 @@ public static class FacilityResourceDetailSaveHelper
         ["FacilityCode"] = "设备编码",
         ["FacilityName"] = "设备名称",
         ["FacilityType"] = "设备类型",
-        ["DeptId"] = "工作中心",
+        ["DeptId"] = "部门",
         ["ResourceId"] = "生产资源"
     };
 

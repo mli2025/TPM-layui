@@ -8,26 +8,40 @@
 
     function ok(res) { return res && (res.code === 0 || res.code === 200); }
 
-    // 旧版 layui(2.4.5) tree 使用 nodes/name，click 回调直接返回节点
-    function buildDeptNodes(flat) {
-        var byParent = {};
-        (flat || []).forEach(function (d) {
-            var p = String(d.ParentId != null ? d.ParentId : 0);
-            (byParent[p] = byParent[p] || []).push(d);
+    function escapeHtml(s) {
+        return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
         });
-        function nodes(parentId) {
-            return (byParent[String(parentId)] || []).map(function (d) {
-                var children = nodes(d.Id);
-                return {
-                    id: d.Id,
-                    name: (d.DeptName || '') + (d.DeptNumber ? ' (' + d.DeptNumber + ')' : ''),
-                    deptName: d.DeptName || '',
-                    spread: true,
-                    children: children
-                };
-            });
+    }
+
+    // 手写 HTML 部门树（与"部门管理"页一致，确保稳定显示）
+    function buildDeptTreeHtml(flat) {
+        var list = (flat || []).map(function (d) {
+            return {
+                id: String(d.Id != null ? d.Id : d.id),
+                parentId: String((d.ParentId != null && d.ParentId !== '') ? d.ParentId : (d.parentId != null ? d.parentId : '0')),
+                deptName: d.DeptName || d.deptName || '',
+                deptNumber: d.DeptNumber || d.deptNumber || ''
+            };
+        });
+        var byParent = {};
+        list.forEach(function (d) { (byParent[d.parentId] = byParent[d.parentId] || []).push(d); });
+
+        function nodeHtml(d, depth) {
+            var children = byParent[d.id] || [];
+            var indent = (depth * 18) + 'px';
+            var label = escapeHtml(d.deptName) + (d.deptNumber ? ' <span style="color:#94a3b8;font-size:12px;">' + escapeHtml(d.deptNumber) + '</span>' : '');
+            var html = '<div class="ref-dept-node" data-id="' + d.id + '" data-name="' + escapeHtml(d.deptName) + '"'
+                + ' style="padding:7px 8px;padding-left:' + indent + ';border-bottom:1px dashed #eee;cursor:pointer;">'
+                + label + '</div>';
+            children.forEach(function (c) { html += nodeHtml(c, depth + 1); });
+            return html;
         }
-        return nodes(0);
+        var top = byParent['0'] || [];
+        // 若没有 parentId=0 的根（数据异常），则把所有节点平铺，避免空白
+        if (!top.length) top = list;
+        return top.map(function (n) { return nodeHtml(n, 0); }).join('')
+            || '<div style="color:#999;text-align:center;padding:30px;">暂无部门数据</div>';
     }
 
     function mountDeptPicker($root, opts) {
@@ -43,38 +57,36 @@
         }
 
         function openPicker() {
-            if ($disp.prop('readonly') && $disp.is('[disabled]')) return;
-            layui.use(['layer', 'tree'], function () {
-                var layer = layui.layer, tree = layui.tree;
+            if ($disp.is('[disabled]')) return;
+            layui.use(['layer'], function () {
+                var layer = layui.layer;
                 $.get(opts.deptUrl || '/Sys_Dept/List', function (res) {
                     if (!ok(res)) { layer.msg((res && res.msg) || '部门加载失败', { icon: 2 }); return; }
-                    var nodes = buildDeptNodes(res.data || []);
                     var wrapId = 'refDeptTree_' + new Date().getTime();
-                    var html = '<div style="padding:10px 14px;">'
-                        + '<div id="' + wrapId + '" style="max-height:380px;overflow:auto;"></div>'
-                        + '</div>';
+                    var treeHtml = buildDeptTreeHtml(res.data || []);
+                    var html = '<div style="padding:8px 4px;">'
+                        + '<div id="' + wrapId + '" style="max-height:400px;overflow:auto;border:1px solid #eee;border-radius:2px;">'
+                        + treeHtml + '</div></div>';
                     var selected = null;
                     layer.open({
-                        type: 1, title: '选择工作中心', area: ['400px', '500px'],
+                        type: 1, title: '选择部门', area: ['420px', '520px'],
                         content: html, shadeClose: false,
                         btn: ['确定', '清空'],
                         success: function () {
-                            tree.render({
-                                elem: '#' + wrapId,
-                                nodes: nodes,
-                                click: function (node) {
-                                    selected = node;
-                                    var $box = $('#' + wrapId);
-                                    $box.find('cite').css({ background: '', color: '' });
-                                    $box.find('cite').filter(function () {
-                                        return $(this).text() === node.name;
-                                    }).css({ background: '#5FB878', color: '#fff', borderRadius: '2px' });
-                                }
+                            var $box = $('#' + wrapId);
+                            $box.on('click', '.ref-dept-node', function () {
+                                selected = { id: $(this).data('id'), name: $(this).data('name') };
+                                $box.find('.ref-dept-node').css({ background: '', color: '' });
+                                $(this).css({ background: '#5FB878', color: '#fff' });
+                            });
+                            $box.on('dblclick', '.ref-dept-node', function () {
+                                setVal($(this).data('id'), $(this).data('name'));
+                                layer.closeAll();
                             });
                         },
                         yes: function (idx) {
                             if (!selected) { layer.msg('请选择部门', { icon: 0 }); return; }
-                            setVal(selected.id, selected.deptName || selected.name);
+                            setVal(selected.id, selected.name);
                             layer.close(idx);
                         },
                         btn2: function (idx) { setVal('', ''); layer.close(idx); return false; }

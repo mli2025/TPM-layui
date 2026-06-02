@@ -16,7 +16,7 @@
             <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
                 <div class="layui-col-md2">
                     <select id="fltDept" lay-filter="fltDept" lay-search>
-                        <option value="">-- 工作中心(全部) --</option>
+                        <option value="">-- 部门(全部) --</option>
                     </select>
                 </div>
                 <div class="layui-col-md2">
@@ -196,7 +196,7 @@
                     { field: 'SerialNumber', title: '序列号', width: 140, sort: true, filter: true },
                     { field: 'Manufacturer', title: '制造商', width: 130, sort: true, filter: true },
                     { field: 'Location', title: '安装位置', width: 140, sort: true, filter: true },
-                    { field: 'DeptName', title: '工作中心', width: 120, sort: true, filter: true, templet: function(d){ return d.DeptName || deptName(d.DeptId); } },
+                    { field: 'DeptName', title: '部门', width: 120, sort: true, filter: true, templet: function(d){ return d.DeptName || deptName(d.DeptId); } },
                     { field: 'PurchaseDate', title: '购置日期', width: 110, align: 'center', sort: true, filter: { type: 'date[yyyy-MM-dd]' }, templet: function(d){ return fmtDate(d.PurchaseDate); } },
                     { field: 'AssetNumber', title: '资产编号', width: 130, sort: true, filter: true },
                     { field: 'StatusName', title: '状态', width: 90, sort: true, filter: true, templet:'#statusTpl' },
@@ -253,7 +253,7 @@
                 return $.get('/Sys_Dept/List', function(res){
                     if (ok(res)) {
                         __DEPTS__ = res.data || [];
-                        var $sel = $('#fltDept').empty().append('<option value="">-- 工作中心(全部) --</option>');
+                        var $sel = $('#fltDept').empty().append('<option value="">-- 部门(全部) --</option>');
                         __DEPTS__.forEach(function(d){ $sel.append('<option value="'+d.Id+'">'+ (d.DeptName||'') +'</option>'); });
                         try { form.render('select'); } catch(e){}
                     }

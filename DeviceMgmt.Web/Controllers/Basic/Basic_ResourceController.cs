@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DeviceMgmt.Web.Controllers.Basic;
 
-/// <summary>生产资源（工作中心资源）查询，供设备台账选择器使用</summary>
+/// <summary>生产资源(Basic_Resource)查询，供设备台账"生产资源"选择器使用（与部门无关）</summary>
 public class Basic_ResourceController : BaseController
 {
     private readonly IRepository<Basic_Resource> _repo;

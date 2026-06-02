@@ -33,7 +33,7 @@ public sealed class FacilityImportHandler : IImportHandler
     public string[] Headers => new[]
     {
         "设备编码", "设备名称", "设备型号", "生产资源编码", "制造厂商", "制造国家", "供应商",
-        "设备分类", "使用状态", "资产编码", "车间名称", "放置区域", "关键设备", "备注"
+        "设备分类", "使用状态", "资产编码", "部门", "放置区域", "关键设备", "备注"
     };
 
     public (bool ok, bool skip, string? error) ImportRow(IDictionary<string, string> row)
@@ -69,11 +69,11 @@ public sealed class FacilityImportHandler : IImportHandler
             if (rid > 0) entity.ResourceId = rid;
         }
 
-        var deptName = Get(row, "车间名称", "DeptName", "工作中心");
+        var deptName = Get(row, "部门", "车间名称", "DeptName");
         if (!string.IsNullOrWhiteSpace(deptName))
         {
             var dept = _deptRepo.FindSingle("[DeptName]=@n", new { n = deptName.Trim() });
-            if (dept == null) return (false, false, $"车间名称「{deptName}」在部门表中不存在");
+            if (dept == null) return (false, false, $"部门「{deptName}」在部门表中不存在");
             entity.DeptId = dept.Id;
         }
 
