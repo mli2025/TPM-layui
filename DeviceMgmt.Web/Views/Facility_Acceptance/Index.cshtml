@@ -22,7 +22,7 @@
         <input type="hidden" name="Id" />
         <div class="layui-form-item">
             <div class="layui-inline"><label class="layui-form-label">单号</label><div class="layui-input-inline"><input type="text" name="BillNo" class="layui-input" placeholder="自动生成"></div></div>
-            <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+            <div class="layui-inline ref-dev-wrap"><label class="layui-form-label">设备</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="FacilityId"><input type="text" readonly class="layui-input ref-dev-display" placeholder="点击选择设备" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-dev-btn" title="选择设备" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
             <div class="layui-inline"><label class="layui-form-label">类型</label><div class="layui-input-inline"><select name="AcceptType"><option value="FAT">FAT</option><option value="SAT">SAT</option></select></div></div>
         </div>
         <div class="layui-form-item">
@@ -60,7 +60,7 @@
             $('#btnAddSub').on('click',function(){addSub({});});
             $('#SubsBody').on('click','.sub-del',function(){$(this).closest('tr').remove();});
             $('#cancel').on('click',function(){layer.close(idx);});
-            function fill(m,issues){form.val('f',{Id:m.Id||0,BillNo:m.BillNo||'',FacilityId:m.FacilityId||'',AcceptType:m.AcceptType||'FAT',AppearanceOK:!!m.AppearanceOK,QtyOK:!!m.QtyOK,DocOK:!!m.DocOK,FunctionOK:!!m.FunctionOK,Result:String(m.Result||0),AcceptDate:dc(m,'AcceptDate'),Acceptor:m.Acceptor||'',Remark:m.Remark||''});(issues||[]).forEach(addSub);form.render();}
+            function fill(m,issues){form.val('f',{Id:m.Id||0,BillNo:m.BillNo||'',FacilityId:m.FacilityId||'',AcceptType:m.AcceptType||'FAT',AppearanceOK:!!m.AppearanceOK,QtyOK:!!m.QtyOK,DocOK:!!m.DocOK,FunctionOK:!!m.FunctionOK,Result:String(m.Result||0),AcceptDate:dc(m,'AcceptDate'),Acceptor:m.Acceptor||'',Remark:m.Remark||''});(issues||[]).forEach(addSub);form.render();RefPicker.autoMount($(l));}
             if(row.Id){$.get(U_GET,{id:row.Id},function(res){var d=res.data||{};fill(d.Main||{},d.Issues||[]);});}else{fill({},[]);}
             form.on('submit(save)',function(data){var f=data.field;var p={Main:{Id:parseInt(f.Id||0,10),BillNo:f.BillNo||null,FacilityId:f.FacilityId?parseInt(f.FacilityId,10):0,AcceptType:f.AcceptType,AppearanceOK:f.AppearanceOK==='on',QtyOK:f.QtyOK==='on',DocOK:f.DocOK==='on',FunctionOK:f.FunctionOK==='on',Result:parseInt(f.Result||0,10),AcceptDate:f.AcceptDate||null,Acceptor:f.Acceptor||null,Remark:f.Remark||null},Issues:collect()};
                 $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});

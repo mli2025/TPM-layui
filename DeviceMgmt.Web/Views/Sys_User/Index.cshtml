@@ -49,8 +49,8 @@
                     </div>
                 </div>
                 <div class="layui-inline">
-                    <label class="layui-form-label">员工号</label>
-                    <div class="layui-input-inline"><input type="number" name="EmployeeId" class="layui-input" /></div>
+                    <label class="layui-form-label">关联员工</label>
+                    <div class="layui-input-inline ref-emp-wrap" style="position:relative;"><input type="hidden" name="EmployeeId"><input type="text" readonly class="layui-input ref-pk-display" placeholder="点击选择员工(可选)" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-pk-btn" title="选择员工" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div>
                 </div>
             </div>
             <div class="layui-form-item">
@@ -209,12 +209,14 @@
                                 fillDepts(u.DeptId, $L);
                                 fillRoles(roles, $L);
                                 try { form.render(); } catch(e){}
+                                RefPicker.autoMount($L);
                             });
                         } else {
                             try { form.val('userForm', { Id:0, Status:'1' }); } catch(e){}
                             fillDepts(0, $L);
                             fillRoles([], $L);
                             try { form.render(); } catch(e){}
+                            RefPicker.autoMount($L);
                         }
                     });
                 }

@@ -3,7 +3,7 @@ using DeviceMgmt.Repository.Core;
 namespace DeviceMgmt.Repository.Domain;
 
 /// <summary>
-/// 通知记录（通知引擎落库；多渠道分发经 n8n webhook）
+/// 通知记录（通知引擎落库；多渠道分发经工作流 webhook）
 /// </summary>
 [Table("Sys_NotifyRecord")]
 public class Sys_NotifyRecord : Entity

@@ -33,12 +33,12 @@
                 <div class="layui-inline"><label class="layui-form-label">维保方式</label><div class="layui-input-inline">
                     <select name="EntrustType"><option value="自维">自维</option><option value="外委">外委</option></select>
                 </div></div>
-                <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+                <div class="layui-inline ref-dev-wrap"><label class="layui-form-label">关联设备</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="FacilityId"><input type="text" readonly class="layui-input ref-dev-display" placeholder="点击选择设备(可选)" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-dev-btn" title="选择设备" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
             </div>
             <fieldset class="layui-elem-field layui-field-title" style="margin-top:6px;"><legend>保养项明细
                 <button class="layui-btn layui-btn-xs" type="button" id="btnAddSub" style="margin-left:10px;">添加项</button>
             </legend></fieldset>
-            <table class="layui-table" style="margin:0;"><thead><tr><th>保养项</th><th style="width:120px;">备件Id</th><th style="width:120px;">数量</th><th style="width:60px;">操作</th></tr></thead><tbody id="SubsBody"></tbody></table>
+            <table class="layui-table" style="margin:0;"><thead><tr><th>保养项</th><th style="width:180px;">备件</th><th style="width:120px;">数量</th><th style="width:60px;">操作</th></tr></thead><tbody id="SubsBody"></tbody></table>
             <div style="text-align:center;margin-top:14px;">
                 <button class="layui-btn" lay-submit lay-filter="stdSave">保存</button>
                 <button class="layui-btn layui-btn-primary" type="button" id="stdCancel">关闭</button>
@@ -57,9 +57,10 @@
                 s = s || {};
                 $('#SubsBody').append('<tr>' +
                     '<td><input class="layui-input s-item" value="' + (s.ItemName || '') + '"></td>' +
-                    '<td><input class="layui-input s-spare" type="number" value="' + (s.SpareId || '') + '"></td>' +
+                    '<td><div class="ref-spare-wrap" style="position:relative;" data-value="' + (s.SpareId || '') + '"><input type="hidden" class="s-spare" value="' + (s.SpareId || '') + '"><input type="text" readonly class="layui-input ref-pk-display" placeholder="选择备件(可选)" style="cursor:pointer;padding-right:30px;background:#fff;"><i class="layui-icon layui-icon-search ref-pk-btn" style="position:absolute;right:1px;top:1px;width:28px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></td>' +
                     '<td><input class="layui-input s-qty" type="number" value="' + (s.SpareQty != null ? s.SpareQty : '') + '"></td>' +
                     '<td style="text-align:center;"><a class="layui-btn layui-btn-xs layui-btn-danger sub-del">删</a></td></tr>');
+                RefPicker.autoMount($('#SubsBody'));
             }
             function collectSubs() {
                 var subs = [];
@@ -99,9 +100,9 @@
                             $.get(URL_GET, { id: row.Id }, function (res) {
                                 var d = res.data || {}, m = d.Main || {}, subs = d.Subs || [];
                                 form.val('stdForm', { Id: m.Id, StdNo: m.StdNo || '', FacilityName: m.FacilityName || '', FacilityType: m.FacilityType || '', CycleType: m.CycleType || '日常', EntrustType: m.EntrustType || '自维', FacilityId: m.FacilityId || '' });
-                                subs.forEach(addSub); form.render();
+                                subs.forEach(addSub); form.render(); RefPicker.autoMount($(layero));
                             });
-                        } else { form.val('stdForm', { Id: 0, CycleType: '日常', EntrustType: '自维' }); form.render(); }
+                        } else { form.val('stdForm', { Id: 0, CycleType: '日常', EntrustType: '自维' }); form.render(); RefPicker.autoMount($(layero)); }
                         form.on('submit(stdSave)', function (data) {
                             var f = data.field;
                             var payload = {

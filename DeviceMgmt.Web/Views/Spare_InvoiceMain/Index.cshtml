@@ -69,13 +69,13 @@
                 </div>
                 <div class="layui-inline">
                     <label class="layui-form-label">仓库</label>
-                    <div class="layui-input-inline"><input type="number" name="WHID" class="layui-input" /></div>
+                    <div class="layui-input-inline ref-wh-wrap" style="position:relative;"><input type="hidden" name="WHID"><input type="text" readonly class="layui-input ref-pk-display" placeholder="点击选择仓库" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-pk-btn" title="选择仓库" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div>
                 </div>
             </div>
             <div class="layui-form-item">
                 <div class="layui-inline">
                     <label class="layui-form-label">部门</label>
-                    <div class="layui-input-inline"><input type="number" name="DeptId" class="layui-input" /></div>
+                    <div class="layui-input-inline ref-dept-wrap" style="position:relative;"><input type="hidden" name="DeptId"><input type="text" readonly class="layui-input ref-dept-display" placeholder="点击选择部门(可选)" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-dept-btn" title="选择部门" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div>
                 </div>
                 <div class="layui-inline">
                     <label class="layui-form-label">日期</label>
@@ -297,11 +297,13 @@
                             }
                             setReadonly(mode==='view');
                             try { form.render(); } catch(e){}
+                            RefPicker.autoMount($('form[lay-filter="invForm"]'));
                         });
                     } else {
                         try { form.val('invForm', { Id:0, Status:0, BillType: String(fixedBillType>0?fixedBillType:1), BillDate: new Date().toISOString().substring(0,16).replace('T',' ') }); } catch(e){}
                         setReadonly(false);
                         try { form.render(); } catch(e){}
+                        RefPicker.autoMount($('form[lay-filter="invForm"]'));
                     }
                 }
             });

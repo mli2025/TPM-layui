@@ -17,7 +17,7 @@
     <div style="padding:16px;"><form class="layui-form" lay-filter="f">
         <input type="hidden" name="Id" />
         <div class="layui-form-item">
-            <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input" lay-verify="required"></div></div>
+            <div class="layui-inline ref-dev-wrap"><label class="layui-form-label">设备 *</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="FacilityId"><input type="text" readonly class="layui-input ref-dev-display" placeholder="点击选择设备" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-dev-btn" title="选择设备" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
             <div class="layui-inline"><label class="layui-form-label">标签类型</label><div class="layui-input-inline">
                 <select name="LabelType"><option value="qrcode">二维码</option><option value="barcode">条码</option><option value="nfc">NFC</option><option value="rfid">RFID</option></select>
             </div></div>
@@ -39,8 +39,8 @@
             {field:'LabelCode',title:'标签编码',minWidth:240},{field:'GenTime',title:'生成时间',width:170,templet:function(d){return d.GenTime?String(d.GenTime).replace('T',' ').substring(0,19):'';}},
             {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
         function openForm(){layer.open({type:1,area:['600px','auto'],title:'生成标签',content:$('#tplForm').html(),success:function(l,idx){
-            form.render();$('#cancel').on('click',function(){layer.close(idx);});
-            form.on('submit(save)',function(data){var f=data.field;var p={Id:0,FacilityId:parseInt(f.FacilityId||0,10),LabelType:f.LabelType,LabelCode:f.LabelCode||null};
+            form.render();RefPicker.autoMount($(l));$('#cancel').on('click',function(){layer.close(idx);});
+            form.on('submit(save)',function(data){var f=data.field;if(!f.FacilityId){layer.msg('请选择设备',{icon:0});return false;}var p={Id:0,FacilityId:parseInt(f.FacilityId||0,10),LabelType:f.LabelType,LabelCode:f.LabelCode||null};
                 $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已生成',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
         }});}
         function printLabel(d){var w=window.open('','_blank','width=420,height=320');w.document.write('<div style="text-align:center;font-family:sans-serif;padding:24px;"><h3>设备标签</h3><p>设备Id：'+d.FacilityId+'</p><div style="font-size:22px;font-weight:700;letter-spacing:2px;border:2px dashed #333;padding:14px;margin:12px;">'+(d.LabelCode||'')+'</div><p style="color:#888;">'+(d.LabelType||'')+'</p></div>');w.document.close();w.focus();w.print();}

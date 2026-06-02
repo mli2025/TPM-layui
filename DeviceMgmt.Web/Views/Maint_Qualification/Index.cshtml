@@ -24,7 +24,7 @@
             <input type="hidden" name="Id" />
             <div class="layui-form-item">
                 <div class="layui-inline"><label class="layui-form-label">资质类型</label><div class="layui-input-inline"><input type="text" name="QualType" class="layui-input" placeholder="安全合格证/使用许可证/保修证"></div></div>
-                <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+                <div class="layui-inline ref-dev-wrap"><label class="layui-form-label">设备</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="FacilityId"><input type="text" readonly class="layui-input ref-dev-display" placeholder="点击选择设备" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-dev-btn" title="选择设备" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
             </div>
             <div class="layui-form-item">
                 <div class="layui-inline"><label class="layui-form-label">生效日期</label><div class="layui-input-inline"><input type="text" name="EffectDate" id="fEffect" class="layui-input"></div></div>
@@ -90,7 +90,7 @@
                             EffectDate: dcell(row, 'EffectDate'), ExpireDate: dcell(row, 'ExpireDate'),
                             WarnDays: row.WarnDays || 30, Status: row.Status != null ? String(row.Status) : '1'
                         });
-                        form.render();
+                        form.render(); RefPicker.autoMount($(layero));
                         $('#qualCancel').on('click', function () { layer.close(idx); });
                         form.on('submit(qualSave)', function (data) {
                             var f = data.field;

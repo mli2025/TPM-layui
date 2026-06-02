@@ -43,7 +43,7 @@ public class Facility_AlarmRule : Entity
     public DateTime CreateDate { get; set; } = DateTime.Now;
 }
 
-/// <summary>报警记录（采集/n8n 写入，或手工登记）</summary>
+/// <summary>报警记录（采集/工作流 写入，或手工登记）</summary>
 [Table("Facility_AlarmRecord")]
 public class Facility_AlarmRecord : Entity
 {

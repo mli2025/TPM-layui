@@ -15,7 +15,7 @@
 <script type="text/html" id="tplForm">
     <div style="padding:16px;"><form class="layui-form" lay-filter="f">
         <div class="layui-form-item">
-            <div class="layui-inline"><label class="layui-form-label">备件Id</label><div class="layui-input-inline"><input type="number" name="SpareId" class="layui-input" lay-verify="required"></div></div>
+            <div class="layui-inline ref-spare-wrap"><label class="layui-form-label">备件 *</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="SpareId"><input type="text" readonly class="layui-input ref-pk-display" placeholder="点击选择备件" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-pk-btn" title="选择备件" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
             <div class="layui-inline"><label class="layui-form-label">事件类型</label><div class="layui-input-inline"><select name="EventType">
                 <option value="采购入库">采购入库</option><option value="领用出库">领用出库</option><option value="报废">报废</option><option value="退库">退库</option><option value="盘盈">盘盈</option><option value="盘亏">盘亏</option>
             </select></div></div>
@@ -41,8 +41,8 @@
             {field:'RefBillNo',title:'关联单号',width:160},{field:'Operator',title:'操作人',width:110},{field:'Remark',title:'备注',minWidth:160},
             {title:'操作',width:100,toolbar:'#barRow',fixed:'right'}]]});}
         function openForm(){layer.open({type:1,area:['640px','auto'],title:'登记生命周期事件',content:$('#tplForm').html(),success:function(l,idx){
-            form.render();$('#cancel').on('click',function(){layer.close(idx);});
-            form.on('submit(save)',function(data){var f=data.field;var p={Id:0,SpareId:parseInt(f.SpareId||0,10),EventType:f.EventType,Qty:f.Qty?parseFloat(f.Qty):null,RefBillNo:f.RefBillNo||null,Remark:f.Remark||null};
+            form.render();RefPicker.autoMount($(l));$('#cancel').on('click',function(){layer.close(idx);});
+            form.on('submit(save)',function(data){var f=data.field;if(!f.SpareId){layer.msg('请选择备件',{icon:0});return false;}var p={Id:0,SpareId:parseInt(f.SpareId||0,10),EventType:f.EventType,Qty:f.Qty?parseFloat(f.Qty):null,RefBillNo:f.RefBillNo||null,Remark:f.Remark||null};
                 $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已登记',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
         }});}
         $('#btnAdd').on('click',openForm);

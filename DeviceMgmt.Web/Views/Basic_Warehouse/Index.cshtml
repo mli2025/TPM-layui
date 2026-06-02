@@ -1,0 +1,57 @@
+@{
+    ViewData["Title"] = "仓库管理";
+}
+<div class="layui-fluid" style="padding:12px;">
+    <div class="layui-card">
+        <div class="layui-card-header"><strong>仓库管理</strong>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px;">备件出入库 / 库存归属的仓库主数据</span>
+            <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增仓库</button>
+        </div>
+        <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
+    </div>
+</div>
+<script type="text/html" id="barRow">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="tplForm">
+    <div style="padding:16px;"><form class="layui-form" lay-filter="f">
+        <input type="hidden" name="Id" />
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">仓库编码 *</label><div class="layui-input-inline"><input type="text" name="Code" class="layui-input" lay-verify="required"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">仓库名称 *</label><div class="layui-input-inline"><input type="text" name="Name" class="layui-input" lay-verify="required"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">所在位置</label><div class="layui-input-inline"><input type="text" name="Location" class="layui-input"></div></div>
+            <div class="layui-inline"><label class="layui-form-label">负责人</label><div class="layui-input-inline"><input type="text" name="Manager" class="layui-input"></div></div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline"><label class="layui-form-label">状态</label><div class="layui-input-inline" style="width:110px;"><select name="Status"><option value="1">启用</option><option value="0">停用</option></select></div></div>
+        </div>
+        <div class="layui-form-item layui-form-text"><label class="layui-form-label">备注</label><div class="layui-input-block"><textarea name="Remark" class="layui-textarea"></textarea></div></div>
+        <div style="text-align:center;margin-top:10px;"><button class="layui-btn" lay-submit lay-filter="save">保存</button><button class="layui-btn layui-btn-primary" type="button" id="cancel">关闭</button></div>
+    </form></div>
+</script>
+@section Script{
+<script>
+    var U_LIST='@Url.Action("GetMainList")',U_SAVE='@Url.Action("Save")',U_DEL='@Url.Action("Delete")';
+    layui.use(['table','form','layer'],function(){
+        var table=layui.table,form=layui.form,layer=layui.layer,$=layui.$;
+        function ok(r){return r&&(r.code===0||r.code===200);}
+        function render(){table.render({elem:'#GridMain',id:'GridMain',url:U_LIST,method:'post',where:{page:1,limit:20,searchParam:[]},page:true,height:'full-150',cols:[[
+            {type:'numbers',title:'#'},{field:'Code',title:'仓库编码',width:160},{field:'Name',title:'仓库名称',width:200},
+            {field:'Location',title:'所在位置',width:180},{field:'Manager',title:'负责人',width:120},
+            {field:'Status',title:'状态',width:90,templet:function(d){return d.Status==1?'启用':'停用';}},{field:'Remark',title:'备注',minWidth:160},
+            {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
+        function openForm(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑仓库':'新增仓库',content:$('#tplForm').html(),success:function(l,idx){
+            form.val('f',{Id:row.Id||0,Code:row.Code||'',Name:row.Name||'',Location:row.Location||'',Manager:row.Manager||'',Status:String(row.Status!=null?row.Status:1),Remark:row.Remark||''});form.render();
+            $('#cancel').on('click',function(){layer.close(idx);});
+            form.on('submit(save)',function(data){var f=data.field;var p={Id:parseInt(f.Id||0,10),Code:(f.Code||'').trim(),Name:(f.Name||'').trim(),Location:f.Location||null,Manager:f.Manager||null,Status:parseInt(f.Status||1,10),Remark:f.Remark||null};
+                $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
+        }});}
+        $('#btnAdd').on('click',function(){openForm({});});
+        table.on('tool(GridMain)',function(o){if(o.event==='edit')openForm(o.data);else if(o.event==='del')layer.confirm('确认删除?',function(idx){$.post(U_DEL,{id:o.data.Id},function(){layer.close(idx);o.del();});});});
+        render();
+    });
+</script>
+}

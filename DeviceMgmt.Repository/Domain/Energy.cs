@@ -2,7 +2,7 @@ using DeviceMgmt.Repository.Core;
 
 namespace DeviceMgmt.Repository.Domain;
 
-/// <summary>能源计量点（URS 1301-1306；采集由 n8n 写入）</summary>
+/// <summary>能源计量点（URS 1301-1306；采集由工作流写入）</summary>
 [Table("Energy_Point")]
 public class Energy_Point : Entity
 {
@@ -16,7 +16,7 @@ public class Energy_Point : Entity
     public DateTime CreateDate { get; set; } = DateTime.Now;
 }
 
-/// <summary>能源时序数据（n8n 写入）</summary>
+/// <summary>能源时序数据（工作流写入）</summary>
 [Table("Energy_RealtimeData")]
 public class Energy_RealtimeData : Entity
 {

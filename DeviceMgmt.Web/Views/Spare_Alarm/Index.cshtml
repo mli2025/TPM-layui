@@ -35,7 +35,7 @@
     <div style="padding:16px;"><form class="layui-form" lay-filter="f">
         <input type="hidden" name="Id" />
         <div class="layui-form-item">
-            <div class="layui-inline"><label class="layui-form-label">备件Id</label><div class="layui-input-inline"><input type="number" name="SpareId" class="layui-input" lay-verify="required"></div></div>
+            <div class="layui-inline ref-spare-wrap"><label class="layui-form-label">备件 *</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="SpareId"><input type="text" readonly class="layui-input ref-pk-display" placeholder="点击选择备件" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-pk-btn" title="选择备件" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
             <div class="layui-inline"><label class="layui-form-label">启用</label><div class="layui-input-inline" style="width:90px;"><select name="Enabled"><option value="1">启用</option><option value="0">停用</option></select></div></div>
         </div>
         <div class="layui-form-item">
@@ -70,9 +70,9 @@
             {field:'SafeStock',title:'安全',width:100,align:'right'},{field:'MaxStock',title:'最高',width:100,align:'right'},{field:'Enabled',title:'状态',width:80,templet:function(d){return d.Enabled==1?'启用':'停用';}},
             {title:'操作',width:140,toolbar:'#barCfg',fixed:'right'}]]});}
         function openCfg(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑配置':'新增配置',content:$('#tplCfg').html(),success:function(l,idx){
-            form.val('f',{Id:row.Id||0,SpareId:row.SpareId||'',Enabled:String(row.Enabled!=null?row.Enabled:1),MinStock:row.MinStock||'',ReorderPoint:row.ReorderPoint||'',SafeStock:row.SafeStock||'',MaxStock:row.MaxStock||''});form.render();
+            form.val('f',{Id:row.Id||0,SpareId:row.SpareId||'',Enabled:String(row.Enabled!=null?row.Enabled:1),MinStock:row.MinStock||'',ReorderPoint:row.ReorderPoint||'',SafeStock:row.SafeStock||'',MaxStock:row.MaxStock||''});form.render();RefPicker.autoMount($(l));
             $('#cancel').on('click',function(){layer.close(idx);});
-            form.on('submit(save)',function(data){var f=data.field;var num=function(v){return v===''||v==null?null:parseFloat(v);};var p={Id:parseInt(f.Id||0,10),SpareId:parseInt(f.SpareId||0,10),Enabled:parseInt(f.Enabled||1,10),MinStock:num(f.MinStock),ReorderPoint:num(f.ReorderPoint),SafeStock:num(f.SafeStock),MaxStock:num(f.MaxStock)};
+            form.on('submit(save)',function(data){var f=data.field;if(!f.SpareId){layer.msg('请选择备件',{icon:0});return false;}var num=function(v){return v===''||v==null?null:parseFloat(v);};var p={Id:parseInt(f.Id||0,10),SpareId:parseInt(f.SpareId||0,10),Enabled:parseInt(f.Enabled||1,10),MinStock:num(f.MinStock),ReorderPoint:num(f.ReorderPoint),SafeStock:num(f.SafeStock),MaxStock:num(f.MaxStock)};
                 $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridCfg');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
         }});}
         $('#btnAddCfg').on('click',function(){openCfg({});});

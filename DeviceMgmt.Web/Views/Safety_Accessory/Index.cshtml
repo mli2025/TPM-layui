@@ -47,7 +47,7 @@
             </div>
             <div class="layui-form-item">
                 <div class="layui-inline"><label class="layui-form-label">检定机构</label><div class="layui-input-inline"><input type="text" name="CheckOrg" class="layui-input"></div></div>
-                <div class="layui-inline"><label class="layui-form-label">所属设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+                <div class="layui-inline ref-dev-wrap"><label class="layui-form-label">所属设备</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="FacilityId"><input type="text" readonly class="layui-input ref-dev-display" placeholder="点击选择设备(可选)" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-dev-btn" title="选择设备" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
             </div>
             <div class="layui-form-item">
                 <label class="layui-form-label">状态</label>
@@ -107,7 +107,7 @@ layui.use(['table','form','layer','laydate'],function(){
         return false;});
     function openForm(row){row=row||{};layer.open({type:1,area:['680px','auto'],title:row.Id?'编辑安全附件':'新增安全附件',content:$('#tplForm').html(),success:function(layero,idx){
         laydate.render({elem:$(layero).find('#fld_last')[0],type:'date'});
-        try{form.val('theForm',{Id:row.Id||0,AccCode:row.AccCode||'',Model:row.Model||'',SetPressure:row.SetPressure||'',CheckRange:row.CheckRange||'',LastCheckDate:row.LastCheckDate?dt(row.LastCheckDate):'',CheckCycle:row.CheckCycle!=null?row.CheckCycle:'',CheckOrg:row.CheckOrg||'',FacilityId:row.FacilityId!=null?row.FacilityId:'',Status:row.Status!=null?String(row.Status):'1'});form.render();}catch(e){}
+        try{form.val('theForm',{Id:row.Id||0,AccCode:row.AccCode||'',Model:row.Model||'',SetPressure:row.SetPressure||'',CheckRange:row.CheckRange||'',LastCheckDate:row.LastCheckDate?dt(row.LastCheckDate):'',CheckCycle:row.CheckCycle!=null?row.CheckCycle:'',CheckOrg:row.CheckOrg||'',FacilityId:row.FacilityId!=null?row.FacilityId:'',Status:row.Status!=null?String(row.Status):'1'});form.render();RefPicker.autoMount($(layero));}catch(e){}
         $(layero).find('#btnCancel').off('click').on('click',function(){layer.close(idx);});
     }});}
     loadData();

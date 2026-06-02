@@ -22,7 +22,7 @@
             <div class="layui-form-item">
                 <div class="layui-inline"><label class="layui-form-label">标准编号</label><div class="layui-input-inline"><input type="text" name="StdNo" class="layui-input"></div></div>
                 <div class="layui-inline"><label class="layui-form-label">设备名称</label><div class="layui-input-inline"><input type="text" name="FacilityName" class="layui-input"></div></div>
-                <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+                <div class="layui-inline ref-dev-wrap"><label class="layui-form-label">关联设备</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="FacilityId"><input type="text" readonly class="layui-input ref-dev-display" placeholder="点击选择设备(可选)" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-dev-btn" title="选择设备" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
             </div>
             <div class="layui-form-item">
                 <div class="layui-inline"><label class="layui-form-label">巡检周期</label><div class="layui-input-inline">
@@ -87,9 +87,9 @@
                             $.get(URL_GET, { id: row.Id }, function (res) {
                                 var d = res.data || {}, m = d.Main || {}, subs = d.Subs || [];
                                 form.val('stdForm', { Id: m.Id, StdNo: m.StdNo || '', FacilityName: m.FacilityName || '', FacilityId: m.FacilityId || '', CycleType: m.CycleType || '日', Maker: m.Maker || '' });
-                                subs.forEach(addSub); form.render();
+                                subs.forEach(addSub); form.render(); RefPicker.autoMount($(layero));
                             });
-                        } else { form.val('stdForm', { Id: 0, CycleType: '日' }); form.render(); }
+                        } else { form.val('stdForm', { Id: 0, CycleType: '日' }); form.render(); RefPicker.autoMount($(layero)); }
                         form.on('submit(stdSave)', function (data) {
                             var f = data.field;
                             var payload = { Main: { Id: parseInt(f.Id || 0, 10), StdNo: f.StdNo || null, FacilityName: f.FacilityName || null, FacilityId: f.FacilityId ? parseInt(f.FacilityId, 10) : null, CycleType: f.CycleType, Maker: f.Maker || null, Status: 1 }, Subs: collectSubs() };

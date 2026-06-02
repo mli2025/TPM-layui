@@ -1127,18 +1127,18 @@ SELECT (SELECT [Id] FROM [Sys_Role] WHERE [Name]=N'admin'), m.[Id]
           AND rm.ModuleId = m.[Id]);
 GO
 
-/* n8n 集成配置项（OCR/AI/通知 webhook） */
+/* 工作流集成配置项（OCR/AI/通知 webhook） */
 INSERT INTO [Sys_Setting] ([Group],[Key],[Value],[ValueType],[Title],[Sort])
-SELECT 'n8n','n8nOcrWebhook','','string',N'n8n OCR/智能解析 Webhook',1
+SELECT 'n8n','n8nOcrWebhook','','string',N'工作流 OCR/智能解析 Webhook',1
  WHERE NOT EXISTS (SELECT 1 FROM [Sys_Setting] WHERE [Key]='n8nOcrWebhook');
 INSERT INTO [Sys_Setting] ([Group],[Key],[Value],[ValueType],[Title],[Sort])
-SELECT 'n8n','n8nNotifyWebhook','','string',N'n8n 通知分发 Webhook',2
+SELECT 'n8n','n8nNotifyWebhook','','string',N'工作流 通知分发 Webhook',2
  WHERE NOT EXISTS (SELECT 1 FROM [Sys_Setting] WHERE [Key]='n8nNotifyWebhook');
 INSERT INTO [Sys_Setting] ([Group],[Key],[Value],[ValueType],[Title],[Sort])
-SELECT 'n8n','n8nAiAgentUrl','','string',N'n8n AI 问答嵌入路径',3
+SELECT 'n8n','n8nAiAgentUrl','','string',N'工作流 AI 问答嵌入路径',3
  WHERE NOT EXISTS (SELECT 1 FROM [Sys_Setting] WHERE [Key]='n8nAiAgentUrl');
 INSERT INTO [Sys_Setting] ([Group],[Key],[Value],[ValueType],[Title],[Sort])
-SELECT 'n8n','n8nApiKey','','string',N'n8n API Key',4
+SELECT 'n8n','n8nApiKey','','string',N'工作流 API Key',4
  WHERE NOT EXISTS (SELECT 1 FROM [Sys_Setting] WHERE [Key]='n8nApiKey');
 GO
 PRINT '==== Menu & setting seeds ready ====';

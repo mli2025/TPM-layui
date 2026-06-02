@@ -98,10 +98,22 @@
         $btn.off('click.refDept').on('click.refDept', openPicker);
         $disp.off('click.refDept').on('click.refDept', openPicker);
 
-        if (opts.value) {
+        var dv = (opts.value != null && opts.value !== '') ? opts.value : ($hid.val() || '');
+        if (dv) {
             var name = opts.text || '';
-            if (!name && opts.deptMap) name = opts.deptMap[String(opts.value)] || '';
-            setVal(opts.value, name);
+            if (!name && opts.deptMap) name = opts.deptMap[String(dv)] || '';
+            if (name) { setVal(dv, name); }
+            else {
+                $hid.val(dv);
+                $.get(opts.deptUrl || '/Sys_Dept/List', function (res) {
+                    var arr = (ok(res) && res.data) || [], hit = null;
+                    for (var i = 0; i < arr.length; i++) {
+                        var rid = arr[i].Id != null ? arr[i].Id : arr[i].id;
+                        if (String(rid) === String(dv)) { hit = arr[i]; break; }
+                    }
+                    $disp.val(hit ? (hit.DeptName || hit.deptName || ('ID:' + dv)) : ('ID:' + dv));
+                }).fail(function () { $disp.val('ID:' + dv); });
+            }
         }
     }
 
@@ -277,6 +289,185 @@
         }
     }
 
+    // 设备字段统一约定：容器含 .ref-dev-wrap，内部含 input[type=hidden] + .ref-dev-display + .ref-dev-btn
+    // 用法：HTML 用 RefPicker.deviceFieldHtml(name,label) 生成；弹层 success 后调用 RefPicker.autoMount(layero)
+    function deviceFieldHtml(name, label, required) {
+        return '<div class="layui-inline ref-dev-wrap">'
+            + '<label class="layui-form-label">' + escapeHtml(label || '设备') + (required ? ' *' : '') + '</label>'
+            + '<div class="layui-input-inline" style="position:relative;">'
+            + '<input type="hidden" name="' + escapeHtml(name || 'FacilityId') + '">'
+            + '<input type="text" readonly class="layui-input ref-dev-display" placeholder="点击选择设备"'
+            + ' style="cursor:pointer;padding-right:34px;background:#fff;">'
+            + '<i class="layui-icon layui-icon-search ref-dev-btn" title="选择设备"'
+            + ' style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i>'
+            + '</div></div>';
+    }
+
+    function mountDeviceWrap($wrap, opts) {
+        opts = opts || {};
+        var $hid = $wrap.find('input[type=hidden]');
+        mountDevicePicker({
+            $hidden: $hid,
+            $display: $wrap.find('.ref-dev-display'),
+            $btn: $wrap.find('.ref-dev-btn'),
+            url: opts.url,
+            value: (opts.value != null && opts.value !== '') ? opts.value : ($hid.val() || ''),
+            text: opts.text
+        });
+    }
+
+    // 通用表格放大镜：一次性拉取列表（GetMainList），客户端关键字过滤
+    // opts: $hidden,$display,$btn,title,url,cols(数据列),idField,textFormat(row),searchFields,emptyText,area,allowClear,value,text
+    function mountTablePicker(opts) {
+        opts = opts || {};
+        var $hid = opts.$hidden, $disp = opts.$display, $btn = opts.$btn;
+        if (!$hid || !$hid.length || !$disp || !$disp.length) return;
+        var idField = opts.idField || 'Id';
+        var fmt = opts.textFormat || function (r) { return r[idField]; };
+        var sf = opts.searchFields || [];
+
+        function setVal(id, text) { $hid.val(id || ''); $disp.val(text || ''); }
+
+        function openPicker() {
+            if ($disp.is('[disabled]')) return;
+            layui.use(['layer', 'table'], function () {
+                var layer = layui.layer, table = layui.table;
+                var tid = 'pk_' + new Date().getTime();
+                var html = '<div style="padding:10px 14px;"><div class="layui-form" style="margin-bottom:8px;">'
+                    + '<div class="layui-input-inline" style="width:240px;"><input type="text" id="' + tid + '_kw" class="layui-input" placeholder="输入关键字搜索" autocomplete="off"></div>'
+                    + '<button type="button" class="layui-btn layui-btn-sm" id="' + tid + '_search"><i class="layui-icon layui-icon-search"></i> 搜索</button>'
+                    + '</div><table id="' + tid + '" lay-filter="' + tid + '"></table></div>';
+                var all = [], selected = null;
+                layer.open({
+                    type: 1, title: opts.title || '选择', area: opts.area || ['640px', '560px'],
+                    content: html, shadeClose: false,
+                    btn: ['确定', opts.allowClear ? '清空' : '取消'],
+                    success: function () {
+                        var cols = [[{ type: 'radio', width: 50 }].concat(opts.cols || [])];
+                        function renderTable(rows) {
+                            table.render({ elem: '#' + tid, data: rows || [], page: true, limit: 10, height: 400, cols: cols, text: { none: opts.emptyText || '暂无数据' } });
+                        }
+                        function doFilter(kw) {
+                            kw = (kw || '').toLowerCase();
+                            if (!kw) return all;
+                            return all.filter(function (r) {
+                                for (var i = 0; i < sf.length; i++) {
+                                    if (String(r[sf[i]] == null ? '' : r[sf[i]]).toLowerCase().indexOf(kw) >= 0) return true;
+                                }
+                                return false;
+                            });
+                        }
+                        $.post(opts.url, { page: 1, limit: 9999 }, function (res) { all = (res && res.data) || []; renderTable(all); }).fail(function () { renderTable([]); });
+                        table.on('radio(' + tid + ')', function (obj) { selected = obj.data; });
+                        table.on('rowDouble(' + tid + ')', function (obj) { selected = obj.data; setVal(selected[idField], fmt(selected)); layer.closeAll(); });
+                        $('#' + tid + '_search').on('click', function () { renderTable(doFilter($('#' + tid + '_kw').val())); });
+                        $('#' + tid + '_kw').on('keydown', function (e) { if (e.keyCode === 13) { renderTable(doFilter($(this).val())); return false; } });
+                    },
+                    yes: function (idx) { if (!selected) { layer.msg('请选择一条', { icon: 0 }); return; } setVal(selected[idField], fmt(selected)); layer.close(idx); },
+                    btn2: function (idx) { if (opts.allowClear) setVal('', ''); layer.close(idx); return false; }
+                });
+            });
+        }
+
+        $btn && $btn.off('click.pk').on('click.pk', openPicker);
+        $disp.off('click.pk').on('click.pk', openPicker);
+
+        var v = (opts.value != null && opts.value !== '') ? opts.value : ($hid.val() || '');
+        if (v && opts.text) { setVal(v, opts.text); }
+        else if (v) {
+            $hid.val(v);
+            $.post(opts.url, { page: 1, limit: 9999 }, function (res) {
+                var arr = (res && res.data) || [], hit = null;
+                for (var i = 0; i < arr.length; i++) { if (String(arr[i][idField]) === String(v)) { hit = arr[i]; break; } }
+                $disp.val(hit ? fmt(hit) : ('ID:' + v));
+            }).fail(function () { $disp.val('ID:' + v); });
+        }
+    }
+
+    // 预置：备件 / 员工 / 维修工单
+    function spareOpts($wrap, opts) {
+        opts = opts || {};
+        return {
+            $hidden: $wrap.find('input[type=hidden]'), $display: $wrap.find('.ref-pk-display'), $btn: $wrap.find('.ref-pk-btn'),
+            title: '选择备件', url: opts.url || '/Basic_Spare/GetMainList',
+            cols: [{ field: 'Code', title: '编码', width: 150 }, { field: 'Name', title: '名称', minWidth: 180 }, { field: 'Specs', title: '规格', width: 140 }],
+            searchFields: ['Code', 'Name', 'Specs'],
+            textFormat: function (r) { return (r.Name || '') + (r.Code ? ' (' + r.Code + ')' : ''); },
+            emptyText: '暂无备件数据', value: opts.value, text: opts.text, allowClear: opts.allowClear
+        };
+    }
+    function empOpts($wrap, opts) {
+        opts = opts || {};
+        return {
+            $hidden: $wrap.find('input[type=hidden]'), $display: $wrap.find('.ref-pk-display'), $btn: $wrap.find('.ref-pk-btn'),
+            title: '选择员工', url: opts.url || '/Basic_Employee/GetMainList',
+            cols: [{ field: 'EmployeeNumber', title: '员工号', width: 140 }, { field: 'Name', title: '姓名', width: 140 }, { field: 'DeptName', title: '部门', minWidth: 140 }],
+            searchFields: ['EmployeeNumber', 'Name', 'DeptName'],
+            textFormat: function (r) { return (r.Name || '') + (r.EmployeeNumber ? ' (' + r.EmployeeNumber + ')' : ''); },
+            idField: opts.idField || 'Id', emptyText: '暂无员工数据', value: opts.value, text: opts.text, allowClear: opts.allowClear
+        };
+    }
+    function whOpts($wrap, opts) {
+        opts = opts || {};
+        return {
+            $hidden: $wrap.find('input[type=hidden]'), $display: $wrap.find('.ref-pk-display'), $btn: $wrap.find('.ref-pk-btn'),
+            title: '选择仓库', url: opts.url || '/Basic_Warehouse/GetMainList',
+            cols: [{ field: 'Code', title: '编码', width: 150 }, { field: 'Name', title: '名称', minWidth: 180 }, { field: 'Location', title: '位置', width: 160 }],
+            searchFields: ['Code', 'Name', 'Location'],
+            textFormat: function (r) { return (r.Name || '') + (r.Code ? ' (' + r.Code + ')' : ''); },
+            emptyText: '暂无仓库数据', value: opts.value, text: opts.text, allowClear: opts.allowClear
+        };
+    }
+    function billOpts($wrap, opts) {
+        opts = opts || {};
+        return {
+            $hidden: $wrap.find('input[type=hidden]'), $display: $wrap.find('.ref-pk-display'), $btn: $wrap.find('.ref-pk-btn'),
+            title: '选择维修工单', url: opts.url || '/Facility_RepairBillMain/GetMainList', area: ['720px', '560px'],
+            cols: [{ field: 'BillNo', title: '单号', width: 180 }, { field: 'FaultDesc', title: '故障描述', minWidth: 220 }, { field: 'Status', title: '状态', width: 100 }],
+            searchFields: ['BillNo', 'FaultDesc'],
+            textFormat: function (r) { return (r.BillNo || ('单#' + r.Id)); },
+            emptyText: '暂无维修工单', value: opts.value, text: opts.text, allowClear: opts.allowClear
+        };
+    }
+
+    // 通用字段 HTML（隐藏域 + 只读显示框 + 放大镜图标），type: spare/emp/bill
+    function pickerFieldHtml(name, label, required) {
+        return '<input type="hidden" name="' + escapeHtml(name) + '">'
+            + '<input type="text" readonly class="layui-input ref-pk-display" placeholder="点击选择' + (required ? '' : '(可选)') + '" style="cursor:pointer;padding-right:34px;background:#fff;">'
+            + '<i class="layui-icon layui-icon-search ref-pk-btn" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i>';
+    }
+
+    // 扫描作用域内的参照字段自动挂载放大镜（设备/备件/员工/工单），读取隐藏域已有值用于编辑回显
+    function autoMount($scope, opts) {
+        opts = opts || {};
+        $scope.find('.ref-dev-wrap').each(function () {
+            var $w = $(this);
+            if ($w.data('refMounted')) return;
+            $w.data('refMounted', 1);
+            mountDeviceWrap($w, { url: opts.deviceUrl, value: $w.attr('data-value') || '', text: $w.attr('data-text') || '' });
+        });
+        $scope.find('.ref-spare-wrap').each(function () {
+            var $w = $(this); if ($w.data('refMounted')) return; $w.data('refMounted', 1);
+            mountTablePicker(spareOpts($w, { value: $w.attr('data-value') || '', text: $w.attr('data-text') || '', allowClear: $w.attr('data-clear') === '1' }));
+        });
+        $scope.find('.ref-emp-wrap').each(function () {
+            var $w = $(this); if ($w.data('refMounted')) return; $w.data('refMounted', 1);
+            mountTablePicker(empOpts($w, { value: $w.attr('data-value') || '', text: $w.attr('data-text') || '', allowClear: $w.attr('data-clear') === '1' }));
+        });
+        $scope.find('.ref-bill-wrap').each(function () {
+            var $w = $(this); if ($w.data('refMounted')) return; $w.data('refMounted', 1);
+            mountTablePicker(billOpts($w, { value: $w.attr('data-value') || '', text: $w.attr('data-text') || '', allowClear: $w.attr('data-clear') === '1' }));
+        });
+        $scope.find('.ref-wh-wrap').each(function () {
+            var $w = $(this); if ($w.data('refMounted')) return; $w.data('refMounted', 1);
+            mountTablePicker(whOpts($w, { value: $w.attr('data-value') || '', text: $w.attr('data-text') || '', allowClear: $w.attr('data-clear') === '1' }));
+        });
+        $scope.find('.ref-dept-wrap').each(function () {
+            var $w = $(this); if ($w.data('refMounted')) return; $w.data('refMounted', 1);
+            mountDeptPicker($w, { value: $w.attr('data-value') || '', text: $w.attr('data-text') || '' });
+        });
+    }
+
     function initFacilityFormPickers($form, entity, deptMap) {
         mountDeptPicker($form.find('.ref-dept-wrap'), {
             value: entity && entity.DeptId,
@@ -287,12 +478,18 @@
             value: entity && entity.ResourceId,
             text: entity && entity.ResourceDisplay
         });
+        autoMount($form);
     }
 
     global.RefPicker = {
         mountDeptPicker: mountDeptPicker,
         mountResourcePicker: mountResourcePicker,
         mountDevicePicker: mountDevicePicker,
+        mountTablePicker: mountTablePicker,
+        deviceFieldHtml: deviceFieldHtml,
+        pickerFieldHtml: pickerFieldHtml,
+        mountDeviceWrap: mountDeviceWrap,
+        autoMount: autoMount,
         initFacilityFormPickers: initFacilityFormPickers
     };
 })(window);

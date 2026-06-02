@@ -4,7 +4,7 @@
 <div class="layui-fluid" style="padding:12px;">
     <div class="layui-card">
         <div class="layui-card-header"><strong>报警记录</strong>
-            <span style="color:#94a3b8;font-size:12px;margin-left:8px;">记录可由采集/n8n 写入，也可手工登记</span>
+            <span style="color:#94a3b8;font-size:12px;margin-left:8px;">记录可由采集/工作流 写入，也可手工登记</span>
             <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">手工登记</button>
         </div>
         <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
@@ -24,7 +24,7 @@
 <script type="text/html" id="tplForm">
     <div style="padding:16px;"><form class="layui-form" lay-filter="f">
         <div class="layui-form-item">
-            <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+            <div class="layui-inline ref-dev-wrap"><label class="layui-form-label">设备</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="FacilityId"><input type="text" readonly class="layui-input ref-dev-display" placeholder="点击选择设备" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-dev-btn" title="选择设备" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
             <div class="layui-inline"><label class="layui-form-label">指标</label><div class="layui-input-inline"><input type="text" name="MetricName" class="layui-input"></div></div>
         </div>
         <div class="layui-form-item">
@@ -47,7 +47,7 @@
             {field:'Level',title:'级别',width:90,templet:'#lvlTpl'},{field:'Handled',title:'状态',width:100,templet:'#hdlTpl'},{field:'Handler',title:'处理人',width:110},{field:'HandleRemark',title:'处理说明',minWidth:160},
             {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
         function openForm(){layer.open({type:1,area:['600px','auto'],title:'手工登记报警',content:$('#tplForm').html(),success:function(l,idx){
-            form.render();$('#cancel').on('click',function(){layer.close(idx);});
+            form.render();RefPicker.autoMount($(l));$('#cancel').on('click',function(){layer.close(idx);});
             form.on('submit(save)',function(data){var f=data.field;var p={Id:0,FacilityId:f.FacilityId?parseInt(f.FacilityId,10):null,MetricName:f.MetricName||null,MetricValue:f.MetricValue?parseFloat(f.MetricValue):null,Level:f.Level};
                 $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已登记',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
         }});}

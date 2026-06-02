@@ -4,7 +4,7 @@ using DeviceMgmt.Repository.Interface;
 namespace DeviceMgmt.App.Apps.System;
 
 /// <summary>
-/// 通知中心：站内消息查询 + 已读标记。发送/分发由通知引擎 + n8n 负责。
+/// 通知中心：站内消息查询 + 已读标记。发送/分发由通知引擎 + 工作流 负责。
 /// </summary>
 public class NotifyApp : BaseApp<Sys_NotifyRecord>
 {

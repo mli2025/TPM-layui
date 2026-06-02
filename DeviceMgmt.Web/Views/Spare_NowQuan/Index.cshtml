@@ -11,8 +11,10 @@
                 <div class="layui-col-md4">
                     <input type="text" id="kw" class="layui-input" placeholder="备件编码 / 名称 / 规格 搜索" />
                 </div>
-                <div class="layui-col-md4">
-                    <input type="number" id="whId" class="layui-input" placeholder="仓库 Id (可选)" />
+                <div class="layui-col-md4 ref-wh-wrap" data-clear="1" style="position:relative;">
+                    <input type="hidden" id="whId">
+                    <input type="text" readonly class="layui-input ref-pk-display" placeholder="仓库 (可选，点击选择)" style="cursor:pointer;padding-right:34px;background:#fff;">
+                    <i class="layui-icon layui-icon-search ref-pk-btn" title="选择仓库" style="position:absolute;right:11px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i>
                 </div>
                 <div class="layui-col-md4" style="text-align:right;">
                     <button class="layui-btn layui-btn-sm" id="btnSearch"><i class="layui-icon layui-icon-search"></i> 查询</button>
@@ -59,6 +61,7 @@
             });
         });
     }
+    if (window.RefPicker) RefPicker.autoMount($('.layui-card-body'));
     $('#btnSearch').on('click', load);
     $('#btnReload').on('click', load);
     $('#btnExport').on('click', function(){ SoulGrid.export('GridMain'); });

@@ -167,6 +167,7 @@ try
     builder.Services.AddScoped<Spare_InvoiceMainApp>();
     builder.Services.AddScoped<Spare_InvoiceSubApp>();
     builder.Services.AddScoped<Spare_NowQuanApp>();
+    builder.Services.AddScoped<DeviceMgmt.App.Apps.Spare.Basic_WarehouseApp>();
 
     var app = builder.Build();
 

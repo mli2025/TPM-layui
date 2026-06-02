@@ -18,7 +18,7 @@
         <input type="hidden" name="Id" />
         <div class="layui-form-item">
             <div class="layui-inline"><label class="layui-form-label">卡片编号</label><div class="layui-input-inline"><input type="text" name="CardNo" class="layui-input" placeholder="留空自动生成"></div></div>
-            <div class="layui-inline"><label class="layui-form-label">设备Id</label><div class="layui-input-inline"><input type="number" name="FacilityId" class="layui-input"></div></div>
+            <div class="layui-inline ref-dev-wrap"><label class="layui-form-label">设备</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="FacilityId"><input type="text" readonly class="layui-input ref-dev-display" placeholder="点击选择设备" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-dev-btn" title="选择设备" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
         </div>
         <div class="layui-form-item">
             <div class="layui-inline"><label class="layui-form-label">资产名称</label><div class="layui-input-inline"><input type="text" name="AssetName" class="layui-input"></div></div>
@@ -50,7 +50,7 @@
             {field:'OriginalValue',title:'原值',width:110,align:'right'},{field:'NetValue',title:'净值',width:110,align:'right'},
             {title:'操作',width:140,toolbar:'#barRow',fixed:'right'}]]});}
         function openForm(row){row=row||{};layer.open({type:1,area:['640px','auto'],title:row.Id?'编辑':'新增',content:$('#tplForm').html(),success:function(l,idx){
-            form.val('f',{Id:row.Id||0,CardNo:row.CardNo||'',FacilityId:row.FacilityId||'',AssetName:row.AssetName||'',Specs:row.Specs||'',Location:row.Location||'',OriginalValue:row.OriginalValue||'',DepreMethod:row.DepreMethod||'',DepreYears:row.DepreYears||'',NetValue:row.NetValue||''});form.render();
+            form.val('f',{Id:row.Id||0,CardNo:row.CardNo||'',FacilityId:row.FacilityId||'',AssetName:row.AssetName||'',Specs:row.Specs||'',Location:row.Location||'',OriginalValue:row.OriginalValue||'',DepreMethod:row.DepreMethod||'',DepreYears:row.DepreYears||'',NetValue:row.NetValue||''});form.render();RefPicker.autoMount($(l));
             $('#cancel').on('click',function(){layer.close(idx);});
             form.on('submit(save)',function(data){var f=data.field;var num=function(v){return v===''||v==null?null:parseFloat(v);};var p={Id:parseInt(f.Id||0,10),CardNo:f.CardNo||null,FacilityId:f.FacilityId?parseInt(f.FacilityId,10):null,AssetName:f.AssetName||null,Specs:f.Specs||null,Location:f.Location||null,OriginalValue:num(f.OriginalValue),DepreMethod:f.DepreMethod||null,DepreYears:num(f.DepreYears),NetValue:num(f.NetValue)};
                 $.ajax({url:U_SAVE,method:'POST',contentType:'application/json',data:JSON.stringify(p)}).done(function(r){if(ok(r)){layer.msg('已保存',{icon:1});layer.close(idx);table.reload('GridMain');}else layer.msg((r&&r.msg)||'失败',{icon:2});});return false;});
