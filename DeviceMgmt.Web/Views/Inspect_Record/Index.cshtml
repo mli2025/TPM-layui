@@ -4,18 +4,26 @@
 <div class="layui-fluid" style="padding:12px;">
     <div class="layui-card">
         <div class="layui-card-header"><strong>点检执行单</strong>
-            <button class="layui-btn layui-btn-sm" id="btnExec" style="float:right;margin-top:6px;">执行点检</button>
+            <span style="float:right;margin-top:8px;font-size:12px;color:#94a3b8;">执行单由「点检计划」按设备自动生成</span>
         </div>
         <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
     </div>
 </div>
 
 <script type="text/html" id="barRow">
+    {{# if(!d.ExecTime){ }}
+    <a class="layui-btn layui-btn-xs" lay-event="exec">执行</a>
+    {{# } else { }}
     <a class="layui-btn layui-btn-xs" lay-event="view">查看</a>
+    {{# } }}
     {{# if(d.Result == 1){ }}
     <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="disp">异常处置</a>
     {{# } }}
     <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="statusTpl">
+    {{# if(!d.ExecTime){ }}<span class="layui-badge layui-bg-blue">待执行</span>{{# } else { }}<span class="layui-badge layui-bg-green">已完成</span>{{# } }}
 </script>
 
 <script type="text/html" id="resultTpl">
@@ -25,12 +33,13 @@
 <script type="text/html" id="tplExec">
     <div style="padding:16px;">
         <form class="layui-form" lay-filter="execForm">
+            <input type="hidden" name="Id" />
             <div class="layui-form-item">
-                <div class="layui-inline"><label class="layui-form-label">点检计划</label><div class="layui-input-inline" style="width:240px;"><select name="PlanId" id="selPlan" lay-filter="selPlan"></select></div></div>
+                <div class="layui-inline"><label class="layui-form-label">设备</label><div class="layui-input-inline"><input type="text" id="execDevice" class="layui-input" readonly style="background:#f8fafc;"></div></div>
                 <div class="layui-inline"><label class="layui-form-label">执行人</label><div class="layui-input-inline"><input type="text" name="Executor" class="layui-input"></div></div>
             </div>
             <fieldset class="layui-elem-field layui-field-title"><legend>点检项</legend></fieldset>
-            <table class="layui-table" style="margin:0;"><thead><tr><th>点检项</th><th style="width:150px;">实测值</th><th style="width:160px;">结果</th><th>备注</th></tr></thead><tbody id="ItemBody"><tr><td colspan="4" style="color:#94a3b8;text-align:center;">请选择点检计划</td></tr></tbody></table>
+            <table class="layui-table" style="margin:0;"><thead><tr><th>点检项</th><th style="width:150px;">实测值</th><th style="width:160px;">结果</th><th>备注</th></tr></thead><tbody id="ItemBody"><tr><td colspan="4" style="color:#94a3b8;text-align:center;">加载中...</td></tr></tbody></table>
             <div class="layui-form-item layui-form-text" style="margin-top:10px;">
                 <label class="layui-form-label">整体备注</label><div class="layui-input-block"><textarea name="Remark" class="layui-textarea"></textarea></div>
             </div>
@@ -66,7 +75,7 @@
 
 @section Script{
     <script>
-        var URL_LIST = '@Url.Action("GetMainList")', URL_PLANS = '@Url.Action("Plans")', URL_PREP = '@Url.Action("PrepareByPlan")', URL_SUBMIT = '@Url.Action("Submit")', URL_DETAIL = '@Url.Action("GetDetail")', URL_DISP = '@Url.Action("Dispatch")', URL_DEL = '@Url.Action("Delete")';
+        var URL_LIST = '@Url.Action("GetMainList")', URL_PREP_REC = '@Url.Action("PrepareByRecord")', URL_SUBMIT = '@Url.Action("Submit")', URL_DETAIL = '@Url.Action("GetDetail")', URL_DISP = '@Url.Action("Dispatch")', URL_DEL = '@Url.Action("Delete")';
         layui.use(['table', 'form', 'layer'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.$;
             function ok(r) { return r && (r.code === 0 || r.code === 200); }
@@ -79,12 +88,13 @@
                     cols: [[
                         { type: 'numbers', title: '#' },
                         { field: 'RecordNo', title: '记录号', width: 180 },
-                        { field: 'PlanId', title: '计划Id', width: 100 },
-                        { field: 'Executor', title: '执行人', width: 120 },
-                        { field: 'ExecTime', title: '执行时间', width: 165, templet: function (d) { return dcell(d.ExecTime); } },
+                        { field: 'FacilityName', title: '设备', minWidth: 150, templet: function (d) { return esc(d.FacilityName || (d.FacilityId ? ('#' + d.FacilityId) : '')); } },
+                        { field: 'PlanDate', title: '计划日期', width: 120, templet: function (d) { return d.PlanDate ? dcell(d.PlanDate).substring(0, 10) : ''; } },
+                        { field: 'Executor', title: '执行人', width: 110 },
+                        { field: 'ExecTime', title: '执行时间', width: 160, templet: function (d) { return dcell(d.ExecTime); } },
+                        { title: '状态', width: 90, templet: '#statusTpl' },
                         { field: 'Result', title: '结果', width: 90, templet: '#resultTpl' },
-                        { field: 'Remark', title: '备注', minWidth: 160 },
-                        { title: '操作', width: 200, toolbar: '#barRow', fixed: 'right' }
+                        { title: '操作', width: 220, toolbar: '#barRow', fixed: 'right' }
                     ]]
                 });
             }
@@ -96,39 +106,31 @@
                     '<td><input class="layui-input i-rk"></td></tr>';
             }
 
-            function openExec() {
+            function openExec(rec) {
                 layer.open({
-                    type: 1, area: ['860px', '70%'], title: '执行点检', content: $('#tplExec').html(),
+                    type: 1, area: ['860px', '70%'], title: '执行点检 - ' + (rec.RecordNo || ''), content: $('#tplExec').html(),
                     success: function (layero, idx) {
-                        $.get(URL_PLANS, function (res) {
-                            var opt = '<option value="">-- 选择计划 --</option>';
-                            (res.data || []).forEach(function (p) { opt += '<option value="' + p.Id + '">' + (p.PlanNo || ('#' + p.Id)) + ' / ' + (p.Executor || '') + '</option>'; });
-                            $('#selPlan').html(opt); form.render('select');
-                        });
-                        form.on('select(selPlan)', function (d) {
-                            if (!d.value) { $('#ItemBody').html('<tr><td colspan="4" style="color:#94a3b8;text-align:center;">请选择点检计划</td></tr>'); return; }
-                            $.get(URL_PREP, { planId: d.value }, function (res) {
-                                var items = (res.data && res.data.items) || [];
-                                var html = ''; items.forEach(function (it) { html += itemRow(it.ItemName); });
-                                $('#ItemBody').html(html || '<tr><td colspan="4" style="color:#94a3b8;text-align:center;">该标准无点检项</td></tr>');
-                                // 异常单选互斥
-                                $('#ItemBody tr').each(function () {
-                                    var $tr = $(this);
-                                    $tr.find('.i-normal').on('click', function () { $tr.find('.i-abn').prop('checked', false); });
-                                    $tr.find('.i-abn').on('click', function () { $tr.find('.i-normal').prop('checked', false); });
-                                });
+                        $('#execDevice').val(rec.FacilityName || (rec.FacilityId ? ('#' + rec.FacilityId) : ''));
+                        form.val('execForm', { Id: rec.Id, Executor: rec.Executor || '' });
+                        $.get(URL_PREP_REC, { recordId: rec.Id }, function (res) {
+                            var items = (res.data && res.data.items) || [];
+                            var html = ''; items.forEach(function (it) { html += itemRow(it.ItemName); });
+                            $('#ItemBody').html(html || '<tr><td colspan="4" style="color:#94a3b8;text-align:center;">该标准无点检项</td></tr>');
+                            $('#ItemBody tr').each(function () {
+                                var $tr = $(this);
+                                $tr.find('.i-normal').on('click', function () { $tr.find('.i-abn').prop('checked', false); });
+                                $tr.find('.i-abn').on('click', function () { $tr.find('.i-normal').prop('checked', false); });
                             });
                         });
                         $('#execCancel').on('click', function () { layer.close(idx); });
                         form.on('submit(execSubmit)', function (data) {
                             var f = data.field;
-                            if (!f.PlanId) { layer.msg('请选择计划'); return false; }
                             var items = [];
                             $('#ItemBody tr[data-item]').each(function () {
                                 var $tr = $(this);
                                 items.push({ ItemName: $tr.attr('data-item'), ResultValue: $tr.find('.i-val').val(), IsNormal: !$tr.find('.i-abn').is(':checked'), Remark: $tr.find('.i-rk').val() });
                             });
-                            var payload = { Main: { Id: 0, PlanId: parseInt(f.PlanId, 10), Executor: f.Executor || null, Remark: f.Remark || null }, Items: items };
+                            var payload = { Main: { Id: parseInt(f.Id || 0, 10), PlanId: rec.PlanId || null, FacilityId: rec.FacilityId || null, Executor: f.Executor || null, Remark: f.Remark || null }, Items: items };
                             $.ajax({ url: URL_SUBMIT, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已提交', { icon: 1 }); layer.close(idx); table.reload('GridMain'); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
                             return false;
                         });
@@ -164,9 +166,9 @@
                 });
             }
 
-            $('#btnExec').on('click', openExec);
             table.on('tool(GridMain)', function (obj) {
-                if (obj.event === 'view') viewDetail(obj.data.Id);
+                if (obj.event === 'exec') openExec(obj.data);
+                else if (obj.event === 'view') viewDetail(obj.data.Id);
                 else if (obj.event === 'disp') openDisp(obj.data);
                 else if (obj.event === 'del') layer.confirm('确认删除?', function (idx) { $.post(URL_DEL, { id: obj.data.Id }, function () { layer.close(idx); obj.del(); }); });
             });

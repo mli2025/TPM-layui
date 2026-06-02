@@ -39,17 +39,38 @@
             <input type="hidden" name="Id" />
             <div class="layui-form-item">
                 <label class="layui-form-label">点检标准</label>
-                <div class="layui-input-block"><select name="StandardId" lay-verify="required"></select></div>
+                <div class="layui-input-block"><select name="StandardId" lay-filter="selStd" lay-verify="required"></select></div>
             </div>
             <div class="layui-form-item">
-                <div class="layui-inline"><label class="layui-form-label">执行人</label><div class="layui-input-inline"><input type="text" name="Executor" class="layui-input"></div></div>
-                <div class="layui-inline"><label class="layui-form-label">计划日期</label><div class="layui-input-inline"><input type="text" name="PlanDate" id="fPlan" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">起始日期</label><div class="layui-input-inline"><input type="text" name="PlanDate" id="fPlan" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">期数</label><div class="layui-input-inline"><input type="number" name="Periods" class="layui-input" value="1" min="1"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline ref-emp-wrap"><label class="layui-form-label">执行人</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="ExecutorId"><input type="text" readonly class="layui-input ref-pk-display" placeholder="点击选择员工" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-pk-btn" title="选择员工" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">关联设备</label>
+                <div class="layui-input-block">
+                    <button type="button" class="layui-btn layui-btn-sm" id="btnPickDev"><i class="layui-icon layui-icon-add-1"></i> 选择设备</button>
+                    <span id="devCount" style="margin-left:8px;color:#64748b;">未选择</span>
+                    <div id="devChips" style="margin-top:8px;max-height:140px;overflow:auto;"></div>
+                </div>
             </div>
             <div style="text-align:center;margin-top:10px;">
                 <button class="layui-btn" lay-submit lay-filter="planSave">保存</button>
                 <button class="layui-btn layui-btn-primary" type="button" id="planCancel">关闭</button>
             </div>
         </form>
+    </div>
+</script>
+
+<script type="text/html" id="tplDevPick">
+    <div style="padding:10px 14px;">
+        <div class="layui-form" style="margin-bottom:8px;">
+            <div class="layui-input-inline" style="width:240px;"><input type="text" id="devKw" class="layui-input" placeholder="设备编码/名称/类型 搜索" autocomplete="off"></div>
+            <button type="button" class="layui-btn layui-btn-sm" id="devSearch"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+        </div>
+        <table id="devGrid" lay-filter="devGrid"></table>
     </div>
 </script>
 
@@ -62,7 +83,7 @@
             function ok(r) { return r && (r.code === 0 || r.code === 200); }
             function dcell(d, f) { return d[f] ? String(d[f]).replace('T', ' ').substring(0, 10) : ''; }
             function loadStandards(cb) { $.get(URL_STD, function (res) { stdCache = (res && res.data) || []; if (cb) cb(); }); }
-            function stdName(id) { for (var i = 0; i < stdCache.length; i++) if (String(stdCache[i].Id) === String(id)) return stdCache[i].StdNo || stdCache[i].FacilityName || ('#' + id); return id; }
+            function stdName(id) { for (var i = 0; i < stdCache.length; i++) if (String(stdCache[i].Id) === String(id)) return stdCache[i].StdName || stdCache[i].StdNo || ('#' + id); return id; }
 
             function renderList() {
                 table.render({
@@ -104,23 +125,107 @@
                 });
             }
 
+            var URL_DEVLIST = '/Facility_ResourceDetail/GetMainList', URL_GETDEV = '@Url.Action("GetDevices")';
+            function stdById(id) { for (var i = 0; i < stdCache.length; i++) if (String(stdCache[i].Id) === String(id)) return stdCache[i]; return null; }
+
             function openForm(row) {
                 row = row || {};
+                var picked = {}; // FacilityId -> {FacilityId, FacilityName}
+                function refreshChips() {
+                    var ids = Object.keys(picked);
+                    $('#devCount').text(ids.length ? ('已选 ' + ids.length + ' 台') : '未选择');
+                    $('#devChips').html(ids.map(function (k) {
+                        var d = picked[k];
+                        return '<span class="layui-badge layui-bg-blue" style="margin:2px 4px 2px 0;cursor:pointer;" data-id="' + k + '" title="点击移除">' + (d.FacilityName || ('#' + k)) + ' ×</span>';
+                    }).join(''));
+                }
+                $('#devChips').off('click', '[data-id]').on('click', '[data-id]', function () { delete picked[$(this).attr('data-id')]; refreshChips(); });
+
                 layer.open({
-                    type: 1, area: ['620px', 'auto'], title: row.Id ? '编辑计划' : '新增计划', content: $('#tplForm').html(),
+                    type: 1, area: ['680px', 'auto'], title: row.Id ? '编辑计划' : '新增计划', content: $('#tplForm').html(),
                     success: function (layero, idx) {
-                        var opt = ''; stdCache.forEach(function (s) { opt += '<option value="' + s.Id + '">' + (s.StdNo || s.FacilityName || ('#' + s.Id)) + '</option>'; });
+                        var opt = ''; stdCache.forEach(function (s) { opt += '<option value="' + s.Id + '">' + (s.StdName || s.StdNo || ('#' + s.Id)) + (s.CycleType ? ' [' + s.CycleType + ']' : '') + '</option>'; });
                         $('select[name=StandardId]').html(opt);
                         laydate.render({ elem: '#fPlan', type: 'date' });
-                        form.val('planForm', { Id: row.Id || 0, StandardId: row.StandardId || '', Executor: row.Executor || '', PlanDate: dcell(row, 'PlanDate') });
+                        form.val('planForm', { Id: row.Id || 0, StandardId: row.StandardId || '', Periods: row.Periods || 1, PlanDate: dcell(row, 'PlanDate') });
                         form.render();
+                        RefPicker.autoMount($(layero));
+                        if (row.ExecutorId) { $(layero).find('.ref-emp-wrap').attr('data-value', row.ExecutorId).attr('data-text', row.Executor || ''); RefPicker.autoMount($(layero)); }
+
+                        if (row.Id) { $.get(URL_GETDEV, { id: row.Id }, function (res) { (res.data || []).forEach(function (d) { picked[d.FacilityId] = { FacilityId: d.FacilityId, FacilityName: d.FacilityName }; }); refreshChips(); }); }
+
+                        $('#btnPickDev').on('click', function () {
+                            var std = stdById($('select[name=StandardId]').val());
+                            var devType = std ? (std.FacilityType || '') : '';
+                            openDevPicker(picked, devType, refreshChips);
+                        });
                         $('#planCancel').on('click', function () { layer.close(idx); });
                         form.on('submit(planSave)', function (data) {
                             var f = data.field;
-                            var payload = { Id: parseInt(f.Id || 0, 10), StandardId: parseInt(f.StandardId || 0, 10), Executor: f.Executor || null, PlanDate: f.PlanDate || null, Status: 0 };
-                            $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已保存', { icon: 1 }); layer.close(idx); table.reload('GridMain'); if (calY) renderCal(); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
+                            var devs = Object.keys(picked).map(function (k) { return { FacilityId: parseInt(k, 10), FacilityName: picked[k].FacilityName }; });
+                            if (!f.Id && devs.length === 0) { layer.msg('请至少选择一台设备', { icon: 0 }); return false; }
+                            var execText = $(layero).find('.ref-emp-wrap .ref-pk-display').val() || '';
+                            var payload = { Main: { Id: parseInt(f.Id || 0, 10), StandardId: parseInt(f.StandardId || 0, 10), ExecutorId: f.ExecutorId ? parseInt(f.ExecutorId, 10) : null, Executor: execText || null, PlanDate: f.PlanDate || null, Periods: parseInt(f.Periods || 1, 10), Status: 0 }, Devices: devs };
+                            $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已保存并生成执行单', { icon: 1 }); layer.close(idx); table.reload('GridMain'); if (calY) renderCal(); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
                             return false;
                         });
+                    }
+                });
+            }
+
+            function openDevPicker(picked, devType, onDone) {
+                layer.open({
+                    type: 1, title: '选择设备' + (devType ? '（类型筛选：' + devType + '）' : ''), area: ['720px', '600px'], content: $('#tplDevPick').html(),
+                    btn: ['确定', '取消'],
+                    success: function () {
+                        var all = [];
+                        var sel = {}; // 跨分页累积：FacilityId -> row
+                        Object.keys(picked).forEach(function (k) { sel[k] = picked[k]; });
+                        function render(rows) {
+                            table.render({
+                                elem: '#devGrid', data: rows || [], page: true, limit: 10, height: 420,
+                                cols: [[
+                                    { type: 'checkbox', width: 50 },
+                                    { field: 'FacilityCode', title: '编码', width: 150 },
+                                    { field: 'FacilityName', title: '名称', minWidth: 180 },
+                                    { field: 'FacilityType', title: '类型', width: 140 }
+                                ]],
+                                done: function () {
+                                    // 勾选回显当前页已在 sel 中的行
+                                    table.render;
+                                }
+                            });
+                        }
+                        // checkbox 勾选累积到 sel（含跨页）
+                        table.on('checkbox(devGrid)', function (obj) {
+                            var data = obj.data;
+                            if (obj.type === 'all') {
+                                var st = table.checkStatus('devGrid');
+                                (st.data || []).forEach(function (r) { if (obj.checked) sel[r.Id] = { FacilityId: r.Id, FacilityName: r.FacilityName }; else delete sel[r.Id]; });
+                            } else {
+                                if (obj.checked) sel[data.Id] = { FacilityId: data.Id, FacilityName: data.FacilityName };
+                                else delete sel[data.Id];
+                            }
+                        });
+                        function doFilter(kw) {
+                            kw = (kw || '').toLowerCase();
+                            return all.filter(function (r) {
+                                if (devType && String(r.FacilityType || '') !== devType) return false;
+                                if (!kw) return true;
+                                return ['FacilityCode', 'FacilityName', 'FacilityType'].some(function (f) { return String(r[f] || '').toLowerCase().indexOf(kw) >= 0; });
+                            });
+                        }
+                        $.post(URL_DEVLIST, { page: 1, limit: 9999 }, function (res) { all = (res && res.data) || []; render(doFilter('')); }).fail(function () { render([]); });
+                        $('#devSearch').on('click', function () { render(doFilter($('#devKw').val())); });
+                        $('#devKw').on('keydown', function (e) { if (e.keyCode === 13) { render(doFilter($(this).val())); return false; } });
+                        // 暴露给 yes
+                        openDevPicker._sel = sel;
+                    },
+                    yes: function (idx) {
+                        var sel = openDevPicker._sel || {};
+                        Object.keys(sel).forEach(function (k) { picked[k] = sel[k]; });
+                        if (onDone) onDone();
+                        layer.close(idx);
                     }
                 });
             }

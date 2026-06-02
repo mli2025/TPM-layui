@@ -1,9 +1,8 @@
 @{
     Layout = "_LayoutMobile";
     var id = (long)ViewBag.Id;
-    var planId = (long)ViewBag.PlanId;
 }
-<div class="p-3 space-y-3" id="root" data-id="@id" data-plan-id="@planId">
+<div class="p-3 space-y-3" id="root" data-id="@id">
     <div class="m-card p-3">
         <div class="text-xs text-slate-500">点检执行单</div>
         <div id="billNo" class="text-base font-medium mt-1">-</div>
@@ -36,10 +35,7 @@
 @section Script {
 <script>
 (function(){
-    var root = document.getElementById('root');
-    var recordId = parseInt(root.dataset.id, 10) || 0;
-    var planId = parseInt(root.dataset.planId, 10) || 0;
-    var taskKind = 'plan';
+    var recordId = parseInt(document.getElementById('root').dataset.id, 10) || 0;
     var mainData = null;
     var readOnly = false;
 
@@ -51,8 +47,8 @@
             return;
         }
         document.getElementById('subs').innerHTML = subs.map(function(s, idx){
-            var name = s.ItemName || s.Project || '-';
-            var method = s.Method || s.CheckMethod || '';
+            var name = s.ItemName || '-';
+            var method = s.Method || '';
             var std = s.Standard || '';
             if (editable){
                 return '<div class="m-card p-3" data-idx="' + idx + '">'
@@ -61,15 +57,15 @@
                     + (std ? '<div class="text-xs text-slate-500">标准: ' + std + '</div>' : '')
                     + '<label class="text-xs text-slate-500 mt-2 block">实测值</label>'
                     + '<input class="m-input mt-1 s-val" value="' + (s.ResultValue||'') + '" />'
-                    + '<div class="flex gap-2 mt-2" x-data="{ ok: true }">'
-                    + '<button type="button" class="m-btn flex-1 s-ok primary" data-normal="1">正常</button>'
-                    + '<button type="button" class="m-btn flex-1 s-bad" data-normal="0">异常</button>'
+                    + '<div class="flex gap-2 mt-2">'
+                    + '<button type="button" class="m-btn flex-1 s-ok primary">正常</button>'
+                    + '<button type="button" class="m-btn flex-1 s-bad">异常</button>'
                     + '</div>'
                     + '<label class="text-xs text-slate-500 mt-2 block">备注</label>'
                     + '<input class="m-input mt-1 s-remark" value="' + (s.Remark||'') + '" />'
                     + '</div>';
             }
-            var badge = (s.IsNormal === false || s.IsNormal === 0) ? '<span class="m-badge danger">异常</span>' : '<span class="m-badge done">正常</span>';
+            var badge = (s.IsNormal === false) ? '<span class="m-badge danger">异常</span>' : '<span class="m-badge done">正常</span>';
             return '<div class="m-card p-3">'
                 + '<div class="flex items-center gap-2"><span class="text-sm font-medium">' + name + '</span>' + badge + '</div>'
                 + '<div class="text-xs text-slate-500 mt-1">实测: ' + (s.ResultValue||'-') + '</div>'
@@ -80,40 +76,27 @@
             document.querySelectorAll('#subs .m-card[data-idx]').forEach(function(card){
                 var okBtn = card.querySelector('.s-ok');
                 var badBtn = card.querySelector('.s-bad');
-                okBtn.addEventListener('click', function(){
-                    okBtn.classList.add('primary'); badBtn.classList.remove('danger');
-                    card.dataset.normal = '1';
-                });
-                badBtn.addEventListener('click', function(){
-                    badBtn.classList.add('danger'); okBtn.classList.remove('primary');
-                    card.dataset.normal = '0';
-                });
                 card.dataset.normal = '1';
+                okBtn.addEventListener('click', function(){ okBtn.classList.add('primary'); badBtn.classList.remove('danger'); card.dataset.normal = '1'; });
+                badBtn.addEventListener('click', function(){ badBtn.classList.add('danger'); okBtn.classList.remove('primary'); card.dataset.normal = '0'; });
             });
         }
     }
 
     function load(){
-        var url = planId > 0
-            ? '/m/api/check/detail?planId=' + planId
-            : '/m/api/check/detail?id=' + recordId;
-        M.ajax({ url: url, contentType:false }).then(function(res){
+        M.ajax({ url:'/m/api/check/detail?id=' + recordId, contentType:false }).then(function(res){
             if (!M.ok(res)){ M.toast(res.msg||'加载失败','err'); return; }
             var d = res.data || {};
-            taskKind = d.taskKind || 'plan';
             mainData = d.main || {};
-            var plan = d.plan || {};
-            readOnly = taskKind === 'record' && !!mainData.ExecTime;
+            readOnly = !!d.readOnly;
 
-            document.getElementById('billNo').textContent = mainData.RecordNo || plan.PlanNo || '-';
-            document.getElementById('facility').textContent = mainData.FacilityId || plan.FacilityId || '-';
-            document.getElementById('executor').textContent = mainData.Executor || plan.Executor || '-';
-            document.getElementById('execTime').textContent = fmt(mainData.ExecTime || plan.PlanDate);
+            document.getElementById('billNo').textContent = mainData.RecordNo || '-';
+            document.getElementById('facility').textContent = mainData.FacilityName || mainData.FacilityId || '-';
+            document.getElementById('executor').textContent = mainData.Executor || '-';
+            document.getElementById('execTime').textContent = fmt(mainData.ExecTime || mainData.PlanDate);
             document.getElementById('remark').value = mainData.Remark || '';
 
-            var subs = d.subs || [];
-            renderSubs(subs, !readOnly);
-
+            renderSubs(d.subs || [], !readOnly);
             document.getElementById('editPanel').classList.toggle('hidden', readOnly);
             document.getElementById('viewPanel').classList.toggle('hidden', !readOnly);
             if (readOnly){
@@ -125,7 +108,7 @@
 
     document.getElementById('btnSubmit').addEventListener('click', function(){
         if (readOnly) return;
-        var items = Array.prototype.map.call(document.querySelectorAll('#subs .m-card[data-idx]'), function(card, i){
+        var items = Array.prototype.map.call(document.querySelectorAll('#subs .m-card[data-idx]'), function(card){
             var nameEl = card.querySelector('.text-sm.font-medium');
             return {
                 ItemName: nameEl ? nameEl.textContent : '',
@@ -135,12 +118,7 @@
             };
         });
         var payload = {
-            Main: {
-                Id: mainData.Id || 0,
-                PlanId: mainData.PlanId || planId || null,
-                FacilityId: mainData.FacilityId || null,
-                Remark: document.getElementById('remark').value
-            },
+            Main: { Id: mainData.Id || recordId, PlanId: mainData.PlanId || null, FacilityId: mainData.FacilityId || null, Remark: document.getElementById('remark').value },
             Items: items
         };
         M.ajax({ url:'/m/api/check/submit', method:'POST', data: JSON.stringify(payload), contentType:'application/json' }).then(function(res){

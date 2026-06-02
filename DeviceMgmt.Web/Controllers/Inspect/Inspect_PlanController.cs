@@ -33,14 +33,26 @@ public class Inspect_PlanController : BaseController
     public IActionResult Standards()
         => Json(new ResponseData { code = 0, data = _stdApp.Getmainlist(new PageReq { page = 1, limit = 1000 }).data });
 
+    [HttpGet]
+    public IActionResult GetDevices([FromQuery] long id)
+        => Json(new ResponseData { code = 0, data = _app.GetDevices(id) });
+
     [HttpPost]
-    public IActionResult Save([FromBody] Inspect_Plan model)
+    public IActionResult Save([FromBody] PlanSaveReq req)
     {
-        if (model == null || model.StandardId <= 0) return Json(new ResponseData { code = 400, msg = "请选择点检标准" });
-        var id = _app.SavePlan(model);
+        if (req?.Main == null || req.Main.StandardId <= 0) return Json(new ResponseData { code = 400, msg = "请选择点检标准" });
+        if (req.Main.Id == 0 && (req.Devices == null || req.Devices.Count == 0))
+            return Json(new ResponseData { code = 400, msg = "请至少选择一台设备" });
+        var id = _app.SavePlan(req.Main, req.Devices);
         return Json(new ResponseData { code = 0, data = id, msg = "ok" });
     }
 
     [HttpPost]
     public IActionResult Delete([FromForm] long id) { _app.Delete(id); return Json(new ResponseData { code = 0, msg = "ok" }); }
+
+    public class PlanSaveReq
+    {
+        public Inspect_Plan? Main { get; set; }
+        public List<Inspect_PlanDevice>? Devices { get; set; }
+    }
 }

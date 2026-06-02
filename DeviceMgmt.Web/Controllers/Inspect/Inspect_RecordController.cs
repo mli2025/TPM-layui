@@ -37,6 +37,23 @@ public class Inspect_RecordController : BaseController
         return Json(new ResponseData { code = 0, data = new { plan, items } });
     }
 
+    /// <summary>按执行单准备：待执行单返回标准点检项；已完成单返回已填明细。</summary>
+    [HttpGet]
+    public IActionResult PrepareByRecord([FromQuery] long recordId)
+    {
+        var rec = _app.Get(recordId);
+        if (rec == null) return Json(new ResponseData { code = 404, msg = "执行单不存在" });
+        var subs = _app.GetSubs(recordId);
+        if (subs.Count == 0 && rec.PlanId.HasValue)
+        {
+            var plan = _planApp.Get(rec.PlanId.Value);
+            if (plan != null)
+                subs = _stdApp.GetSubs(plan.StandardId)
+                    .Select(s => new Inspect_RecordSub { ItemName = s.ItemName }).ToList();
+        }
+        return Json(new ResponseData { code = 0, data = new { record = rec, items = subs } });
+    }
+
     [HttpGet]
     public IActionResult Plans()
         => Json(new ResponseData { code = 0, data = _planApp.Getmainlist(new PageReq { page = 1, limit = 1000 }).data });

@@ -20,15 +20,17 @@
         <form class="layui-form" lay-filter="stdForm">
             <input type="hidden" name="Id" />
             <div class="layui-form-item">
-                <div class="layui-inline"><label class="layui-form-label">标准编号</label><div class="layui-input-inline"><input type="text" name="StdNo" class="layui-input"></div></div>
-                <div class="layui-inline"><label class="layui-form-label">设备名称</label><div class="layui-input-inline"><input type="text" name="FacilityName" class="layui-input"></div></div>
-                <div class="layui-inline ref-dev-wrap"><label class="layui-form-label">关联设备</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="FacilityId"><input type="text" readonly class="layui-input ref-dev-display" placeholder="点击选择设备(可选)" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-dev-btn" title="选择设备" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
+                <div class="layui-inline"><label class="layui-form-label">标准编号</label><div class="layui-input-inline"><input type="text" name="StdNo" class="layui-input" placeholder="留空自动生成"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">标准名称</label><div class="layui-input-inline"><input type="text" name="StdName" class="layui-input" lay-verify="required" placeholder="如：注塑机日常点检标准"></div></div>
             </div>
             <div class="layui-form-item">
                 <div class="layui-inline"><label class="layui-form-label">巡检周期</label><div class="layui-input-inline">
-                    <select name="CycleType"><option value="班">班次</option><option value="日">日</option><option value="周">周</option><option value="月">月</option></select>
+                    <select name="CycleType"><option value="班">班次</option><option value="日">日</option><option value="周">周</option><option value="月">月</option><option value="季">季度</option><option value="年">年</option></select>
                 </div></div>
-                <div class="layui-inline"><label class="layui-form-label">编制人</label><div class="layui-input-inline"><input type="text" name="Maker" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">适用设备类型</label><div class="layui-input-inline"><input type="text" name="FacilityType" class="layui-input" placeholder="可选,计划按类型带入设备"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline ref-emp-wrap"><label class="layui-form-label">编制人</label><div class="layui-input-inline" style="position:relative;"><input type="hidden" name="MakerId"><input type="text" readonly class="layui-input ref-pk-display" placeholder="点击选择员工(可选)" style="cursor:pointer;padding-right:34px;background:#fff;"><i class="layui-icon layui-icon-search ref-pk-btn" title="选择员工" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i></div></div>
             </div>
             <fieldset class="layui-elem-field layui-field-title"><legend>点检项明细
                 <button class="layui-btn layui-btn-xs" type="button" id="btnAddSub" style="margin-left:10px;">添加项</button>
@@ -66,7 +68,8 @@
                     cols: [[
                         { type: 'numbers', title: '#' },
                         { field: 'StdNo', title: '标准编号', width: 150 },
-                        { field: 'FacilityName', title: '设备', width: 180 },
+                        { field: 'StdName', title: '标准名称', minWidth: 180 },
+                        { field: 'FacilityType', title: '适用设备类型', width: 140 },
                         { field: 'CycleType', title: '周期', width: 100 },
                         { field: 'Maker', title: '编制人', width: 110 },
                         { field: 'Status', title: '状态', width: 80, templet: function (d) { return d.Status == 1 ? '启用' : '停用'; } },
@@ -86,13 +89,16 @@
                         if (row.Id) {
                             $.get(URL_GET, { id: row.Id }, function (res) {
                                 var d = res.data || {}, m = d.Main || {}, subs = d.Subs || [];
-                                form.val('stdForm', { Id: m.Id, StdNo: m.StdNo || '', FacilityName: m.FacilityName || '', FacilityId: m.FacilityId || '', CycleType: m.CycleType || '日', Maker: m.Maker || '' });
-                                subs.forEach(addSub); form.render(); RefPicker.autoMount($(layero));
+                                form.val('stdForm', { Id: m.Id, StdNo: m.StdNo || '', StdName: m.StdName || '', FacilityType: m.FacilityType || '', CycleType: m.CycleType || '日', MakerId: m.MakerId || '' });
+                                subs.forEach(addSub); form.render();
+                                RefPicker.autoMount($(layero), {});
+                                if (m.MakerId) { $(layero).find('.ref-emp-wrap').attr('data-value', m.MakerId).attr('data-text', m.Maker || ''); RefPicker.autoMount($(layero)); }
                             });
                         } else { form.val('stdForm', { Id: 0, CycleType: '日' }); form.render(); RefPicker.autoMount($(layero)); }
                         form.on('submit(stdSave)', function (data) {
                             var f = data.field;
-                            var payload = { Main: { Id: parseInt(f.Id || 0, 10), StdNo: f.StdNo || null, FacilityName: f.FacilityName || null, FacilityId: f.FacilityId ? parseInt(f.FacilityId, 10) : null, CycleType: f.CycleType, Maker: f.Maker || null, Status: 1 }, Subs: collectSubs() };
+                            var makerText = $(layero).find('.ref-emp-wrap .ref-pk-display').val() || '';
+                            var payload = { Main: { Id: parseInt(f.Id || 0, 10), StdNo: f.StdNo || null, StdName: f.StdName || null, FacilityType: f.FacilityType || null, CycleType: f.CycleType, MakerId: f.MakerId ? parseInt(f.MakerId, 10) : null, Maker: makerText || null, Status: 1 }, Subs: collectSubs() };
                             $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已保存', { icon: 1 }); layer.close(idx); table.reload('GridMain'); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
                             return false;
                         });

@@ -256,115 +256,60 @@ public class MobileController : BaseController
     [HttpGet("api/check")]
     public IActionResult ApiCheckList([FromQuery] string? status = null, [FromQuery] string? kw = null)
     {
-        var rows = new List<object>();
-        var donePlanIds = _inspectRecordRepo.Find("[ExecTime] IS NOT NULL", null, "[Id] DESC")
-            .Where(r => r.PlanId.HasValue).Select(r => r.PlanId!.Value).Distinct().ToHashSet();
-
-        if (string.IsNullOrEmpty(status) || status == "0")
+        // 执行单维度：ExecTime 为空=待执行(0)，非空=已完成(3)
+        var conds = new List<string>();
+        var p = new Dictionary<string, object?>();
+        if (status == "0") conds.Add("[ExecTime] IS NULL");
+        else if (status == "3") conds.Add("[ExecTime] IS NOT NULL");
+        if (!string.IsNullOrWhiteSpace(kw))
         {
-            var plans = _inspectPlanRepo.Find("([Status] IS NULL OR [Status]=0)", null, "[PlanDate] DESC").Take(200).ToList();
-            foreach (var plan in plans)
-            {
-                if (donePlanIds.Contains(plan.Id)) continue;
-                if (!string.IsNullOrWhiteSpace(kw))
-                {
-                    var k = kw.Trim();
-                    if ((plan.PlanNo ?? "").IndexOf(k, StringComparison.OrdinalIgnoreCase) < 0
-                        && (plan.Executor ?? "").IndexOf(k, StringComparison.OrdinalIgnoreCase) < 0)
-                        continue;
-                }
-                var std = _inspectStdRepo.FindSingle(plan.StandardId);
-                rows.Add(new
-                {
-                    TaskKind = "plan",
-                    Id = plan.Id,
-                    BillNo = plan.PlanNo,
-                    FacilityID = std?.FacilityId,
-                    FacilityName = std?.FacilityName,
-                    BeginDate = plan.PlanDate,
-                    Status = 0,
-                    Executor = plan.Executor
-                });
-            }
+            conds.Add("([RecordNo] LIKE @k OR [FacilityName] LIKE @k OR [Executor] LIKE @k)");
+            p["k"] = "%" + kw.Trim() + "%";
         }
-
-        if (string.IsNullOrEmpty(status) || status == "3")
+        var where = conds.Count == 0 ? null : string.Join(" AND ", conds);
+        var records = _inspectRecordRepo.Find(where, p, "[ExecTime] DESC, [PlanDate] ASC, [Id] DESC").Take(100).ToList();
+        var rows = records.Select(rec => new
         {
-            var recConds = new List<string> { "[ExecTime] IS NOT NULL" };
-            var rp = new Dictionary<string, object?>();
-            if (!string.IsNullOrWhiteSpace(kw))
-            {
-                recConds.Add("([RecordNo] LIKE @k OR [Remark] LIKE @k OR [Executor] LIKE @k)");
-                rp["k"] = "%" + kw.Trim() + "%";
-            }
-            var records = _inspectRecordRepo.Find(string.Join(" AND ", recConds), rp, "[ExecTime] DESC").Take(100);
-            foreach (var rec in records)
-            {
-                rows.Add(new
-                {
-                    TaskKind = "record",
-                    Id = rec.Id,
-                    BillNo = rec.RecordNo,
-                    FacilityID = rec.FacilityId,
-                    BeginDate = rec.ExecTime,
-                    Status = 3,
-                    Executor = rec.Executor,
-                    Result = rec.Result
-                });
-            }
-        }
-
-        var sorted = rows
-            .Select(x =>
-            {
-                var t = x.GetType();
-                var dt = t.GetProperty("BeginDate")?.GetValue(x) as DateTime?;
-                return (Key: dt ?? DateTime.MinValue, Row: x);
-            })
-            .OrderByDescending(x => x.Key)
-            .Take(100)
-            .Select(x => x.Row)
-            .ToList();
-        return Json(new ResponseData { code = 0, data = sorted });
+            Id = rec.Id,
+            BillNo = rec.RecordNo,
+            FacilityID = rec.FacilityId,
+            FacilityName = rec.FacilityName,
+            BeginDate = rec.ExecTime ?? rec.PlanDate,
+            Status = rec.ExecTime == null ? 0 : 3,
+            Executor = rec.Executor,
+            Result = rec.Result
+        }).ToList();
+        return Json(new ResponseData { code = 0, data = rows });
     }
 
     [HttpGet("api/check/detail")]
-    public IActionResult ApiCheckDetail([FromQuery] long? id, [FromQuery] long? planId)
+    public IActionResult ApiCheckDetail([FromQuery] long? id)
     {
-        if (planId > 0)
-        {
-            var plan = _inspectPlanApp.Get(planId.Value);
-            if (plan == null) return Json(new ResponseData { code = 404, msg = "计划不存在" });
-            var std = _inspectStdRepo.FindSingle(plan.StandardId);
-            var items = _inspectStdApp.GetSubs(plan.StandardId);
-            return Json(new ResponseData
-            {
-                code = 0,
-                data = new
-                {
-                    taskKind = "plan",
-                    plan,
-                    main = new Inspect_Record { PlanId = plan.Id, FacilityId = std?.FacilityId },
-                    subs = items.Select(i => new { ItemName = i.ItemName, Method = i.Method, Standard = i.Standard })
-                }
-            });
-        }
+        if (!(id > 0)) return Json(new ResponseData { code = 400, msg = "缺少 id" });
+        var main = _inspectRecordApp.Get(id.Value);
+        if (main == null) return Json(new ResponseData { code = 404, msg = "执行单不存在" });
 
-        if (id > 0)
-        {
-            var main = _inspectRecordApp.Get(id.Value);
-            if (main == null) return Json(new ResponseData { code = 404, msg = "执行单不存在" });
-            var subs = _inspectRecordApp.GetSubs(id.Value);
-            return Json(new ResponseData { code = 0, data = new { taskKind = "record", main, subs } });
-        }
+        var subs = _inspectRecordApp.GetSubs(id.Value)
+            .Select(s => new { s.ItemName, s.ResultValue, IsNormal = (bool?)s.IsNormal, Method = (string?)null, Standard = (string?)null, s.Remark })
+            .ToList<object>();
 
-        return Json(new ResponseData { code = 400, msg = "缺少 id 或 planId" });
+        // 待执行单（无明细）：从标准带出点检项供填写
+        if (subs.Count == 0 && main.ExecTime == null && main.PlanId.HasValue)
+        {
+            var plan = _inspectPlanApp.Get(main.PlanId.Value);
+            if (plan != null)
+                subs = _inspectStdApp.GetSubs(plan.StandardId)
+                    .Select(i => (object)new { ItemName = i.ItemName, ResultValue = (string?)null, IsNormal = (bool?)null, Method = i.Method, Standard = i.Standard, Remark = (string?)null })
+                    .ToList();
+        }
+        var readOnly = main.ExecTime != null;
+        return Json(new ResponseData { code = 0, data = new { main, subs, readOnly } });
     }
 
     [HttpPost("api/check/submit")]
     public IActionResult ApiCheckSubmit([FromBody] CheckSubmitReq req)
     {
-        if (req?.Main == null) return Json(new ResponseData { code = 400, msg = "参数错误" });
+        if (req?.Main == null || req.Main.Id <= 0) return Json(new ResponseData { code = 400, msg = "参数错误" });
         if (string.IsNullOrWhiteSpace(req.Main.Executor))
             req.Main.Executor = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account;
         var items = (req.Items ?? new List<CheckSubmitItem>()).Select(i => new Inspect_RecordSub
@@ -375,11 +320,6 @@ public class MobileController : BaseController
             Remark = i.Remark
         });
         var rid = _inspectRecordApp.Submit(req.Main, items);
-        if (req.Main.PlanId > 0)
-        {
-            var plan = _inspectPlanApp.Get(req.Main.PlanId.Value);
-            if (plan != null) { plan.Status = 1; _inspectPlanRepo.Update(plan); }
-        }
         return Json(new ResponseData { code = 0, data = rid, msg = "ok" });
     }
 
