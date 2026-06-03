@@ -235,9 +235,13 @@
 
             var __DEPTS__ = [];
             function deptName(id){
-                if (!id) return '';
-                for (var i=0;i<__DEPTS__.length;i++){ if (String(__DEPTS__[i].Id) === String(id)) return __DEPTS__[i].DeptName; }
-                return id;
+                if (id === null || id === undefined || id === '') return '';
+                var s = String(id);
+                for (var i=0;i<__DEPTS__.length;i++){
+                    var d = __DEPTS__[i];
+                    if (String(d.Id) === s || (d.DeptNumber !== '' && String(d.DeptNumber) === s)) return d.DeptName;
+                }
+                return '';
             }
             function deptMapObj() {
                 var m = {};
@@ -252,7 +256,14 @@
             function loadDepts(){
                 return $.get('/Sys_Dept/List', function(res){
                     if (ok(res)) {
-                        __DEPTS__ = res.data || [];
+                        // 兼容后端 Pascal/camel 两种序列化命名，统一为 PascalCase
+                        __DEPTS__ = (res.data || []).map(function(d){
+                            return {
+                                Id: (d.Id != null ? d.Id : d.id),
+                                DeptNumber: (d.DeptNumber != null ? d.DeptNumber : (d.deptNumber != null ? d.deptNumber : '')),
+                                DeptName: (d.DeptName != null ? d.DeptName : (d.deptName != null ? d.deptName : ''))
+                            };
+                        });
                         var $sel = $('#fltDept').empty().append('<option value="">-- 部门(全部) --</option>');
                         __DEPTS__.forEach(function(d){ $sel.append('<option value="'+d.Id+'">'+ (d.DeptName||'') +'</option>'); });
                         try { form.render('select'); } catch(e){}

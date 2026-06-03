@@ -30,7 +30,11 @@ public class Facility_RepairBillMainController : BaseController
         _deptRepo = deptRepo;
     }
 
-    public IActionResult Index() => View();
+    public IActionResult Index()
+    {
+        ViewBag.CurrentUserName = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account ?? "";
+        return View();
+    }
     public IActionResult ViewList(long id) { ViewBag.Id = id; return View(); }
 
     [HttpPost]
@@ -51,7 +55,11 @@ public class Facility_RepairBillMainController : BaseController
     public IActionResult SaveBill([FromBody] SaveRepairBillReq req)
     {
         if (req == null || req.Main == null) return Json(new ResponseData { code = 400, msg = "请求为空" });
+        if ((req.Main.FacilityId ?? 0) <= 0) return Json(new ResponseData { code = 400, msg = "请选择报修设备" });
         var uid = CurrentUser?.User?.Id ?? 0;
+        // 报修人默认当前登录用户（前端可修改；为空时后端兜底）
+        if (string.IsNullOrWhiteSpace(req.Main.Maker))
+            req.Main.Maker = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account;
         var id = _app.SaveBill(req.Main, req.Subs ?? new List<Facility_RepairBillSub>(), uid);
         return Json(new ResponseData { code = 0, data = id, msg = "ok" });
     }

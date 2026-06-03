@@ -552,8 +552,11 @@ public class MobileController : BaseController
         var m = _repairRepo.FindSingle(id);
         if (m == null) return Json(new ResponseData { code = 404, msg = "not found" });
         if ((m.Status ?? 0) >= 2) return Json(new ResponseData { code = 400, msg = "已开始维修" });
+        // 接单即代表开始维修：同时回填响应时间与维修开始时间
         m.Status = 2;
-        m.ResponseDate = DateTime.Now;
+        var now = DateTime.Now;
+        m.ResponseDate = now;
+        if (m.RepairBeginDate == null) m.RepairBeginDate = now;
         if (string.IsNullOrEmpty(m.RepairStaff))
         {
             m.RepairStaff = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account;
@@ -577,6 +580,9 @@ public class MobileController : BaseController
     public IActionResult ApiRepairFinish([FromBody] RepairFinishReq req)
     {
         if (req == null || req.Id <= 0) return Json(new ResponseData { code = 400, msg = "参数错误" });
+        // 维修登记必填：维修描述不能为空，不允许跳过
+        if (string.IsNullOrWhiteSpace(req.RepairDescr))
+            return Json(new ResponseData { code = 400, msg = "请填写维修描述后再完成" });
         var m = _repairRepo.FindSingle(req.Id);
         if (m == null) return Json(new ResponseData { code = 404, msg = "not found" });
         m.RepairEndDate = DateTime.Now;

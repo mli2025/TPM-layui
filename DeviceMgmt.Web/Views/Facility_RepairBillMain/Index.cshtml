@@ -99,7 +99,7 @@
 
             <div class="layui-form-item">
                 <div class="layui-inline">
-                    <label class="layui-form-label">报修设备 *</label>
+                    <label class="layui-form-label"><span style="color:#ff5722;">*</span> 报修设备</label>
                     <div class="layui-input-inline" style="position:relative;">
                         <input type="hidden" name="FacilityId" />
                         <input type="text" readonly name="FacilityText" class="layui-input dev-display" placeholder="点击选择设备" style="cursor:pointer;padding-right:34px;background:#fff;" />
@@ -340,6 +340,7 @@
     var URLGetEmp = '@Url.Action("GetEmployees")';
     var URLGetDev = '@Url.Action("GetDevices")';
     var URLGetDevPick = '@Url.Action("GetDevicePickerList")';
+    var CURRENT_USER = @Html.Raw(Json.Serialize((string)(ViewBag.CurrentUserName ?? "")));
 
     function ok(res){ return res && (res.code === 0 || res.code === 200); }
     function toastOk(m){ try{ layui.layer.msg(m || '操作成功',{icon:1}); }catch(e){ alert(m); } }
@@ -463,7 +464,8 @@
 
         function bindDates(){
             // 新建/编辑仅"报修时间"可选；其余时间字段由流程自动生成，只读展示
-            try { laydate.render({ elem:'#fld_BillDate', type:'datetime' }); } catch(e){}
+            // 日期+时间同一面板选择，精确到分（不显示秒）
+            try { laydate.render({ elem:'#fld_BillDate', type:'datetime', format:'yyyy-MM-dd HH:mm' }); } catch(e){}
         }
 
         function appendSubRow(s, readonly){
@@ -552,7 +554,7 @@
                             try { if (window.AttachmentWidget && id) AttachmentWidget.mount({ container: '#repairAttachPanel', businessType: 'repair', businessId: id, readonly: mode==='view' }); } catch(e){}
                         });
                     } else {
-                        try { form.val('billForm', { Id:0, Status:0, OutsourcingFlag:'0', BillDate: fmt(new Date()) }); } catch(e){}
+                        try { form.val('billForm', { Id:0, Status:0, OutsourcingFlag:'0', BillDate: fmt(new Date()), Maker: CURRENT_USER }); } catch(e){}
                         setReadonlyForm(false);
                         try { form.render(); } catch(e){}
                         mountDevicePickerOnForm(null);
@@ -566,6 +568,7 @@
             submitBound = true;
             form.on('submit(submitBill)', function(data){
                 var f = data.field;
+                if (!f.FacilityId){ toastErr('请选择报修设备'); return false; }
                 var payload = {
                     Main: {
                         Id: (dlgMode === 'add') ? 0 : parseInt(f.Id||0,10),
@@ -629,8 +632,8 @@
                         $('#dispBatchHint').show().text('当前为批量派工，将对所选 '+payload.count+' 个新建报修单同时分派同一维修人员。已派工/已审核的单据将被跳过。');
                     }
                     try {
-                        laydate.render({ elem:'#fld_disp_DispatchDate', type:'datetime', value: nowStr() });
-                        laydate.render({ elem:'#fld_disp_ExpectedFinishDate', type:'datetime' });
+                        laydate.render({ elem:'#fld_disp_DispatchDate', type:'datetime', format:'yyyy-MM-dd HH:mm', value: nowStr() });
+                        laydate.render({ elem:'#fld_disp_ExpectedFinishDate', type:'datetime', format:'yyyy-MM-dd HH:mm' });
                     } catch(e){}
 
                     function loadEmp(){
@@ -694,7 +697,7 @@
 
         function nowStr(){
             var d = new Date(); var pad = function(n){ return n<10?'0'+n:n; };
-            return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+            return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
         }
 
         $('#btnBatchDispatch').on('click', function(){

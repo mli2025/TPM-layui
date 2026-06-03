@@ -23,12 +23,12 @@
             <input type="hidden" name="ParentId" />
             <div class="layui-form-item">
                 <div class="layui-inline">
-                    <label class="layui-form-label">部门编号</label>
-                    <div class="layui-input-inline"><input type="text" name="DeptNumber" class="layui-input" /></div>
+                    <label class="layui-form-label"><span style="color:#ff5722;">*</span> 部门编号</label>
+                    <div class="layui-input-inline"><input type="text" name="DeptNumber" class="layui-input" lay-verify="required" lay-vertype="msg" placeholder="必填" /></div>
                 </div>
                 <div class="layui-inline">
-                    <label class="layui-form-label">部门名称</label>
-                    <div class="layui-input-inline"><input type="text" name="DeptName" class="layui-input" required /></div>
+                    <label class="layui-form-label"><span style="color:#ff5722;">*</span> 部门名称</label>
+                    <div class="layui-input-inline"><input type="text" name="DeptName" class="layui-input" lay-verify="required" lay-vertype="msg" placeholder="必填" /></div>
                 </div>
             </div>
             <div class="layui-form-item">

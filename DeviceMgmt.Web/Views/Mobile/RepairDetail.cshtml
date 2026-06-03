@@ -25,8 +25,8 @@
 
     <div class="m-card p-3 hidden" id="cardFinish">
         <div class="text-xs text-slate-500 font-medium">维修登记</div>
-        <label class="text-xs text-slate-500 mt-2 block">维修描述</label>
-        <textarea id="rDescr" class="m-textarea mt-1" rows="2"></textarea>
+        <label class="text-xs text-slate-500 mt-2 block"><span style="color:#ff5722;">*</span> 维修描述</label>
+        <textarea id="rDescr" class="m-textarea mt-1" rows="2" placeholder="必填，请填写维修描述"></textarea>
         <label class="text-xs text-slate-500 mt-2 block">原因分析</label>
         <textarea id="rFa" class="m-textarea mt-1" rows="2"></textarea>
         <label class="text-xs text-slate-500 mt-2 block">预防措施</label>
@@ -74,8 +74,8 @@
 
             var s = m.Status == null ? 0 : m.Status;
             var btns = '';
-            // 维修人员视角：派工(1) -> 接单 -> 维修开始 -> 完成
-            if (s === 1) btns += '<button class="m-btn primary w-full" data-act="accept">接单 / 开始响应</button>';
+            // 维修人员视角：派工(1) -> 接单(即开始维修) -> 登记完成
+            if (s === 1) btns += '<button class="m-btn primary w-full" data-act="accept">接单 / 开始维修</button>';
             if (s === 2) {
                 document.getElementById('cardFinish').classList.remove('hidden');
                 var first = subs[0] || {};
@@ -83,7 +83,6 @@
                 document.getElementById('rFa').value = first.FaultAnalysis || '';
                 document.getElementById('rPm').value = first.PreventiveMeasure || '';
                 document.getElementById('rRk').value = first.Remark || '';
-                if (!m.RepairBeginDate) btns += '<button class="m-btn w-full" data-act="start">开始维修</button>';
                 btns += '<button class="m-btn primary w-full" data-act="finish">登记完成</button>';
             }
             if (s === 3) {
@@ -108,10 +107,9 @@
     function onAct(e){
         var act = e.currentTarget.dataset.act;
         if (act === 'accept') {
-            postForm('/m/api/repair/accept', { id:id }).then(function(r){ if (M.ok(r)){ M.toast('接单成功'); load(); } else M.toast(r.msg||'失败','err'); });
-        } else if (act === 'start') {
-            postForm('/m/api/repair/start', { id:id }).then(function(r){ if (M.ok(r)){ M.toast('已开始'); load(); } else M.toast(r.msg||'失败','err'); });
+            postForm('/m/api/repair/accept', { id:id }).then(function(r){ if (M.ok(r)){ M.toast('已接单，开始维修'); load(); } else M.toast(r.msg||'失败','err'); });
         } else if (act === 'finish') {
+            if (!(rDescr.value || '').trim()){ M.toast('请填写维修描述','err'); rDescr.focus(); return; }
             var p = { Id:id, RepairDescr: rDescr.value, FaultAnalysis: rFa.value, PreventiveMeasure: rPm.value, Remark: rRk.value };
             M.ajax({ url:'/m/api/repair/finish', method:'POST', data: JSON.stringify(p), contentType:'application/json' })
                 .then(function(r){ if (M.ok(r)){ M.toast('已登记完成'); load(); } else M.toast(r.msg||'失败','err'); });

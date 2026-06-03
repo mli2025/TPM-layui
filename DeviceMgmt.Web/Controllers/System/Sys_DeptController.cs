@@ -31,7 +31,9 @@ public class Sys_DeptController : BaseController
     [HttpPost]
     public IActionResult Save([FromBody] Sys_Dept dept)
     {
-        if (dept == null || string.IsNullOrWhiteSpace(dept.DeptName))
+        if (dept == null || string.IsNullOrWhiteSpace(dept.DeptNumber))
+            return Json(new ResponseData { code = 400, msg = "部门编号必填" });
+        if (string.IsNullOrWhiteSpace(dept.DeptName))
             return Json(new ResponseData { code = 400, msg = "部门名称必填" });
         try
         {

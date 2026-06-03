@@ -67,7 +67,11 @@ var URL_DEPTS = '/Sys_Dept/List';
     $.get(URL_DEPTS, function(res){
         var deptMap = {}, deptValues = {};
         if (res && (res.code===0 || res.code===200) && res.data){
-            res.data.forEach(function(d){ deptMap[String(d.Id)] = d.DeptName || ''; deptValues[String(d.Id)] = d.DeptName || ''; });
+            res.data.forEach(function(d){
+                var did = (d.Id != null ? d.Id : d.id);
+                var dnm = (d.DeptName != null ? d.DeptName : (d.deptName != null ? d.deptName : ''));
+                deptMap[String(did)] = dnm; deptValues[String(did)] = dnm;
+            });
         }
         initTable(deptMap, deptValues);
     }).fail(function(){ initTable({}, {}); });
