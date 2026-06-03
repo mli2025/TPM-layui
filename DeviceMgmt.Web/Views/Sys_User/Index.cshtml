@@ -141,9 +141,10 @@
             var $box = ($layer && $layer.length ? $layer : $('.layui-layer-content')).find('#roleBox');
             var selArr = (selected || []).map(function(x){ return String(x); });
             var html = allRoles.map(function(r){
-                var rid = String(r.Id);
+                var rid = String(r.Id != null ? r.Id : r.id);
+                var rname = r.Name != null ? r.Name : r.name;
                 var sel = selArr.indexOf(rid) >= 0 ? 'checked' : '';
-                return '<label style="margin-right:14px;display:inline-block;"><input type="checkbox" class="role-cb" value="'+rid+'" '+sel+' /> '+(r.Name||'')+'</label>';
+                return '<label style="margin-right:14px;display:inline-block;"><input type="checkbox" class="role-cb" value="'+rid+'" '+sel+' /> '+(rname||'')+'</label>';
             }).join('');
             $box.html(html || '<span style="color:#999;font-size:12px;">无可用角色</span>');
         }
@@ -151,9 +152,11 @@
             var $ctx = ($layer && $layer.length) ? $layer : $('.layui-layer-content');
             var $sel = $ctx.find('select[name="DeptId"]').first().empty().append('<option value="0">-- 无 --</option>');
             allDepts.forEach(function(d){
+                var did = d.Id != null ? d.Id : d.id;
+                var dname = d.DeptName != null ? d.DeptName : d.deptName;
                 var cur = (currentId == null || currentId === '') ? '' : currentId;
-                var sel = String(d.Id) === String(cur) ? ' selected' : '';
-                $sel.append('<option value="'+d.Id+'"'+sel+'>'+(d.DeptName||'')+'</option>');
+                var sel = String(did) === String(cur) ? ' selected' : '';
+                $sel.append('<option value="'+did+'"'+sel+'>'+(dname||'')+'</option>');
             });
             try { form.render('select','userForm'); } catch(e){}
         }

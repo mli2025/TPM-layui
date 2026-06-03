@@ -4,6 +4,7 @@ using DeviceMgmt.App.Interface;
 using DeviceMgmt.App.Request;
 using DeviceMgmt.App.Response;
 using DeviceMgmt.Repository.Domain;
+using DeviceMgmt.Repository.Interface;
 using DeviceMgmt.Web.Common;
 using DeviceMgmt.Web.Controllers.Base;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +14,12 @@ namespace DeviceMgmt.Web.Controllers.Facility;
 public class Facility_ItemController : BaseController
 {
     private readonly Facility_ItemApp _app;
+    private readonly IRepository<Facility_TheTemplateSub> _templateSubRepo;
 
-    public Facility_ItemController(IAuth auth, Facility_ItemApp app) : base(auth)
+    public Facility_ItemController(IAuth auth, Facility_ItemApp app, IRepository<Facility_TheTemplateSub> templateSubRepo) : base(auth)
     {
         _app = app;
+        _templateSubRepo = templateSubRepo;
     }
 
     public IActionResult Index() => View();
@@ -51,6 +54,8 @@ public class Facility_ItemController : BaseController
     public IActionResult DeleteItem([FromForm] long id)
     {
         if (id <= 0) return Json(new ResponseData { code = 400, msg = "参数错误" });
+        var usedCount = _templateSubRepo.Count("[HInspectionItemID]=@id", new { id });
+        if (usedCount > 0) return Json(new ResponseData { code = 400, msg = "该点检项目已被模板引用，无法删除" });
         _app.Delete(id);
         return Json(new ResponseData { code = 0, msg = "ok" });
     }

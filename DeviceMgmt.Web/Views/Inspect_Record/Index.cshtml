@@ -79,7 +79,7 @@
 
             function renderList() {
                 table.render({
-                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post', where: { page: 1, limit: 20, searchParam: [] }, page: true, height: 'full-150',
+                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post', where: { searchParam: [] }, page: true, height: 'full-150', limit: TableLimit, limits: TableLimits,
                     cols: [[
                         { type: 'numbers', title: '#' },
                         { field: 'RecordNo', title: '记录号', width: 180 },

@@ -49,8 +49,9 @@ public class Sys_UserController : BaseController
         if (req == null || req.User == null) return Json(new ResponseData { code = 400, msg = "参数为空" });
         if (string.IsNullOrWhiteSpace(req.User.Account)) return Json(new ResponseData { code = 400, msg = "账号必填" });
         var id = _app.SaveUser(req.User, req.RawPassword);
-        if (req.RoleIds != null) _roleApp.SetUserRoles(id == 0 ? req.User.Id : id, req.RoleIds);
-        return Json(new ResponseData { code = 0, data = req.User.Id, msg = "ok" });
+        var userId = id > 0 ? id : req.User.Id;
+        if (req.RoleIds != null && userId > 0) _roleApp.SetUserRoles(userId, req.RoleIds);
+        return Json(new ResponseData { code = 0, data = userId, msg = "ok" });
     }
 
     [HttpPost]

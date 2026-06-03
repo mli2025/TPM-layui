@@ -104,6 +104,35 @@
         var TableLimit = 20;
         var TableLimits = [10, 20, 50, 100];
 
+        // 统一修正：禁止把分页参数(page/limit)写进 where，避免翻页与每页条数失效
+        (function patchLayuiTablePaging() {
+            if (!window.layui || !layui.use) return;
+            layui.use(['table'], function () {
+                var table = layui.table;
+                if (!table || table.__pagingWherePatched) return;
+                table.__pagingWherePatched = true;
+
+                function sanitizeWhere(where) {
+                    if (!where || typeof where !== 'object') return where;
+                    if (Object.prototype.hasOwnProperty.call(where, 'page')) delete where.page;
+                    if (Object.prototype.hasOwnProperty.call(where, 'limit')) delete where.limit;
+                    return where;
+                }
+
+                var rawRender = table.render;
+                table.render = function (options) {
+                    if (options && options.where) options.where = sanitizeWhere(options.where);
+                    return rawRender.call(this, options);
+                };
+
+                var rawReload = table.reload;
+                table.reload = function (id, options, deep) {
+                    if (options && options.where) options.where = sanitizeWhere(options.where);
+                    return rawReload.call(this, id, options, deep);
+                };
+            });
+        })();
+
         if (window.parent && window.parent !== window) {
             window.parent.postMessage({ type: "iframe-loaded", title: document.title }, "*");
         }

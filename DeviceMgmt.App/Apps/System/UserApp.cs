@@ -57,7 +57,8 @@ public class UserApp : BaseApp<Sys_User>
             if (u.Status == 0) u.Status = 1;
             if (string.IsNullOrEmpty(rawPassword)) rawPassword = "123456";
             u.Password = DesEncrypt.Md5(rawPassword);
-            Repository.Insert(u);
+            var newId = Repository.Insert(u);
+            if (u.Id == 0) u.Id = newId;
         }
         else
         {
