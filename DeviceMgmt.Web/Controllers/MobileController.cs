@@ -35,6 +35,7 @@ public class MobileController : BaseController
     private readonly IRepository<Inspect_Standard> _inspectStdRepo;
     private readonly IRepository<Inspect_PlanRole> _inspectPlanRoleRepo;
     private readonly RoleApp _roleApp;
+    private readonly Facility_TheTemplateSubApp _tplSubApp;
 
     public MobileController(
         IAuth auth,
@@ -57,7 +58,8 @@ public class MobileController : BaseController
         IRepository<Inspect_Record> inspectRecordRepo,
         IRepository<Inspect_Standard> inspectStdRepo,
         IRepository<Inspect_PlanRole> inspectPlanRoleRepo,
-        RoleApp roleApp) : base(auth)
+        RoleApp roleApp,
+        Facility_TheTemplateSubApp tplSubApp) : base(auth)
     {
         _billApp = billApp;
         _repairApp = repairApp;
@@ -79,6 +81,7 @@ public class MobileController : BaseController
         _inspectStdRepo = inspectStdRepo;
         _inspectPlanRoleRepo = inspectPlanRoleRepo;
         _roleApp = roleApp;
+        _tplSubApp = tplSubApp;
     }
 
     [HttpGet("")]
@@ -260,35 +263,17 @@ public class MobileController : BaseController
         return Json(new ResponseData { code = 0, msg = "ok" });
     }
 
-    /// <summary>移动端点检待办：按「当前登录人所属角色」加载计划下的执行单（当期 + 之前未点检=漏检）。
-    /// 支持扫码/输入设备编码 code 定位该设备的待检单。多人可见，提交时原子防重。</summary>
+    /// <summary>移动端点检待办：
+    /// - 待办(status 空/0)：按「当前登录人所属角色」加载「超期未点检 + 当期未执行」(当期按计划周期：日=当天/周=本周/月=本月/季=本季/年=本年)。
+    /// - 已完成(status 3)：本人已执行清单，分页懒加载。
+    /// 支持扫码/输入设备编码 code 定位设备。多人可见，提交时原子防重。</summary>
     [HttpGet("api/check")]
-    public IActionResult ApiCheckList([FromQuery] string? status = null, [FromQuery] string? kw = null, [FromQuery] string? code = null)
+    public IActionResult ApiCheckList([FromQuery] string? status = null, [FromQuery] string? kw = null,
+        [FromQuery] string? code = null, [FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
-        // 执行单维度：ExecTime 为空=待执行(0)，非空=已完成(3)
         var conds = new List<string>();
         var p = new Dictionary<string, object?>();
-
-        // 按角色过滤：取当前用户角色 -> 角色关联的计划 -> 仅这些计划的执行单。无角色则不限制（兼容未配置角色场景）。
-        var uid = CurrentUser?.User?.Id ?? 0;
-        var roleIds = uid > 0 ? _roleApp.GetUserRoleIds(uid) : Array.Empty<long>();
-        if (roleIds.Length > 0)
-        {
-            var planIds = _inspectPlanRoleRepo.Find("[RoleId] IN @r", new { r = roleIds })
-                .Select(x => x.PlanId).Distinct().ToArray();
-            if (planIds.Length == 0) return Json(new ResponseData { code = 0, data = Array.Empty<object>() });
-            conds.Add("[PlanId] IN @pids");
-            p["pids"] = planIds;
-        }
-
-        if (status == "0")
-        {
-            conds.Add("[ExecTime] IS NULL");
-            // 待执行只显示当期与漏检（计划日期 <= 今天），未来排程不打扰
-            conds.Add("([PlanDate] IS NULL OR [PlanDate] < @tomorrow)");
-            p["tomorrow"] = DateTime.Now.Date.AddDays(1);
-        }
-        else if (status == "3") conds.Add("[ExecTime] IS NOT NULL");
+        var today = DateTime.Now.Date;
 
         // 扫码/输入设备编码：解析为设备Id后过滤
         if (!string.IsNullOrWhiteSpace(code))
@@ -298,30 +283,98 @@ public class MobileController : BaseController
             conds.Add("[FacilityId]=@fid");
             p["fid"] = dev.Id;
         }
-
         if (!string.IsNullOrWhiteSpace(kw))
         {
             conds.Add("([RecordNo] LIKE @k OR [FacilityName] LIKE @k OR [Executor] LIKE @k)");
             p["k"] = "%" + kw.Trim() + "%";
         }
-        var where = conds.Count == 0 ? null : string.Join(" AND ", conds);
-        var records = _inspectRecordRepo.Find(where, p, "[ExecTime] DESC, [PlanDate] ASC, [Id] DESC").Take(100).ToList();
-        var today = DateTime.Now.Date;
-        var rows = records.Select(rec => new
+
+        var uid = CurrentUser?.User?.Id ?? 0;
+        var myName = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account ?? "";
+
+        // ---------- 已完成：本人已执行，分页懒加载 ----------
+        if (status == "3")
         {
-            Id = rec.Id,
-            BillNo = rec.RecordNo,
-            FacilityID = rec.FacilityId,
-            FacilityName = rec.FacilityName,
-            Shift = rec.Shift,
-            PlanDate = rec.PlanDate,
-            BeginDate = rec.ExecTime ?? rec.PlanDate,
-            Status = rec.ExecTime == null ? 0 : 3,
-            Overdue = rec.ExecTime == null && rec.PlanDate.HasValue && rec.PlanDate.Value.Date < today,
-            Executor = rec.Executor,
-            Result = rec.Result
-        }).ToList();
+            conds.Add("[ExecTime] IS NOT NULL");
+            conds.Add("[Executor]=@me");
+            p["me"] = myName;
+            var where3 = string.Join(" AND ", conds);
+            var skip = Math.Max(0, (Math.Max(1, page) - 1) * Math.Max(1, limit));
+            var sql = "SELECT * FROM [Inspect_Record] WHERE " + where3
+                + " ORDER BY [ExecTime] DESC, [Id] DESC OFFSET @__skip ROWS FETCH NEXT @__take ROWS ONLY";
+            p["__skip"] = skip; p["__take"] = Math.Max(1, limit);
+            var done = _inspectRecordRepo.Query<Inspect_Record>(sql, p).ToList();
+            return Json(new ResponseData { code = 0, data = done.Select(rec => Project(rec, today)).ToList() });
+        }
+
+        // ---------- 待办：按角色过滤 + 当期/漏检 ----------
+        var roleIds = uid > 0 ? _roleApp.GetUserRoleIds(uid) : Array.Empty<long>();
+        long[] planIds;
+        if (roleIds.Length > 0)
+        {
+            planIds = _inspectPlanRoleRepo.Find("[RoleId] IN @r", new { r = roleIds })
+                .Select(x => x.PlanId).Distinct().ToArray();
+            if (planIds.Length == 0) return Json(new ResponseData { code = 0, data = Array.Empty<object>() });
+            conds.Add("[PlanId] IN @pids");
+            p["pids"] = planIds;
+        }
+        conds.Add("[ExecTime] IS NULL");
+        var where = string.Join(" AND ", conds);
+        var pending = _inspectRecordRepo.Find(where, p, "[PlanDate] ASC, [Id] ASC").ToList();
+
+        // 计划周期缓存：用于按周期判定「当期截止」，过滤掉未来期
+        var planCycle = new Dictionary<long, string>();
+        string CycleOf(long? planId)
+        {
+            if (planId == null) return "日";
+            if (planCycle.TryGetValue(planId.Value, out var c)) return c;
+            var pl = _inspectPlanRepo.FindSingle(planId.Value);
+            var cy = string.IsNullOrWhiteSpace(pl?.CycleType) ? "日" : pl!.CycleType!;
+            planCycle[planId.Value] = cy;
+            return cy;
+        }
+
+        var rows = pending
+            .Where(rec => !rec.PlanDate.HasValue || rec.PlanDate.Value.Date <= PeriodEnd(CycleOf(rec.PlanId), today))
+            .Take(300)
+            .Select(rec => Project(rec, today))
+            .ToList();
         return Json(new ResponseData { code = 0, data = rows });
+    }
+
+    private static object Project(Inspect_Record rec, DateTime today) => new
+    {
+        Id = rec.Id,
+        BillNo = rec.RecordNo,
+        FacilityID = rec.FacilityId,
+        FacilityName = rec.FacilityName,
+        Shift = rec.Shift,
+        PlanDate = rec.PlanDate,
+        BeginDate = rec.ExecTime ?? rec.PlanDate,
+        Status = rec.ExecTime == null ? 0 : 3,
+        Overdue = rec.ExecTime == null && rec.PlanDate.HasValue && rec.PlanDate.Value.Date < today,
+        Executor = rec.Executor,
+        Result = rec.Result
+    };
+
+    /// <summary>按周期计算「当期」的截止日期：早于等于该日期的待办视为「超期 + 当期」，之后的属未来期不展示。</summary>
+    private static DateTime PeriodEnd(string cycle, DateTime today)
+    {
+        switch ((cycle ?? "").Trim())
+        {
+            case "周":
+                int diff = ((int)today.DayOfWeek + 6) % 7; // 周一为本周起始
+                return today.AddDays(-diff).AddDays(6);
+            case "月":
+                return new DateTime(today.Year, today.Month, 1).AddMonths(1).AddDays(-1);
+            case "季":
+                var qStartMonth = (today.Month - 1) / 3 * 3 + 1;
+                return new DateTime(today.Year, qStartMonth, 1).AddMonths(3).AddDays(-1);
+            case "年":
+                return new DateTime(today.Year, 12, 31);
+            default: // 日
+                return today;
+        }
     }
 
     [HttpGet("api/check/detail")]
@@ -332,16 +385,16 @@ public class MobileController : BaseController
         if (main == null) return Json(new ResponseData { code = 404, msg = "执行单不存在" });
 
         var subs = _inspectRecordApp.GetSubs(id.Value)
-            .Select(s => new { s.ItemName, s.ResultValue, IsNormal = (bool?)s.IsNormal, Method = (string?)null, Standard = (string?)null, s.Remark })
+            .Select(s => new { s.ItemName, s.ResultValue, IsNormal = (bool?)s.IsNormal, s.Method, s.Standard, ControlType = (int?)s.ControlType, s.MaxValue, s.MinValue, s.Remark })
             .ToList<object>();
 
-        // 待执行单（无明细）：从标准带出点检项供填写
+        // 待执行单（无明细）：从点检模板带出点检项供填写（含控件类型与上下限，用于自动判定）
         if (subs.Count == 0 && main.ExecTime == null && main.PlanId.HasValue)
         {
             var plan = _inspectPlanApp.Get(main.PlanId.Value);
             if (plan != null)
-                subs = _inspectStdApp.GetSubs(plan.StandardId)
-                    .Select(i => (object)new { ItemName = i.ItemName, ResultValue = (string?)null, IsNormal = (bool?)null, Method = i.Method, Standard = i.Standard, Remark = (string?)null })
+                subs = _tplSubApp.GetByMainId(plan.TemplateId)
+                    .Select(i => (object)new { ItemName = i.HContent, ResultValue = (string?)null, IsNormal = (bool?)null, Method = i.HMethods, Standard = i.HStandard, ControlType = (int?)(i.ControlType ?? 0), MaxValue = i.MaxValue, MinValue = i.MinValue, Remark = (string?)null })
                     .ToList();
         }
         var readOnly = main.ExecTime != null;
@@ -357,8 +410,12 @@ public class MobileController : BaseController
         var items = (req.Items ?? new List<CheckSubmitItem>()).Select(i => new Inspect_RecordSub
         {
             ItemName = i.ItemName,
+            Method = i.Method,
+            Standard = i.Standard,
+            ControlType = i.ControlType,
+            MaxValue = i.MaxValue,
+            MinValue = i.MinValue,
             ResultValue = i.ResultValue,
-            IsNormal = i.IsNormal,
             Remark = i.Remark
         });
         var rid = _inspectRecordApp.Submit(req.Main, items);
@@ -622,7 +679,11 @@ public class CheckSubmitReq
 public class CheckSubmitItem
 {
     public string? ItemName { get; set; }
+    public string? Method { get; set; }
+    public string? Standard { get; set; }
+    public int ControlType { get; set; }
+    public decimal? MaxValue { get; set; }
+    public decimal? MinValue { get; set; }
     public string? ResultValue { get; set; }
-    public bool IsNormal { get; set; } = true;
     public string? Remark { get; set; }
 }

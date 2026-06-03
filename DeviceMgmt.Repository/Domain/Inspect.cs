@@ -39,8 +39,11 @@ public class Inspect_StandardSub : Entity
 public class Inspect_Plan : Entity
 {
     public string? PlanNo { get; set; }
+    /// <summary>已废弃：旧的点检标准库Id。保留列以兼容历史数据，新流程改用 TemplateId。</summary>
     public long StandardId { get; set; }
-    /// <summary>周期：班/日/周/月/季/年。空则取标准的巡检周期。</summary>
+    /// <summary>点检模板Id（Facility_TheTemplateMain，Type=点检）。执行单逐项从该模板明细加载。</summary>
+    public long TemplateId { get; set; }
+    /// <summary>周期：日/周/月/季/年（班次另由 Shifts 控制）。</summary>
     public string? CycleType { get; set; }
     /// <summary>班次（仅周期=班 时有效，逗号分隔，如「早班,中班,夜班」）。每班每日各生成一张执行单。</summary>
     public string? Shifts { get; set; }
@@ -97,13 +100,25 @@ public class Inspect_Record : Entity
     public DateTime CreateDate { get; set; } = DateTime.Now;
 }
 
-/// <summary>点检记录明细（逐项结果，本补丁新增表 Inspect_RecordSub）</summary>
+/// <summary>点检记录明细（逐项结果）。控件类型与上下限随执行单留痕，供自动判定与历史追溯。</summary>
 [Table("Inspect_RecordSub")]
 public class Inspect_RecordSub : Entity
 {
     public long RecordId { get; set; }
     public string? ItemName { get; set; }
+    /// <summary>点检方法（来自模板明细 HMethods）</summary>
+    public string? Method { get; set; }
+    /// <summary>判定标准描述（来自模板明细 HStandard）</summary>
+    public string? Standard { get; set; }
+    /// <summary>控件类型：1=数值型(按上下限判定) / 0=是否型(选「是」=合格)</summary>
+    public int ControlType { get; set; }
+    /// <summary>数值型上限</summary>
+    public decimal? MaxValue { get; set; }
+    /// <summary>数值型下限</summary>
+    public decimal? MinValue { get; set; }
+    /// <summary>实测值（数值型填数值，是否型填 是/否）</summary>
     public string? ResultValue { get; set; }
+    /// <summary>是否合格（由系统按控件类型+上下限自动判定）</summary>
     public bool IsNormal { get; set; } = true;
     public string? Remark { get; set; }
 }

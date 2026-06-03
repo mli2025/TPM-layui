@@ -1,3 +1,4 @@
+using DeviceMgmt.App.Apps.Facility;
 using DeviceMgmt.App.Apps.Inspect;
 using DeviceMgmt.App.Interface;
 using DeviceMgmt.App.Request;
@@ -8,18 +9,18 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DeviceMgmt.Web.Controllers.Inspect;
 
-/// <summary>点检执行单（填写/提交 + 异常处置分流）</summary>
+/// <summary>点检执行单（PC 仅查看；逐项明细来自点检模板）</summary>
 public class Inspect_RecordController : BaseController
 {
     private readonly Inspect_RecordApp _app;
     private readonly Inspect_PlanApp _planApp;
-    private readonly Inspect_StandardApp _stdApp;
+    private readonly Facility_TheTemplateSubApp _tplSubApp;
 
-    public Inspect_RecordController(IAuth auth, Inspect_RecordApp app, Inspect_PlanApp planApp, Inspect_StandardApp stdApp) : base(auth)
+    public Inspect_RecordController(IAuth auth, Inspect_RecordApp app, Inspect_PlanApp planApp, Facility_TheTemplateSubApp tplSubApp) : base(auth)
     {
         _app = app;
         _planApp = planApp;
-        _stdApp = stdApp;
+        _tplSubApp = tplSubApp;
     }
 
     public IActionResult Index() => View();
@@ -27,17 +28,20 @@ public class Inspect_RecordController : BaseController
     [HttpPost]
     public IActionResult GetMainList([FromForm] PageReq req) => Json(_app.Getmainlist(req));
 
-    /// <summary>按计划准备执行单：返回计划与标准点检项（供逐项填写）</summary>
-    [HttpGet]
-    public IActionResult PrepareByPlan([FromQuery] long planId)
-    {
-        var plan = _planApp.Get(planId);
-        if (plan == null) return Json(new ResponseData { code = 404, msg = "计划不存在" });
-        var items = _stdApp.GetSubs(plan.StandardId);
-        return Json(new ResponseData { code = 0, data = new { plan, items } });
-    }
+    /// <summary>把点检模板明细映射为执行单逐项（含控件类型与上下限，供自动判定）</summary>
+    private List<Inspect_RecordSub> LoadTemplateItems(long templateId)
+        => _tplSubApp.GetByMainId(templateId)
+            .Select(s => new Inspect_RecordSub
+            {
+                ItemName = s.HContent,
+                Method = s.HMethods,
+                Standard = s.HStandard,
+                ControlType = s.ControlType ?? 0,
+                MaxValue = s.MaxValue,
+                MinValue = s.MinValue
+            }).ToList();
 
-    /// <summary>按执行单准备：待执行单返回标准点检项；已完成单返回已填明细。</summary>
+    /// <summary>按执行单准备：待执行单从模板带出点检项；已完成单返回已填明细。</summary>
     [HttpGet]
     public IActionResult PrepareByRecord([FromQuery] long recordId)
     {
@@ -47,9 +51,7 @@ public class Inspect_RecordController : BaseController
         if (subs.Count == 0 && rec.PlanId.HasValue)
         {
             var plan = _planApp.Get(rec.PlanId.Value);
-            if (plan != null)
-                subs = _stdApp.GetSubs(plan.StandardId)
-                    .Select(s => new Inspect_RecordSub { ItemName = s.ItemName }).ToList();
+            if (plan != null) subs = LoadTemplateItems(plan.TemplateId);
         }
         return Json(new ResponseData { code = 0, data = new { record = rec, items = subs } });
     }

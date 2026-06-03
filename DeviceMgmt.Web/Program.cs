@@ -133,8 +133,6 @@ try
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Inspect.Inspect_StandardApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Inspect.Inspect_PlanApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Inspect.Inspect_RecordApp>();
-    // 点检执行单滚动生成后台任务（方案 C：按计划规则每日补齐到期待执行单）
-    builder.Services.AddHostedService<DeviceMgmt.Web.Services.InspectGenerationService>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_AcceptanceApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_StockCheckApp>();
     builder.Services.AddScoped<DeviceMgmt.App.Apps.Archive.Facility_AssetCardApp>();

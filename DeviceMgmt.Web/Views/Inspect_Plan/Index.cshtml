@@ -38,13 +38,12 @@
         <form class="layui-form" lay-filter="planForm">
             <input type="hidden" name="Id" />
             <div class="layui-form-item">
-                <label class="layui-form-label">点检标准</label>
-                <div class="layui-input-block"><select name="StandardId" lay-filter="selStd" lay-verify="required"></select></div>
+                <label class="layui-form-label">点检模板</label>
+                <div class="layui-input-block"><select name="TemplateId" lay-filter="selTpl" lay-verify="required"></select></div>
             </div>
             <div class="layui-form-item">
                 <div class="layui-inline"><label class="layui-form-label">周期</label><div class="layui-input-inline" style="width:120px;">
-                    <select name="CycleType" lay-filter="selCycle">
-                        <option value="班">班次</option>
+                    <select name="CycleType">
                         <option value="日" selected>每天</option>
                         <option value="周">每周</option>
                         <option value="月">每月</option>
@@ -52,16 +51,17 @@
                         <option value="年">每年</option>
                     </select>
                 </div></div>
-                <div class="layui-inline"><label class="layui-form-label">起始日期</label><div class="layui-input-inline" style="width:140px;"><input type="text" name="PlanDate" id="fPlan" class="layui-input"></div></div>
-                <div class="layui-inline"><label class="layui-form-label">截止日期</label><div class="layui-input-inline" style="width:140px;"><input type="text" name="EndDate" id="fEnd" class="layui-input" placeholder="空=长期"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">起始日期</label><div class="layui-input-inline" style="width:140px;"><input type="text" name="PlanDate" id="fPlan" class="layui-input" lay-verify="required"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">截止日期</label><div class="layui-input-inline" style="width:140px;"><input type="text" name="EndDate" id="fEnd" class="layui-input" lay-verify="required"></div></div>
             </div>
-            <div class="layui-form-item" id="shiftWrap" style="display:none;">
+            <div class="layui-form-item">
                 <label class="layui-form-label">班次</label>
                 <div class="layui-input-block" id="shiftBox">
-                    <input type="checkbox" name="shift" value="早班" title="早班" lay-skin="primary">
+                    <input type="checkbox" name="shift" value="白班" title="白班" lay-skin="primary">
                     <input type="checkbox" name="shift" value="中班" title="中班" lay-skin="primary">
                     <input type="checkbox" name="shift" value="夜班" title="夜班" lay-skin="primary">
                 </div>
+                <div class="layui-form-mid layui-word-aux" style="margin-left:110px;">不勾选=当天 1 张；勾选后同一天每班各 1 张（仅作备注，不限时段）</div>
             </div>
             <div class="layui-form-item">
                 <label class="layui-form-label">执行角色</label>
@@ -97,16 +97,16 @@
 
 @section Script{
     <script>
-        var URL_LIST = '@Url.Action("GetMainList")', URL_MONTH = '@Url.Action("GetMonth")', URL_STD = '@Url.Action("Standards")', URL_SAVE = '@Url.Action("Save")', URL_DEL = '@Url.Action("Delete")';
+        var URL_LIST = '@Url.Action("GetMainList")', URL_MONTH = '@Url.Action("GetMonth")', URL_TPL = '@Url.Action("Templates")', URL_SAVE = '@Url.Action("Save")', URL_DEL = '@Url.Action("Delete")';
         var URL_ROLES = '@Url.Action("GetRoles")', URL_ROLEIDS = '@Url.Action("GetRoleIds")';
-        var CYCLE_TXT = { '班': '班次', '日': '每天', '周': '每周', '月': '每月', '季': '每季', '年': '每年' };
+        var CYCLE_TXT = { '日': '每天', '周': '每周', '月': '每月', '季': '每季', '年': '每年' };
         layui.use(['table', 'form', 'layer', 'laydate', 'element'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, $ = layui.$;
             var stdCache = [];
             function ok(r) { return r && (r.code === 0 || r.code === 200); }
             function dcell(d, f) { return d[f] ? String(d[f]).replace('T', ' ').substring(0, 10) : ''; }
-            function loadStandards(cb) { $.get(URL_STD, function (res) { stdCache = (res && res.data) || []; if (cb) cb(); }); }
-            function stdName(id) { for (var i = 0; i < stdCache.length; i++) if (String(stdCache[i].Id) === String(id)) return stdCache[i].StdName || stdCache[i].StdNo || ('#' + id); return id; }
+            function loadStandards(cb) { $.get(URL_TPL, function (res) { stdCache = (res && res.data) || []; if (cb) cb(); }); }
+            function stdName(id) { for (var i = 0; i < stdCache.length; i++) if (String(stdCache[i].Id) === String(id)) return stdCache[i].HName || stdCache[i].HNumber || ('#' + id); return id; }
 
             function renderList() {
                 table.render({
@@ -114,7 +114,7 @@
                     cols: [[
                         { type: 'numbers', title: '#' },
                         { field: 'PlanNo', title: '计划号', width: 180 },
-                        { field: 'StandardId', title: '点检标准', width: 180, templet: function (d) { return stdName(d.StandardId); } },
+                        { field: 'TemplateId', title: '点检模板', width: 180, templet: function (d) { return stdName(d.TemplateId); } },
                         { field: 'CycleType', title: '周期', width: 90, templet: function (d) { return CYCLE_TXT[d.CycleType] || (d.CycleType || '-'); } },
                         { field: 'Shifts', title: '班次', width: 120, templet: function (d) { return d.Shifts || '-'; } },
                         { field: 'PlanDate', title: '起始', width: 110, templet: function (d) { return dcell(d, 'PlanDate'); } },
@@ -142,7 +142,7 @@
                         if ((first + d - 1) % 7 === 0 && d !== 1) html += '</tr><tr>';
                         var items = byDay[d] || [];
                         var cell = '<div style="font-weight:600;">' + d + '</div>';
-                        items.forEach(function (p) { cell += '<div style="font-size:12px;background:' + (p.Status == 1 ? '#dcfce7' : '#f1f5f9') + ';margin:2px 0;padding:1px 4px;border-radius:3px;">' + (stdName(p.StandardId) || '') + (CYCLE_TXT[p.CycleType] ? ' · ' + CYCLE_TXT[p.CycleType] : '') + '</div>'; });
+                        items.forEach(function (p) { cell += '<div style="font-size:12px;background:' + (p.Status == 1 ? '#dcfce7' : '#f1f5f9') + ';margin:2px 0;padding:1px 4px;border-radius:3px;">' + (stdName(p.TemplateId) || '') + (CYCLE_TXT[p.CycleType] ? ' · ' + CYCLE_TXT[p.CycleType] : '') + '</div>'; });
                         html += '<td style="vertical-align:top;height:80px;">' + cell + '</td>';
                     }
                     html += '</tr></tbody></table>';
@@ -172,8 +172,8 @@
                 layer.open({
                     type: 1, area: ['680px', 'auto'], title: row.Id ? '编辑计划' : '新增计划', content: $('#tplForm').html(),
                     success: function (layero, idx) {
-                        var opt = ''; stdCache.forEach(function (s) { opt += '<option value="' + s.Id + '">' + (s.StdName || s.StdNo || ('#' + s.Id)) + (s.CycleType ? ' [' + s.CycleType + ']' : '') + '</option>'; });
-                        $('select[name=StandardId]').html(opt);
+                        var opt = ''; stdCache.forEach(function (s) { opt += '<option value="' + s.Id + '">' + (s.HName || s.HNumber || ('#' + s.Id)) + '</option>'; });
+                        $('select[name=TemplateId]').html(opt);
                         laydate.render({ elem: '#fPlan', type: 'date' });
                         laydate.render({ elem: '#fEnd', type: 'date' });
 
@@ -188,17 +188,11 @@
                             form.render('checkbox');
                         }
 
-                        // 班次随周期显隐
-                        function toggleShift() { $('#shiftWrap').css('display', $('select[name=CycleType]').val() === '班' ? 'block' : 'none'); }
-                        form.on('select(selCycle)', function () { toggleShift(); });
-
-                        var cycle = row.CycleType || (function () { var s = stdById(row.StandardId); return (s && s.CycleType) || '日'; })();
-                        form.val('planForm', { Id: row.Id || 0, StandardId: row.StandardId || '', CycleType: cycle, PlanDate: dcell(row, 'PlanDate'), EndDate: dcell(row, 'EndDate') });
+                        form.val('planForm', { Id: row.Id || 0, TemplateId: row.TemplateId || '', CycleType: row.CycleType || '日', PlanDate: dcell(row, 'PlanDate'), EndDate: dcell(row, 'EndDate') });
                         // 回显班次勾选
                         if (row.Shifts) { var shs = String(row.Shifts).split(/[,，;；]/); $('#shiftBox input[name=shift]').each(function () { if (shs.indexOf($(this).val()) >= 0) $(this).prop('checked', true); }); }
                         renderRoles();
                         form.render();
-                        toggleShift();
 
                         if (row.Id) {
                             $.get(URL_GETDEV, { id: row.Id }, function (res) { (res.data || []).forEach(function (d) { picked[d.FacilityId] = { FacilityId: d.FacilityId, FacilityName: d.FacilityName }; }); refreshChips(); });
@@ -206,20 +200,18 @@
                         }
 
                         $('#btnPickDev').on('click', function () {
-                            var std = stdById($('select[name=StandardId]').val());
-                            var devType = std ? (std.FacilityType || '') : '';
-                            openDevPicker(picked, devType, refreshChips);
+                            openDevPicker(picked, '', refreshChips);
                         });
                         $('#planCancel').on('click', function () { layer.close(idx); });
                         form.on('submit(planSave)', function (data) {
                             var f = data.field;
                             var devs = Object.keys(picked).map(function (k) { return { FacilityId: parseInt(k, 10), FacilityName: picked[k].FacilityName }; });
-                            if (!f.Id && devs.length === 0) { layer.msg('请至少选择一台设备', { icon: 0 }); return false; }
+                            if (devs.length === 0) { layer.msg('请至少选择一台设备', { icon: 0 }); return false; }
                             var roleIds = $('#roleBox input[name=role]:checked').map(function () { return parseInt($(this).val(), 10); }).get();
                             if (roleIds.length === 0) { layer.msg('请至少选择一个执行角色', { icon: 0 }); return false; }
-                            var shifts = (f.CycleType === '班') ? $('#shiftBox input[name=shift]:checked').map(function () { return $(this).val(); }).get().join(',') : null;
-                            var payload = { Main: { Id: parseInt(f.Id || 0, 10), StandardId: parseInt(f.StandardId || 0, 10), CycleType: f.CycleType || '日', Shifts: shifts, PlanDate: f.PlanDate || null, EndDate: f.EndDate || null, Status: 1 }, Devices: devs, RoleIds: roleIds };
-                            $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已保存并按规则生成执行单', { icon: 1 }); layer.close(idx); table.reload('GridMain'); if (calY) renderCal(); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
+                            var shifts = $('#shiftBox input[name=shift]:checked').map(function () { return $(this).val(); }).get().join(',') || null;
+                            var payload = { Main: { Id: parseInt(f.Id || 0, 10), TemplateId: parseInt(f.TemplateId || 0, 10), CycleType: f.CycleType || '日', Shifts: shifts, PlanDate: f.PlanDate || null, EndDate: f.EndDate || null, Status: 1 }, Devices: devs, RoleIds: roleIds };
+                            $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已保存并生成执行单', { icon: 1 }); layer.close(idx); table.reload('GridMain'); if (calY) renderCal(); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
                             return false;
                         });
                     }

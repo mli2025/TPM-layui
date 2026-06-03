@@ -44,25 +44,20 @@ public class Inspect_StandardApp : BaseApp<Inspect_Standard>
     }
 }
 
-/// <summary>点检计划：标准 × 多设备 × 周期 × 班次的循环规则，按角色分配；由滚动后台任务逐日生成点检执行单（Inspect_Record）。</summary>
+/// <summary>点检计划：模板 × 多设备 × 周期 × 班次 × 时间范围，按角色分配；保存即一次性生成时间范围内全部点检执行单（Inspect_Record）。</summary>
 public class Inspect_PlanApp : BaseApp<Inspect_Plan>
 {
-    /// <summary>滚动生成的回溯天数：每次只补齐「最近 N 天内到期且尚未生成」的执行单，既能体现漏检又不至于无限膨胀。</summary>
-    private const int LookbackDays = 30;
-
     private readonly IRepository<Inspect_PlanDevice> _planDevRepo;
     private readonly IRepository<Inspect_PlanRole> _planRoleRepo;
     private readonly IRepository<Inspect_Record> _recordRepo;
-    private readonly IRepository<Inspect_Standard> _stdRepo;
 
     public Inspect_PlanApp(IUnitWork unitWork, IRepository<Inspect_Plan> repository,
         IRepository<Inspect_PlanDevice> planDevRepo, IRepository<Inspect_PlanRole> planRoleRepo,
-        IRepository<Inspect_Record> recordRepo, IRepository<Inspect_Standard> stdRepo) : base(unitWork, repository)
+        IRepository<Inspect_Record> recordRepo) : base(unitWork, repository)
     {
         _planDevRepo = planDevRepo;
         _planRoleRepo = planRoleRepo;
         _recordRepo = recordRepo;
-        _stdRepo = stdRepo;
     }
 
     public List<Inspect_PlanDevice> GetDevices(long planId)
@@ -71,7 +66,8 @@ public class Inspect_PlanApp : BaseApp<Inspect_Plan>
     public long[] GetRoleIds(long planId)
         => _planRoleRepo.Find("[PlanId]=@p", new { p = planId }).Select(x => x.RoleId).ToArray();
 
-    /// <summary>保存计划（含设备、角色关联），并立即补齐当期与回溯窗口内到期的执行单。</summary>
+    /// <summary>保存计划（含设备、角色关联），并按时间范围生成执行单。
+    /// 新建：生成全范围；编辑：先清除本计划下未执行的待办，再按新范围重新生成（已完成的保留）。</summary>
     public long SavePlan(Inspect_Plan m, IEnumerable<Inspect_PlanDevice>? devices, IEnumerable<long>? roleIds)
     {
         var devList = (devices ?? Enumerable.Empty<Inspect_PlanDevice>())
@@ -89,7 +85,7 @@ public class Inspect_PlanApp : BaseApp<Inspect_Plan>
         }
         else Repository.Update(m);
 
-        // 重存设备关联（编辑时先清旧关联，不动已生成的历史执行单）
+        // 重存设备关联
         var oldDev = _planDevRepo.Find("[PlanId]=@p", new { p = m.Id }).Select(x => x.Id).ToArray();
         if (oldDev.Length > 0) _planDevRepo.Delete(oldDev);
         foreach (var d in devList)
@@ -101,48 +97,32 @@ public class Inspect_PlanApp : BaseApp<Inspect_Plan>
         foreach (var rid in roleList)
             _planRoleRepo.Insert(new Inspect_PlanRole { PlanId = m.Id, RoleId = rid });
 
-        // 保存即补齐到期执行单，便于立即测试；后续由后台任务每日滚动补齐
-        if (m.Status == 1) GenerateDueForPlan(m, devList);
+        // 编辑时：清除本计划下尚未执行的待办（已完成的保留），再按新范围重新生成
+        if (!isNew)
+        {
+            var pendingIds = _recordRepo.Find("[PlanId]=@p AND [ExecTime] IS NULL", new { p = m.Id })
+                .Select(x => x.Id).ToArray();
+            if (pendingIds.Length > 0) _recordRepo.Delete(pendingIds);
+        }
+        GenerateRecords(m, devList);
         return m.Id;
     }
 
-    /// <summary>遍历所有启用计划，补齐到期执行单（供后台滚动任务调用）。返回新生成的执行单数量。</summary>
-    public int GenerateDueForAllPlans()
+    /// <summary>按「设备 × 时间范围内每个到期日 × 每个班次」一次性生成待执行单（已存在相同键则跳过）。</summary>
+    private int GenerateRecords(Inspect_Plan plan, List<Inspect_PlanDevice> devices)
     {
-        var plans = Repository.Find("[Status]=1").ToList();
-        var total = 0;
-        foreach (var p in plans) total += GenerateDueForPlan(p, null);
-        return total;
-    }
-
-    /// <summary>按「设备 × 到期日期 × 班次」补齐回溯窗口内尚未生成的待执行单（幂等：已存在则跳过）。</summary>
-    public int GenerateDueForPlan(Inspect_Plan plan, List<Inspect_PlanDevice>? devicesArg)
-    {
-        var today = DateTime.Now.Date;
-        var start = (plan.PlanDate ?? today).Date;
-        if (start > today) return 0; // 尚未生效
-
-        var windowStart = start;
-        var lookbackStart = today.AddDays(-LookbackDays);
-        if (windowStart < lookbackStart) windowStart = lookbackStart;
-
-        var hardEnd = today;
-        if (plan.EndDate.HasValue && plan.EndDate.Value.Date < hardEnd) hardEnd = plan.EndDate.Value.Date;
-        if (windowStart > hardEnd) return 0;
-
-        var devices = devicesArg ?? _planDevRepo.Find("[PlanId]=@p", new { p = plan.Id }).ToList();
         if (devices.Count == 0) return 0;
+        var start = (plan.PlanDate ?? DateTime.Now.Date).Date;
+        var end = (plan.EndDate ?? start).Date;
+        if (end < start) end = start;
 
-        var cycle = !string.IsNullOrWhiteSpace(plan.CycleType)
-            ? plan.CycleType!
-            : (_stdRepo.FindSingle(plan.StandardId)?.CycleType ?? "日");
-        var shifts = ParseShifts(plan.Shifts, cycle);
-        var dates = OccurrenceDates(start, windowStart, hardEnd, cycle);
+        var cycle = string.IsNullOrWhiteSpace(plan.CycleType) ? "日" : plan.CycleType!;
+        var shifts = ParseShifts(plan.Shifts);
+        var dates = OccurrenceDates(start, end, cycle);
         if (dates.Count == 0) return 0;
 
-        // 一次性取窗口内已存在执行单，构建去重键集合
-        var existed = _recordRepo.Find("[PlanId]=@p AND [PlanDate]>=@s AND [PlanDate]<@e",
-            new { p = plan.Id, s = windowStart, e = hardEnd.AddDays(1) }).ToList();
+        // 已存在执行单去重（兼容重复保存）
+        var existed = _recordRepo.Find("[PlanId]=@p", new { p = plan.Id }).ToList();
         var keys = new HashSet<string>(existed.Select(r => RecKey(r.FacilityId, r.PlanDate, r.Shift)));
 
         var created = 0; var seq = 0;
@@ -155,7 +135,7 @@ public class Inspect_PlanApp : BaseApp<Inspect_Plan>
                     seq++; created++;
                     _recordRepo.Insert(new Inspect_Record
                     {
-                        RecordNo = $"IR{DateTime.Now:yyyyMMddHHmmss}{seq:D3}",
+                        RecordNo = $"IR{DateTime.Now:yyyyMMddHHmmss}{seq:D4}",
                         PlanId = plan.Id,
                         FacilityId = dev.FacilityId,
                         FacilityName = dev.FacilityName,
@@ -172,30 +152,24 @@ public class Inspect_PlanApp : BaseApp<Inspect_Plan>
     private static string RecKey(long? facilityId, DateTime? planDate, string? shift)
         => $"{facilityId}|{planDate?.ToString("yyyyMMdd")}|{shift ?? ""}";
 
-    /// <summary>解析班次：周期=班 时返回选中的班次列表（未选则给一个默认班）；其它周期返回单元素空串（无班次维度）。</summary>
-    private static List<string> ParseShifts(string? shifts, string cycle)
+    /// <summary>解析班次：勾选的班次列表（备注性质，同一天每班各一张）；未选则返回单元素空串（无班次维度）。</summary>
+    private static List<string> ParseShifts(string? shifts)
     {
-        var c = (cycle ?? "").Trim();
-        if (c == "班" || c == "班次")
-        {
-            var arr = (shifts ?? "")
-                .Split(new[] { ',', '，', ';', '；' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.Trim()).Where(s => s.Length > 0).Distinct().ToList();
-            if (arr.Count == 0) arr.Add("当班");
-            return arr;
-        }
-        return new List<string> { "" };
+        var arr = (shifts ?? "")
+            .Split(new[] { ',', '，', ';', '；' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim()).Where(s => s.Length > 0).Distinct().ToList();
+        return arr.Count == 0 ? new List<string> { "" } : arr;
     }
 
-    /// <summary>按周期从起始日推算落在 [windowStart, end] 内的到期日期。</summary>
-    private static List<DateTime> OccurrenceDates(DateTime start, DateTime windowStart, DateTime end, string cycle)
+    /// <summary>按周期从起始日推算落在 [start, end] 内的到期日期。</summary>
+    private static List<DateTime> OccurrenceDates(DateTime start, DateTime end, string cycle)
     {
         var list = new List<DateTime>();
         for (var i = 0; i < 20000; i++)
         {
             var d = AddCycle(start, cycle, i);
             if (d > end) break;
-            if (d >= windowStart) list.Add(d);
+            list.Add(d);
         }
         return list;
     }
@@ -204,7 +178,6 @@ public class Inspect_PlanApp : BaseApp<Inspect_Plan>
     {
         return (cycle ?? "").Trim() switch
         {
-            "班" or "班次" => baseDate.AddDays(i),
             "日" => baseDate.AddDays(i),
             "周" => baseDate.AddDays(7 * i),
             "月" => baseDate.AddMonths(i),
@@ -247,6 +220,8 @@ public class Inspect_RecordApp : BaseApp<Inspect_Record>
     public long Submit(Inspect_Record rec, IEnumerable<Inspect_RecordSub>? items)
     {
         var list = (items ?? Enumerable.Empty<Inspect_RecordSub>()).ToList();
+        // 系统按控件类型+上下限自动判定合格/异常，不采信前端传入的 IsNormal
+        foreach (var s in list) s.IsNormal = Judge(s);
         var result = list.Any(x => !x.IsNormal) ? 1 : 0;
 
         if (rec.Id == 0)
@@ -280,6 +255,21 @@ public class Inspect_RecordApp : BaseApp<Inspect_Record>
             _subRepo.Insert(s);
         }
         return rec.Id;
+    }
+
+    /// <summary>自动判定单项是否合格：数值型(ControlType=1)按 [MinValue,MaxValue] 区间判，是否型(0)选「是」=合格。</summary>
+    private static bool Judge(Inspect_RecordSub s)
+    {
+        var val = (s.ResultValue ?? "").Trim();
+        if (s.ControlType == 1)
+        {
+            if (!decimal.TryParse(val, out var v)) return false; // 数值型未填/非法 → 异常
+            if (s.MinValue.HasValue && v < s.MinValue.Value) return false;
+            if (s.MaxValue.HasValue && v > s.MaxValue.Value) return false;
+            return true;
+        }
+        // 是否型：是/合格/正常/OK/√ 视为合格
+        return val is "是" or "合格" or "正常" or "OK" or "ok" or "√" or "Y" or "y";
     }
 
     /// <summary>异常处置分流（5 类）</summary>

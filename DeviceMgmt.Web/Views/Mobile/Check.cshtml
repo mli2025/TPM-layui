@@ -32,40 +32,55 @@
     }
     function fmt(s){ return s ? String(s).substring(0,16).replace('T',' ') : ''; }
     function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-    function load(){
+    var LIMIT = 20, page = 1, loading = false, noMore = false;
+    var lazy = (status === '3'); // 已完成：分页懒加载
+    function itemHtml(b){
+        var href = '/m/check/detail?id=' + b.Id;
+        var no = b.BillNo || ('#' + b.Id);
+        var dev = esc(b.FacilityName || b.FacilityID || '-');
+        var shift = b.Shift ? ' · ' + esc(b.Shift) : '';
+        var overdue = b.Overdue ? '<span class="m-badge danger">漏检</span>' : '';
+        return '<a class="m-list-item" href="' + href + '">'
+            + '<div class="flex-1 min-w-0">'
+            + '<div class="flex items-center gap-2"><span class="font-medium truncate">' + esc(no) + '</span>' + statusBadge(b.Status) + overdue + '</div>'
+            + '<div class="text-xs text-slate-500 mt-1 truncate">设备: ' + dev + shift + ' · ' + fmt(b.BeginDate) + (b.Executor ? ' · ' + esc(b.Executor) : '') + '</div>'
+            + '</div>'
+            + '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 mt-1"></i>'
+            + '</a>';
+    }
+    function load(reset){
+        if (loading) return;
+        if (reset){ page = 1; noMore = false; document.getElementById('list').innerHTML = '<div class="text-center text-slate-400 text-xs py-6">加载中...</div>'; }
+        if (noMore) return;
+        loading = true;
         var kw = document.getElementById('kw').value.trim();
         var url = '/m/api/check?status=' + encodeURIComponent(status) + '&kw=' + encodeURIComponent(kw);
         if (codeFilter) url += '&code=' + encodeURIComponent(codeFilter);
+        if (lazy) url += '&page=' + page + '&limit=' + LIMIT;
         M.ajax({ url: url, contentType:false })
             .then(function(res){
-                if (!M.ok(res)){ document.getElementById('list').innerHTML = '<div class="text-center text-red-500 text-xs py-6">' + (res.msg||'加载失败') + '</div>'; return; }
+                loading = false;
+                var listEl = document.getElementById('list');
+                if (!M.ok(res)){ listEl.innerHTML = '<div class="text-center text-red-500 text-xs py-6">' + (res.msg||'加载失败') + '</div>'; return; }
                 var arr = res.data || [];
-                if (!arr.length){ document.getElementById('list').innerHTML = '<div class="text-center text-slate-400 text-xs py-6">暂无点检执行单</div>'; return; }
-                document.getElementById('list').innerHTML = arr.map(function(b){
-                    var href = '/m/check/detail?id=' + b.Id;
-                    var no = b.BillNo || ('#' + b.Id);
-                    var dev = esc(b.FacilityName || b.FacilityID || '-');
-                    var shift = b.Shift ? ' · ' + esc(b.Shift) : '';
-                    var overdue = b.Overdue ? '<span class="m-badge danger">漏检</span>' : '';
-                    return '<a class="m-list-item" href="' + href + '">'
-                        + '<div class="flex-1 min-w-0">'
-                        + '<div class="flex items-center gap-2"><span class="font-medium truncate">' + esc(no) + '</span>' + statusBadge(b.Status) + overdue + '</div>'
-                        + '<div class="text-xs text-slate-500 mt-1 truncate">设备: ' + dev + shift + ' · ' + fmt(b.BeginDate) + (b.Executor ? ' · ' + esc(b.Executor) : '') + '</div>'
-                        + '</div>'
-                        + '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 mt-1"></i>'
-                        + '</a>';
-                }).join('');
+                if (page === 1 && !arr.length){ listEl.innerHTML = '<div class="text-center text-slate-400 text-xs py-6">暂无点检执行单</div>'; return; }
+                var html = arr.map(itemHtml).join('');
+                if (page === 1) listEl.innerHTML = html; else { var more = document.getElementById('loadMore'); if (more) more.remove(); listEl.insertAdjacentHTML('beforeend', html); }
+                if (lazy){
+                    if (arr.length < LIMIT) noMore = true; else { page++; listEl.insertAdjacentHTML('beforeend', '<div id="loadMore" class="text-center py-3"><button type="button" class="m-btn" onclick="window.__loadMore&&window.__loadMore()">加载更多</button></div>'); }
+                }
                 if (window.lucide) lucide.createIcons();
             });
     }
+    window.__loadMore = function(){ load(false); };
     function setCode(code){
         codeFilter = (code || '').trim();
         var tip = document.getElementById('codeTip');
         if (codeFilter){ document.getElementById('codeVal').textContent = codeFilter; tip.classList.remove('hidden'); }
         else tip.classList.add('hidden');
-        load();
+        load(true);
     }
-    document.getElementById('kw').addEventListener('keyup', function(e){ if (e.key === 'Enter') load(); });
+    document.getElementById('kw').addEventListener('keyup', function(e){ if (e.key === 'Enter') load(true); });
     document.getElementById('codeClear').addEventListener('click', function(){ setCode(''); });
     document.getElementById('btnScan').addEventListener('click', function(){
         if (window.ArboreShell && window.ArboreShell.scan){
@@ -74,7 +89,7 @@
                 .catch(function(err){ var msg = err && err.message; if (msg && msg !== 'CANCELLED' && msg !== 'NO_BRIDGE') M.toast('扫码失败: ' + msg, 'err'); else if (msg === 'NO_BRIDGE'){ var c = window.prompt('请输入设备编码'); if (c) setCode(c); } });
         } else { var c = window.prompt('请输入设备编码'); if (c) setCode(c); }
     });
-    load();
+    load(true);
 })();
 </script>
 }
