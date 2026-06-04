@@ -137,7 +137,7 @@
             </div>
         </div>
 
-        <div class="input-group max-w-md flex-1 relative" style="height: 32px;"
+        <div id="globalSearchGroup" class="input-group max-w-md flex-1 relative" style="height: 32px;"
              @@click.outside="searchOpen = false">
             <i data-lucide="search" class="input-icon"></i>
             <input type="text" class="input pr-12"
@@ -145,7 +145,7 @@
                    x-ref="searchInput"
                    x-model="searchQuery"
                    @@input="onSearchInput()"
-                   @@focus="onSearchInput(); searchOpen = true;"
+                   @@focus="onSearchFocus()"
                    @@keydown.escape.prevent="searchOpen = false"
                    @@keydown.down.prevent="moveSearch(1)"
                    @@keydown.up.prevent="moveSearch(-1)"
@@ -434,6 +434,7 @@
             searchQuery: "",
             searchHitIdx: 0,
             searchResults: [],
+            searchFocusSuppressed: false,
 
             init() {
                 this.tabs[0].url = "@Url.Action("Welcome", "Home")";
@@ -449,6 +450,12 @@
                             t.title = e.data.title;
                         }
                     }
+                });
+                // 全局兜底：点击搜索框以外区域时关闭搜索面板（无论面板是手动还是程序触发打开）
+                document.addEventListener("mousedown", (e) => {
+                    if (!this.searchOpen) return;
+                    var box = document.getElementById("globalSearchGroup");
+                    if (box && !box.contains(e.target)) this.searchOpen = false;
                 });
                 document.addEventListener("keydown", (e) => {
                     if (e.key === "Escape") { this.closeTabCtx(); this.searchOpen = false; }
@@ -466,6 +473,12 @@
             },
 
             /* ===== 全局搜索方法 ===== */
+            onSearchFocus() {
+                // 选择记录后程序性重新聚焦时，不自动重开面板，避免出现「点击别处也关不掉」
+                if (this.searchFocusSuppressed) { this.searchFocusSuppressed = false; return; }
+                this.onSearchInput();
+                this.searchOpen = true;
+            },
             _searchableMenus() {
                 // 仅返回有 URL 的菜单（即可打开的叶子节点）
                 return this.menus.filter(m => m.url && m.url.length > 0);
@@ -530,6 +543,8 @@
                 this.searchOpen = false;
                 this.searchQuery = "";
                 this.searchResults = [];
+                this.searchFocusSuppressed = true;
+                if (this.$refs.searchInput) this.$refs.searchInput.blur();
                 this.openTab(menu);
             },
             isReadableTabTitle(title) {

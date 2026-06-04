@@ -13,8 +13,9 @@
 <script type="text/html" id="barRow">
     {{# if(d.ExecTime){ }}
     <a class="layui-btn layui-btn-xs" lay-event="view">查看</a>
-    {{# } }}
+    {{# } else { }}
     <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="del">删除</a>
+    {{# } }}
 </script>
 
 <script type="text/html" id="statusTpl">
@@ -152,9 +153,19 @@
             function viewDetail(id) {
                 $.get(URL_DETAIL, { id: id }, function (res) {
                     var d = res.data || {}, m = d.Main || {}, subs = d.Subs || [], disp = d.Disposals || [];
+                    function rangeText(s) {
+                        if (Number(s.ControlType) === 1) {
+                            var hasMin = s.MinValue != null, hasMax = s.MaxValue != null;
+                            if (hasMin && hasMax) return s.MinValue + ' ~ ' + s.MaxValue;
+                            if (hasMax) return '≤ ' + s.MaxValue;
+                            if (hasMin) return '≥ ' + s.MinValue;
+                            return '数值型';
+                        }
+                        return '是否型';
+                    }
                     var html = '<div style="padding:12px;"><p><b>记录号：</b>' + esc(m.RecordNo) + ' &nbsp;<b>执行人：</b>' + esc(m.Executor) + ' &nbsp;<b>时间：</b>' + dcell(m.ExecTime) + '</p>';
-                    html += '<table class="layui-table" lay-size="sm"><thead><tr><th>点检项</th><th>实测值</th><th>结果</th><th>备注</th></tr></thead><tbody>';
-                    subs.forEach(function (s) { html += '<tr><td>' + esc(s.ItemName) + '</td><td>' + esc(s.ResultValue) + '</td><td>' + (s.IsNormal ? '正常' : '<span style="color:#dc2626;">异常</span>') + '</td><td>' + esc(s.Remark) + '</td></tr>'; });
+                    html += '<table class="layui-table" lay-size="sm"><thead><tr><th>点检项</th><th>最小值</th><th>最大值</th><th>合格范围</th><th>实测值</th><th>结果</th><th>备注</th></tr></thead><tbody>';
+                    subs.forEach(function (s) { html += '<tr><td>' + esc(s.ItemName) + '</td><td>' + (s.MinValue == null ? '-' : esc(s.MinValue)) + '</td><td>' + (s.MaxValue == null ? '-' : esc(s.MaxValue)) + '</td><td>' + esc(rangeText(s)) + '</td><td>' + esc(s.ResultValue) + '</td><td>' + (s.IsNormal ? '正常' : '<span style="color:#dc2626;">异常</span>') + '</td><td>' + esc(s.Remark) + '</td></tr>'; });
                     html += '</tbody></table>';
                     if (disp.length) { html += '<p style="margin-top:8px;"><b>处置记录：</b></p><ul>'; disp.forEach(function (x) { html += '<li>' + esc(x.DisposalType) + ' - ' + esc(x.Remark) + '</li>'; }); html += '</ul>'; }
                     html += '</div>';

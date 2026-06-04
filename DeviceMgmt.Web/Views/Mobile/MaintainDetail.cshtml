@@ -23,11 +23,20 @@
         </div>
     </div>
 
+    <div class="m-card p-3" id="attachCard">
+        <label class="text-xs text-slate-500">附件 / 现场照片</label>
+        <div id="imgGrid" class="grid grid-cols-3 gap-2 mt-2"></div>
+        <label class="mt-2 block">
+            <input id="imgInput" type="file" accept="image/*" capture="environment" multiple class="hidden" />
+            <span class="m-btn block text-center" id="btnPickImg">拍照 / 选择图片</span>
+        </label>
+    </div>
+
     <div class="m-card p-3">
         <label class="text-xs text-slate-500">整体结论</label>
-        <div class="flex gap-2 mt-2" x-data="{ ok: '1' }">
-            <button class="m-btn flex-1" :class="ok==='1' ? 'primary' : ''" @@click="ok='1'; document.getElementById('isOK').value='1'">合格</button>
-            <button class="m-btn flex-1" :class="ok==='0' ? 'danger' : ''" @@click="ok='0'; document.getElementById('isOK').value='0'">不合格</button>
+        <div class="flex gap-2 mt-2">
+            <button type="button" class="m-btn flex-1" id="btnOk">合格</button>
+            <button type="button" class="m-btn flex-1" id="btnNg">不合格</button>
         </div>
         <input type="hidden" id="isOK" value="1" />
         <label class="text-xs text-slate-500 mt-3 block">备注</label>
@@ -35,8 +44,8 @@
     </div>
 
     <div class="flex gap-2">
-        <button class="m-btn flex-1" id="btnAccept">接单</button>
-        <button class="m-btn primary flex-1" id="btnSubmit">提交完成</button>
+        <button class="m-btn flex-1 hidden" id="btnAccept">接单</button>
+        <button class="m-btn primary flex-1 hidden" id="btnSubmit">提交完成</button>
     </div>
 </div>
 
@@ -45,53 +54,133 @@
 (function(){
     var id = parseInt(document.getElementById('root').dataset.id, 10);
     var statusMap = { 0:'新建',1:'待接单',2:'保养中',3:'已完成',4:'已审核' };
-    var cycleMap = { YEAR:'年', QUARTER:'季', MONTH:'月', WEEK:'周' };
+    var cycleMap = { YEAR:'年', QUARTER:'季', MONTH:'月', WEEK:'周', HALFYEAR:'半年' };
+    var curStatus = 0;
+    var uploaded = [];      // {url,name}
     function fmt(s){ return s ? String(s).substring(0,16).replace('T',' ') : ''; }
+    function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+    function rangeText(s){
+        if (Number(s.ControlType) === 1){
+            var hasMin = s.MinValue != null, hasMax = s.MaxValue != null;
+            if (hasMin && hasMax) return '合格范围: ' + s.MinValue + ' ~ ' + s.MaxValue;
+            if (hasMax) return '合格: ≤ ' + s.MaxValue;
+            if (hasMin) return '合格: ≥ ' + s.MinValue;
+            return '数值型';
+        }
+        return '是否型（选「是」为合格）';
+    }
+
+    function setConclusion(v){
+        document.getElementById('isOK').value = v;
+        document.getElementById('btnOk').classList.toggle('primary', v === '1');
+        document.getElementById('btnNg').classList.toggle('danger', v === '0');
+    }
+    document.getElementById('btnOk').addEventListener('click', function(){ if (!isEditable()) return; setConclusion('1'); });
+    document.getElementById('btnNg').addEventListener('click', function(){ if (!isEditable()) return; setConclusion('0'); });
+
+    function isEditable(){ return curStatus === 2; }   // 仅「保养中」可编辑
+
+    function renderSubs(subs){
+        var editable = isEditable();
+        var html = subs.length === 0 ? '<div class="m-card p-3 text-xs text-slate-400 text-center">无保养项</div>'
+            : subs.map(function(s){
+                var ct = Number(s.ControlType) === 1 ? 1 : 0;
+                var resVal = esc(s.Result||'');
+                var input;
+                if (!editable){
+                    input = '<div class="m-input mt-1 bg-slate-50">' + (resVal || '-') + '</div>';
+                } else if (ct === 1){
+                    input = '<input class="m-input mt-1 s-result" inputmode="decimal" placeholder="请输入数值" value="' + resVal + '" />';
+                } else {
+                    input = '<select class="m-input mt-1 s-result"><option value="">请选择</option>'
+                        + '<option value="是"' + (s.Result==='是'?' selected':'') + '>是</option>'
+                        + '<option value="否"' + (s.Result==='否'?' selected':'') + '>否</option></select>';
+                }
+                return '<div class="m-card p-3" data-id="' + s.Id + '" data-ct="' + ct + '">'
+                    + '<div class="text-sm font-medium">' + esc(s.Project||'-') + '</div>'
+                    + (s.CheckMethod ? '<div class="text-xs text-slate-500 mt-1">检查方法: ' + esc(s.CheckMethod) + '</div>' : '')
+                    + (s.UpkeepMethod ? '<div class="text-xs text-slate-500 mt-1">保养方法: ' + esc(s.UpkeepMethod) + '</div>' : '')
+                    + '<div class="text-xs text-emerald-600 mt-1">' + rangeText(s) + '</div>'
+                    + '<label class="text-xs text-slate-500 mt-2 block">结果</label>'
+                    + input
+                    + '<label class="text-xs text-slate-500 mt-2 block">备注</label>'
+                    + (editable
+                        ? '<input class="m-input mt-1 s-remark" value="' + esc(s.Remark||'') + '" />'
+                        : '<div class="m-input mt-1 bg-slate-50">' + (esc(s.Remark||'') || '-') + '</div>')
+                    + '</div>';
+            }).join('');
+        document.getElementById('subs').innerHTML = html;
+    }
+
+    function refreshImgGrid(){
+        document.getElementById('imgGrid').innerHTML = uploaded.map(function(it){
+            return '<div class="relative"><img src="' + it.url + '" class="w-full h-20 object-cover rounded" /></div>';
+        }).join('');
+    }
+
+    function applyStatusUI(){
+        var editable = isEditable();
+        document.getElementById('btnAccept').classList.toggle('hidden', curStatus >= 2);
+        document.getElementById('btnSubmit').classList.toggle('hidden', curStatus !== 2);
+        document.getElementById('attachCard').classList.toggle('hidden', !editable);
+        document.getElementById('remark').readOnly = !editable;
+    }
+
     function load(){
         M.ajax({ url:'/m/api/maintain/detail?id=' + id, contentType:false }).then(function(res){
             if (!M.ok(res)){ M.toast(res.msg || '加载失败', 'err'); return; }
             var m = res.data.main || {}, subs = res.data.subs || [];
+            curStatus = (m.Status == null ? 0 : m.Status);
             document.getElementById('billNo').textContent = m.BillNo || '-';
-            document.getElementById('facility').textContent = m.FacilityID || '-';
+            document.getElementById('facility').textContent = res.data.facilityName || m.FacilityID || '-';
             document.getElementById('cycle').textContent = cycleMap[(m.MaintainType||'').toUpperCase()] || m.MaintainType || '-';
             document.getElementById('begin').textContent = fmt(m.BeginDate);
             document.getElementById('end').textContent = fmt(m.EndDate);
             document.getElementById('dispatch').textContent = (m.RepairStaff || m.Dispatch || '-');
-            document.getElementById('status').textContent = statusMap[m.Status==null?0:m.Status] || m.Status || '-';
+            document.getElementById('status').textContent = statusMap[curStatus] || curStatus || '-';
             document.getElementById('remark').value = m.Remark || '';
-
-            var html = subs.length === 0 ? '<div class="m-card p-3 text-xs text-slate-400 text-center">无保养项</div>'
-                : subs.map(function(s){
-                    return '<div class="m-card p-3" data-id="' + s.Id + '">'
-                        + '<div class="text-sm font-medium">' + (s.Project||'-') + '</div>'
-                        + (s.CheckMethod ? '<div class="text-xs text-slate-500 mt-1">检查方法: ' + s.CheckMethod + '</div>' : '')
-                        + (s.UpkeepMethod ? '<div class="text-xs text-slate-500 mt-1">保养方法: ' + s.UpkeepMethod + '</div>' : '')
-                        + '<label class="text-xs text-slate-500 mt-2 block">结果</label>'
-                        + '<input class="m-input mt-1 s-result" value="' + (s.Result||'') + '" />'
-                        + '<label class="text-xs text-slate-500 mt-2 block">备注</label>'
-                        + '<input class="m-input mt-1 s-remark" value="' + (s.Remark||'') + '" />'
-                        + '</div>';
-                }).join('');
-            document.getElementById('subs').innerHTML = html;
+            setConclusion(m.IsOK === 0 ? '0' : '1');
+            renderSubs(subs);
+            applyStatusUI();
         });
     }
+
     document.getElementById('btnAccept').addEventListener('click', function(){
         var f = new FormData(); f.append('id', id);
         M.ajax({ url:'/m/api/maintain/dispatch', method:'POST', data: f, contentType: false }).then(function(res){
-            if (M.ok(res)){ M.toast('接单成功'); load(); } else M.toast(res.msg||'操作失败','err');
+            if (M.ok(res)){ M.toast('接单成功，开始保养'); load(); } else M.toast(res.msg||'操作失败','err');
         });
     });
+
+    // 图片上传
+    var imgInput = document.getElementById('imgInput');
+    document.getElementById('btnPickImg').addEventListener('click', function(){ imgInput.click(); });
+    imgInput.addEventListener('change', function(){
+        var files = Array.prototype.slice.call(imgInput.files || []);
+        (function next(i){
+            if (i >= files.length){ imgInput.value=''; refreshImgGrid(); return; }
+            var fd = new FormData(); fd.append('file', files[i]); fd.append('kind', 'maintain');
+            fetch('/m/api/upload', { method:'POST', body: fd, credentials:'same-origin' })
+                .then(function(r){ return r.json(); })
+                .then(function(res){
+                    if (res && res.code === 0 && res.data && res.data.url){ uploaded.push({ url: res.data.url, name: res.data.name }); }
+                    next(i+1);
+                }).catch(function(){ next(i+1); });
+        })(0);
+    });
+
     document.getElementById('btnSubmit').addEventListener('click', function(){
+        if (curStatus !== 2){ M.toast('请先接单','err'); return; }
+        var missing = false;
         var items = Array.prototype.map.call(document.querySelectorAll('#subs > div[data-id]'), function(div){
-            return {
-                Id: parseInt(div.dataset.id, 10),
-                Result: div.querySelector('.s-result').value,
-                Remark: div.querySelector('.s-remark').value
-            };
+            var val = (div.querySelector('.s-result').value || '').trim();
+            if (val === '') missing = true;
+            return { Id: parseInt(div.dataset.id, 10), Result: val, Remark: (div.querySelector('.s-remark')||{}).value || '' };
         });
-        var payload = { Id: id, IsOK: parseInt(document.getElementById('isOK').value, 10), Remark: document.getElementById('remark').value, Items: items };
+        if (missing){ M.toast('请填写所有保养项目的值','err'); return; }
+        var payload = { Id: id, IsOK: parseInt(document.getElementById('isOK').value, 10), Remark: document.getElementById('remark').value, Items: items, ImageUrls: uploaded.map(function(it){ return it.url; }) };
         M.ajax({ url:'/m/api/maintain/submit', method:'POST', data: JSON.stringify(payload), contentType:'application/json' }).then(function(res){
-            if (M.ok(res)){ M.toast('提交成功'); setTimeout(function(){ history.back(); }, 800); }
+            if (M.ok(res)){ M.toast('提交成功'); setTimeout(function(){ location.href = '/m/maintain'; }, 800); }
             else M.toast(res.msg||'提交失败','err');
         });
     });

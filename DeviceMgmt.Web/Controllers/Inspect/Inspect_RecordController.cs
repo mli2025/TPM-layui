@@ -83,7 +83,14 @@ public class Inspect_RecordController : BaseController
     }
 
     [HttpPost]
-    public IActionResult Delete([FromForm] long id) { _app.Delete(id); return Json(new ResponseData { code = 0, msg = "ok" }); }
+    public IActionResult Delete([FromForm] long id)
+    {
+        var rec = _app.Get(id);
+        if (rec == null) return Json(new ResponseData { code = 404, msg = "执行单不存在" });
+        if (rec.ExecTime != null) return Json(new ResponseData { code = 400, msg = "已执行的点检单不允许删除" });
+        _app.Delete(id);
+        return Json(new ResponseData { code = 0, msg = "ok" });
+    }
 
     public class RecordSubmitReq
     {

@@ -336,7 +336,28 @@ public class Facility_BillMainApp : BaseApp<Facility_BillMain>
         main.FGC_LastModifier = currentUserId.ToString();
         main.FGC_LastModifyDate = now.ToString("yyyy/MM/dd HH:mm:ss");
         Repository.Update(main);
+        WriteBackDeviceMaintDate(main);
         return (true, "ok");
+    }
+
+    /// <summary>保养完成后，按保养类型回写设备对应的「上次保养日期」（取完成时间）。</summary>
+    public void WriteBackDeviceMaintDate(Facility_BillMain main)
+    {
+        if (main?.FacilityID == null || main.FacilityID.Value <= 0) return;
+        var mt = (main.MaintainType ?? string.Empty).Trim().ToUpperInvariant();
+        // 列名取自固定白名单，可安全拼接
+        string? col = mt switch
+        {
+            "MONTH" => "LastMonthMainTainDate",
+            "QUARTER" => "LastYSeasonMainTainDate",
+            "HALFYEAR" => "LastHalfYearMainTainDate",
+            "YEAR" => "LastYearMainTainDate",
+            _ => null
+        };
+        if (col == null) return;
+        var when = main.EndDate ?? main.LastMaintainTime ?? DateTime.Now;
+        _deviceRepo.ExecuteSql($"UPDATE [Facility_ResourceDetail] SET [{col}]=@d WHERE [Id]=@id",
+            new { d = when, id = main.FacilityID.Value });
     }
 
     /// <summary>

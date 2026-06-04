@@ -64,6 +64,14 @@
                 <div class="layui-form-mid layui-word-aux" style="margin-left:110px;">不勾选=当天 1 张；勾选后同一天每班各 1 张（仅作备注，不限时段）</div>
             </div>
             <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">状态</label><div class="layui-input-inline" style="width:120px;">
+                    <select name="Status">
+                        <option value="1">启用</option>
+                        <option value="0">停用</option>
+                    </select>
+                </div></div>
+            </div>
+            <div class="layui-form-item">
                 <label class="layui-form-label">执行角色</label>
                 <div class="layui-input-block" id="roleBox" style="line-height:38px;">
                     <span style="color:#94a3b8;">加载中...</span>
@@ -100,7 +108,7 @@
         var URL_LIST = '@Url.Action("GetMainList")', URL_MONTH = '@Url.Action("GetMonth")', URL_TPL = '@Url.Action("Templates")', URL_SAVE = '@Url.Action("Save")', URL_DEL = '@Url.Action("Delete")';
         var URL_ROLES = '@Url.Action("GetRoles")', URL_ROLEIDS = '@Url.Action("GetRoleIds")';
         var CYCLE_TXT = { '日': '每天', '周': '每周', '月': '每月', '季': '每季', '年': '每年' };
-        layui.use(['table', 'form', 'layer', 'laydate', 'element'], function () {
+        layui.use(['table', 'form', 'layer', 'laydate', 'element', 'soulTable'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, $ = layui.$;
             var stdCache = [];
             function ok(r) { return r && (r.code === 0 || r.code === 200); }
@@ -109,19 +117,22 @@
             function stdName(id) { for (var i = 0; i < stdCache.length; i++) if (String(stdCache[i].Id) === String(id)) return stdCache[i].HName || stdCache[i].HNumber || ('#' + id); return id; }
 
             function renderList() {
-                table.render({
-                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post', where: { searchParam: [] }, page: true, height: 'full-200', limit: TableLimit, limits: TableLimits,
-                    cols: [[
-                        { type: 'numbers', title: '#' },
-                        { field: 'PlanNo', title: '计划号', width: 180 },
-                        { field: 'TemplateId', title: '点检模板', width: 180, templet: function (d) { return stdName(d.TemplateId); } },
-                        { field: 'CycleType', title: '周期', width: 90, templet: function (d) { return CYCLE_TXT[d.CycleType] || (d.CycleType || '-'); } },
-                        { field: 'Shifts', title: '班次', width: 120, templet: function (d) { return d.Shifts || '-'; } },
-                        { field: 'PlanDate', title: '起始', width: 110, templet: function (d) { return dcell(d, 'PlanDate'); } },
-                        { field: 'EndDate', title: '截止', width: 110, templet: function (d) { return d.EndDate ? dcell(d, 'EndDate') : '长期'; } },
-                        { field: 'Status', title: '状态', width: 80, templet: function (d) { return d.Status == 1 ? '<span class="layui-badge layui-bg-green">启用</span>' : '<span class="layui-badge">停用</span>'; } },
-                        { title: '操作', width: 140, toolbar: '#barRow', fixed: 'right' }
-                    ]]
+                SoulGrid.loadAll(URL_LIST, { searchParam: [] }, function (rows) {
+                    (rows || []).forEach(function (r) { r.TemplateName = stdName(r.TemplateId); r.CycleText = CYCLE_TXT[r.CycleType] || (r.CycleType || '-'); r.StatusText = r.Status == 1 ? '启用' : '停用'; });
+                    SoulGrid.render({
+                        elem: '#GridMain', id: 'GridMain', data: rows, height: 'full-200', filename: '点检计划',
+                        cols: [[
+                            { type: 'numbers', title: '#' },
+                            { field: 'PlanNo', title: '计划号', width: 180, sort: true, filter: true },
+                            { field: 'TemplateName', title: '点检模板', width: 180, sort: true, filter: true },
+                            { field: 'CycleText', title: '周期', width: 90, sort: true, filter: true },
+                            { field: 'Shifts', title: '班次', width: 120, sort: true, filter: true, templet: function (d) { return d.Shifts || '-'; } },
+                            { field: 'PlanDate', title: '起始', width: 110, sort: true, filter: { type: 'date[yyyy-MM-dd]' }, templet: function (d) { return dcell(d, 'PlanDate'); } },
+                            { field: 'EndDate', title: '截止', width: 110, sort: true, templet: function (d) { return d.EndDate ? dcell(d, 'EndDate') : '长期'; } },
+                            { field: 'StatusText', title: '状态', width: 80, sort: true, filter: true, templet: function (d) { return d.Status == 1 ? '<span class="layui-badge layui-bg-green">启用</span>' : '<span class="layui-badge">停用</span>'; } },
+                            { title: '操作', width: 140, toolbar: '#barRow', fixed: 'right' }
+                        ]]
+                    });
                 });
             }
 
@@ -194,7 +205,7 @@
                             form.render('checkbox');
                         }
 
-                        form.val('planForm', { Id: row.Id || 0, TemplateId: row.TemplateId || '', CycleType: row.CycleType || '日', PlanDate: dcell(row, 'PlanDate'), EndDate: dcell(row, 'EndDate') });
+                        form.val('planForm', { Id: row.Id || 0, TemplateId: row.TemplateId || '', CycleType: row.CycleType || '日', PlanDate: dcell(row, 'PlanDate'), EndDate: dcell(row, 'EndDate'), Status: (row.Id ? (row.Status != null ? String(row.Status) : '1') : '1') });
                         // 回显班次勾选
                         if (row.Shifts) { var shs = String(row.Shifts).split(/[,，;；]/); $ctx.find('#shiftBox input[name=shift]').each(function () { if (shs.indexOf($(this).val()) >= 0) $(this).prop('checked', true); }); }
                         renderRoles();
@@ -216,7 +227,7 @@
                             var roleIds = $ctx.find('#roleBox input[name=role]:checked').map(function () { return parseInt($(this).val(), 10); }).get();
                             if (roleIds.length === 0) { layer.msg('请至少选择一个执行角色', { icon: 0 }); return false; }
                             var shifts = $ctx.find('#shiftBox input[name=shift]:checked').map(function () { return $(this).val(); }).get().join(',') || null;
-                            var payload = { Main: { Id: parseInt(f.Id || 0, 10), TemplateId: parseInt(f.TemplateId || 0, 10), CycleType: f.CycleType || '日', Shifts: shifts, PlanDate: f.PlanDate || null, EndDate: f.EndDate || null, Status: 1 }, Devices: devs, RoleIds: roleIds };
+                            var payload = { Main: { Id: parseInt(f.Id || 0, 10), TemplateId: parseInt(f.TemplateId || 0, 10), CycleType: f.CycleType || '日', Shifts: shifts, PlanDate: f.PlanDate || null, EndDate: f.EndDate || null, Status: parseInt(f.Status != null ? f.Status : 1, 10) }, Devices: devs, RoleIds: roleIds };
                             $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已保存并生成执行单', { icon: 1 }); layer.close(idx); table.reload('GridMain'); if (calY) renderCal(); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
                             return false;
                         });
@@ -233,18 +244,14 @@
                         var sel = {}; // 跨分页累积：FacilityId -> row
                         Object.keys(picked).forEach(function (k) { sel[k] = picked[k]; });
                         function render(rows) {
-                            table.render({
-                                elem: '#devGrid', data: rows || [], page: true, limit: 10, height: 420,
+                            SoulGrid.render({
+                                elem: '#devGrid', id: 'devGrid', data: rows || [], page: true, limit: 10, height: 420, filename: '设备清单',
                                 cols: [[
                                     { type: 'checkbox', width: 50 },
-                                    { field: 'FacilityCode', title: '编码', width: 150 },
-                                    { field: 'FacilityName', title: '名称', minWidth: 180 },
-                                    { field: 'FacilityType', title: '类型', width: 140 }
-                                ]],
-                                done: function () {
-                                    // 勾选回显当前页已在 sel 中的行
-                                    table.render;
-                                }
+                                    { field: 'FacilityCode', title: '编码', width: 150, sort: true, filter: true },
+                                    { field: 'FacilityName', title: '名称', minWidth: 180, sort: true, filter: true },
+                                    { field: 'FacilityType', title: '类型', width: 140, sort: true, filter: true }
+                                ]]
                             });
                         }
                         // checkbox 勾选累积到 sel（含跨页）

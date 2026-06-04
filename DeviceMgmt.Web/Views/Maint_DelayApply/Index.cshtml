@@ -16,8 +16,8 @@
     {{# if(d.ApproveStatus == 0){ }}
     <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="agree">通过</a>
     <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="reject">驳回</a>
-    {{# } }}
     <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="del">删除</a>
+    {{# } }}
 </script>
 
 <script type="text/html" id="statusTpl">
@@ -30,10 +30,14 @@
         <form class="layui-form" lay-filter="delayForm">
             <input type="hidden" name="Id" />
             <div class="layui-form-item">
-                <div class="layui-inline"><label class="layui-form-label">业务类型</label><div class="layui-input-inline">
-                    <select name="BizType"><option value="计划">保养计划</option><option value="工单">保养工单</option></select>
-                </div></div>
-                <div class="layui-inline"><label class="layui-form-label">业务Id</label><div class="layui-input-inline"><input type="number" name="BizId" class="layui-input" lay-verify="required"></div></div>
+                <input type="hidden" name="BizType" value="工单">
+                <div class="layui-inline"><label class="layui-form-label">保养工单</label>
+                    <div class="layui-input-inline" style="position:relative;width:260px;">
+                        <input type="hidden" name="BizId">
+                        <input type="text" readonly id="bizDisp" class="layui-input" placeholder="点击选择保养工单" style="cursor:pointer;padding-right:34px;background:#fff;">
+                        <i class="layui-icon layui-icon-search" id="bizBtn" title="选择保养工单" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i>
+                    </div>
+                </div>
             </div>
             <div class="layui-form-item">
                 <div class="layui-inline"><label class="layui-form-label">原计划日期</label><div class="layui-input-inline"><input type="text" name="OldDate" id="fOld" class="layui-input"></div></div>
@@ -82,11 +86,24 @@
                         laydate.render({ elem: '#fOld', type: 'date' });
                         laydate.render({ elem: '#fNew', type: 'date' });
                         form.render();
+                        var $ctx = $(layero);
+                        RefPicker.mountTablePicker({
+                            $hidden: $ctx.find('input[name=BizId]'), $display: $ctx.find('#bizDisp'), $btn: $ctx.find('#bizBtn'),
+                            title: '选择保养工单', url: '/Facility_BillMain/GetMainList', area: ['720px', '560px'],
+                            cols: [
+                                { field: 'BillNo', title: '单号', width: 180 },
+                                { field: 'MaintainType', title: '类型', width: 100 },
+                                { field: 'Status', title: '状态', width: 90 }
+                            ],
+                            searchFields: ['BillNo', 'MaintainType'], idField: 'Id',
+                            textFormat: function (r) { return r.BillNo || ('单#' + r.Id); }
+                        });
                         $('#delayCancel').on('click', function () { layer.close(idx); });
                         form.on('submit(delaySave)', function (data) {
                             var f = data.field;
+                            if (!f.BizId) { layer.msg('请选择保养工单', { icon: 0 }); return false; }
                             var payload = {
-                                Id: 0, BizType: f.BizType, BizId: parseInt(f.BizId || 0, 10),
+                                Id: 0, BizType: '工单', BizId: parseInt(f.BizId || 0, 10),
                                 OldDate: f.OldDate || null, NewDate: f.NewDate || null, Reason: f.Reason || null
                             };
                             $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) })

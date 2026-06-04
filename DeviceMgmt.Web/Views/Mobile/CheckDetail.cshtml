@@ -83,6 +83,7 @@
             var badge = (s.IsNormal === false) ? '<span class="m-badge danger">异常</span>' : '<span class="m-badge done">合格</span>';
             return '<div class="m-card p-3">'
                 + '<div class="flex items-center gap-2"><span class="text-sm font-medium">' + name + '</span>' + badge + '</div>'
+                + '<div class="text-xs text-emerald-600 mt-1">' + rangeText(s) + '</div>'
                 + '<div class="text-xs text-slate-500 mt-1">实测: ' + esc(s.ResultValue||'-') + '</div>'
                 + (s.Remark ? '<div class="text-xs text-slate-500 mt-1">备注: ' + esc(s.Remark) + '</div>' : '')
                 + '</div>';

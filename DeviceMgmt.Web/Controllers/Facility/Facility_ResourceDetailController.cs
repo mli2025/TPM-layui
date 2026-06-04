@@ -22,6 +22,9 @@ public class Facility_ResourceDetailController : BaseController
     private readonly IRepository<Sys_Dept> _deptRepo;
     private readonly IRepository<Basic_Resource> _resourceRepo;
     private readonly ImportService _import;
+    private readonly IRepository<Inspect_Record> _inspectRecordRepo;
+    private readonly IRepository<Basic_Employee> _empRepo;
+    private readonly IRepository<Sys_User> _userRepo;
 
     public Facility_ResourceDetailController(
         IAuth auth,
@@ -31,7 +34,10 @@ public class Facility_ResourceDetailController : BaseController
         IRepository<Facility_BillMain> billRepo,
         IRepository<Sys_Dept> deptRepo,
         IRepository<Basic_Resource> resourceRepo,
-        ImportService import) : base(auth)
+        ImportService import,
+        IRepository<Inspect_Record> inspectRecordRepo,
+        IRepository<Basic_Employee> empRepo,
+        IRepository<Sys_User> userRepo) : base(auth)
     {
         _app = app;
         _empApp = empApp;
@@ -40,6 +46,19 @@ public class Facility_ResourceDetailController : BaseController
         _deptRepo = deptRepo;
         _resourceRepo = resourceRepo;
         _import = import;
+        _inspectRecordRepo = inspectRecordRepo;
+        _empRepo = empRepo;
+        _userRepo = userRepo;
+    }
+
+    /// <summary>把工号/用户Id 解析为姓名（已是姓名则原样返回）。</summary>
+    private string ResolvePerson(string? raw, Dictionary<string, string> empByNo, Dictionary<string, string> userById)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+        var k = raw.Trim();
+        if (empByNo.TryGetValue(k, out var n1)) return n1;
+        if (userById.TryGetValue(k, out var n2)) return n2;
+        return k;
     }
 
     public IActionResult Index() => View();
@@ -249,21 +268,45 @@ public class Facility_ResourceDetailController : BaseController
         return Json(new ResponseData { code = 0, data = rows });
     }
 
+    /// <summary>设备保养记录（保养人/审核人解析为姓名，默认执行日期倒序）。</summary>
     [HttpGet]
     public IActionResult GetFacilityHistory([FromQuery] long facilityId, [FromQuery] string? billType = null)
     {
-        var where = "[FacilityID]=@fid";
-        object param;
-        if (!string.IsNullOrEmpty(billType))
+        var where = "[FacilityID]=@fid AND ([BillType] IS NULL OR [BillType] <> 'INSPECTION')";
+        object param = new { fid = facilityId };
+        if (!string.IsNullOrEmpty(billType) && billType != "INSPECTION")
         {
-            where += " AND [BillType]=@bt";
+            where = "[FacilityID]=@fid AND [BillType]=@bt";
             param = new { fid = facilityId, bt = billType };
         }
-        else
-        {
-            param = new { fid = facilityId };
-        }
         var rows = _billRepo.Find(where, param, "[Id] DESC").ToList();
+
+        var empByNo = _empRepo.Find(null, null).Where(e => !string.IsNullOrWhiteSpace(e.EmployeeNumber))
+            .GroupBy(e => e.EmployeeNumber).ToDictionary(g => g.Key, g => g.First().Name);
+        var userById = _userRepo.Find(null, null)
+            .GroupBy(u => u.Id.ToString()).ToDictionary(g => g.Key, g => g.First().Name ?? g.First().Account);
+
+        var data = rows
+            .OrderByDescending(r => r.EndDate ?? r.BillDate ?? r.CreateDate)
+            .Select(r => new
+            {
+                r.Id, r.BillNo, r.BillDate, r.BeginDate, r.EndDate, r.MaintainType, r.Status, r.CheckDate, r.Remark,
+                RepairStaff = ResolvePerson(r.RepairStaff, empByNo, userById),
+                Checker = ResolvePerson(r.Checker, empByNo, userById)
+            }).ToList();
+        return Json(new TableData { code = 0, count = data.Count, data = data });
+    }
+
+    /// <summary>设备点检记录（来自 Inspect_Record，默认执行日期倒序）。</summary>
+    [HttpGet]
+    public IActionResult GetFacilityCheckHistory([FromQuery] long facilityId)
+    {
+        var rows = _inspectRecordRepo.Find("[FacilityId]=@fid", new { fid = facilityId })
+            .OrderByDescending(r => r.ExecTime ?? r.PlanDate ?? r.CreateDate)
+            .Select(r => new
+            {
+                r.Id, r.RecordNo, r.PlanDate, r.Shift, r.Executor, r.ExecTime, r.Result, r.Remark
+            }).ToList();
         return Json(new TableData { code = 0, count = rows.Count, data = rows });
     }
 

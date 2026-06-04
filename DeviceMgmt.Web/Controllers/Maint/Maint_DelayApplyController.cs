@@ -43,6 +43,9 @@ public class Maint_DelayApplyController : BaseController
     [HttpPost]
     public IActionResult Delete([FromForm] long id)
     {
+        var m = _app.Get(id);
+        if (m == null) return Json(new ResponseData { code = 404, msg = "申请不存在" });
+        if (m.ApproveStatus != 0) return Json(new ResponseData { code = 400, msg = "已审批的申请不允许删除" });
         _app.Delete(id);
         return Json(new ResponseData { code = 0, msg = "ok" });
     }

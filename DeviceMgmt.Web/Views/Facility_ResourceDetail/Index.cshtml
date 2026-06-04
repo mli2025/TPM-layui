@@ -152,6 +152,7 @@
         var URL_EXPORT         = '@Url.Action("ExportExcel")';
         var URL_TPL_OPTS       = '@Url.Action("GetTemplateOptions")';
         var URL_HISTORY        = '@Url.Action("GetFacilityHistory")';
+        var URL_CHECK_HISTORY  = '@Url.Action("GetFacilityCheckHistory")';
         var URL_IMPORT_TPL     = '@Url.Action("ImportTemplate")';
         var URL_IMPORT         = '@Url.Action("ImportExcel")';
 
@@ -304,7 +305,6 @@
 
             // -------------- 弹窗 --------------
             var TPL_CYCLES = [
-                { type: 1, mt: null,      field: 'TheTemplateMainId' },
                 { type: 2, mt: 'WEEK',    field: 'WeekTempId' },
                 { type: 2, mt: 'MONTH',   field: 'MonthTempId' },
                 { type: 2, mt: 'QUARTER', field: 'SeasonTempId' },
@@ -492,28 +492,38 @@
 
             function bindHistoryTab(facilityId) {
                 var statusMap = { 0:'新建', 1:'已派工', 2:'保养中', 3:'已保养', 4:'已审核' };
-                var historyCols = [[
-                    { field: 'BillNo', title: '单号', width: 160 },
-                    { field: 'BillDate', title: '日期', width: 110, templet: function(d){ return fmtDate(d.BillDate); } },
-                    { field: 'BeginDate', title: '开始时间', width: 160, templet: function(d){ return fmtDt(d.BeginDate); } },
-                    { field: 'EndDate', title: '结束时间', width: 160, templet: function(d){ return fmtDt(d.EndDate); } },
-                    { field: 'MaintainType', title: '保养类型', width: 100 },
-                    { field: 'Status', title: '状态', width: 90, templet: function(d){ return statusMap[d.Status] || (d.Status||''); } },
-                    { field: 'RepairStaff', title: '保养人', width: 110 },
-                    { field: 'Checker', title: '审核人', width: 110 },
-                    { field: 'CheckDate', title: '审核日期', width: 160, templet: function(d){ return fmtDt(d.CheckDate); } },
+                var MAINT_TYPE = { YEAR:'年保', QUARTER:'季保', MONTH:'月保', WEEK:'周保', HALFYEAR:'半年保' };
+                var maintCols = [[
+                    { field: 'BillNo', title: '单号', width: 160, sort: true, filter: true },
+                    { field: 'BillDate', title: '日期', width: 110, sort: true, filter: { type: 'date[yyyy-MM-dd]' }, templet: function(d){ return fmtDate(d.BillDate); } },
+                    { field: 'BeginDate', title: '开始时间', width: 160, sort: true, templet: function(d){ return fmtDt(d.BeginDate); } },
+                    { field: 'EndDate', title: '结束时间', width: 160, sort: true, templet: function(d){ return fmtDt(d.EndDate); } },
+                    { field: 'MaintainType', title: '保养类型', width: 100, sort: true, filter: true, templet: function(d){ return MAINT_TYPE[(d.MaintainType||'').toUpperCase()] || (d.MaintainType||''); } },
+                    { field: 'Status', title: '状态', width: 90, sort: true, filter: true, templet: function(d){ return statusMap[d.Status] || (d.Status||''); } },
+                    { field: 'RepairStaff', title: '保养人', width: 110, sort: true, filter: true },
+                    { field: 'Checker', title: '审核人', width: 110, sort: true, filter: true },
+                    { field: 'CheckDate', title: '审核日期', width: 160, sort: true, templet: function(d){ return fmtDt(d.CheckDate); } },
+                    { field: 'Remark', title: '备注', minWidth: 160 }
+                ]];
+                var checkCols = [[
+                    { field: 'RecordNo', title: '记录号', width: 180, sort: true, filter: true },
+                    { field: 'PlanDate', title: '计划日期', width: 120, sort: true, filter: { type: 'date[yyyy-MM-dd]' }, templet: function(d){ return fmtDate(d.PlanDate); } },
+                    { field: 'Shift', title: '班次', width: 90, sort: true, filter: true, templet: function(d){ return d.Shift || '-'; } },
+                    { field: 'Executor', title: '执行人', width: 120, sort: true, filter: true },
+                    { field: 'ExecTime', title: '执行时间', width: 160, sort: true, templet: function(d){ return fmtDt(d.ExecTime); } },
+                    { field: 'Result', title: '结果', width: 90, sort: true, filter: true, templet: function(d){ return d.Result == 1 ? '<span style="color:#dc2626;">异常</span>' : '正常'; } },
                     { field: 'Remark', title: '备注', minWidth: 160 }
                 ]];
                 if (!facilityId) {
-                    table.render({ elem: '#GridMaintHist', data: [], page: false, height: 360, cols: historyCols });
-                    table.render({ elem: '#GridCheckHist', data: [], page: false, height: 360, cols: historyCols });
+                    SoulGrid.render({ elem: '#GridMaintHist', id: 'GridMaintHist', data: [], page: false, height: 360, cols: maintCols });
+                    SoulGrid.render({ elem: '#GridCheckHist', id: 'GridCheckHist', data: [], page: false, height: 360, cols: checkCols });
                     return;
                 }
                 $.get(URL_HISTORY, { facilityId: facilityId, billType: 'MAINTENANCE' }, function (res) {
-                    table.render({ elem: '#GridMaintHist', data: ok(res) ? (res.data || []) : [], page: false, height: 360, cols: historyCols });
+                    SoulGrid.render({ elem: '#GridMaintHist', id: 'GridMaintHist', data: ok(res) ? (res.data || []) : [], page: false, height: 360, filename: '保养记录', cols: maintCols });
                 });
-                $.get(URL_HISTORY, { facilityId: facilityId, billType: 'INSPECTION' }, function (res) {
-                    table.render({ elem: '#GridCheckHist', data: ok(res) ? (res.data || []) : [], page: false, height: 360, cols: historyCols });
+                $.get(URL_CHECK_HISTORY, { facilityId: facilityId }, function (res) {
+                    SoulGrid.render({ elem: '#GridCheckHist', id: 'GridCheckHist', data: ok(res) ? (res.data || []) : [], page: false, height: 360, filename: '点检记录', cols: checkCols });
                 });
             }
 

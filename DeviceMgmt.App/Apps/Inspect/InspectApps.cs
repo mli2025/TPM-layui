@@ -201,10 +201,12 @@ public class Inspect_RecordApp : BaseApp<Inspect_Record>
 {
     private readonly IRepository<Inspect_RecordSub> _subRepo;
     private readonly IRepository<Inspect_Disposal> _dispRepo;
+    private readonly IRepository<Facility_ResourceDetail> _deviceRepo;
 
     public Inspect_RecordApp(IUnitWork unitWork, IRepository<Inspect_Record> repository,
-        IRepository<Inspect_RecordSub> subRepo, IRepository<Inspect_Disposal> dispRepo)
-        : base(unitWork, repository) { _subRepo = subRepo; _dispRepo = dispRepo; }
+        IRepository<Inspect_RecordSub> subRepo, IRepository<Inspect_Disposal> dispRepo,
+        IRepository<Facility_ResourceDetail> deviceRepo)
+        : base(unitWork, repository) { _subRepo = subRepo; _dispRepo = dispRepo; _deviceRepo = deviceRepo; }
 
     public List<Inspect_RecordSub> GetSubs(long recordId)
         => _subRepo.Find("[RecordId]=@r", new { r = recordId }, "[Id] ASC").ToList();
@@ -254,19 +256,29 @@ public class Inspect_RecordApp : BaseApp<Inspect_Record>
             s.Id = 0; s.RecordId = rec.Id;
             _subRepo.Insert(s);
         }
+
+        // 回写设备「最后点检日期」
+        if (rec.FacilityId.HasValue && rec.FacilityId.Value > 0)
+            _deviceRepo.ExecuteSql("UPDATE [Facility_ResourceDetail] SET [LastCheckDate]=getdate() WHERE [Id]=@id",
+                new { id = rec.FacilityId.Value });
+
         return rec.Id;
     }
 
-    /// <summary>自动判定单项是否合格：数值型(ControlType=1)按 [MinValue,MaxValue] 区间判，是否型(0)选「是」=合格。</summary>
+    /// <summary>自动判定单项是否合格：数值型或已配置上下限按 [MinValue,MaxValue] 区间判；其余按「是」=合格。
+    /// 兼容控件类型未正确配置的历史数据：只要设置了上下限且实测值为数值，即按区间判定，避免区间内误判异常。</summary>
     private static bool Judge(Inspect_RecordSub s)
     {
         var val = (s.ResultValue ?? "").Trim();
-        if (s.ControlType == 1)
+        if (s.ControlType == 1 || s.MinValue.HasValue || s.MaxValue.HasValue)
         {
-            if (!decimal.TryParse(val, out var v)) return false; // 数值型未填/非法 → 异常
-            if (s.MinValue.HasValue && v < s.MinValue.Value) return false;
-            if (s.MaxValue.HasValue && v > s.MaxValue.Value) return false;
-            return true;
+            if (decimal.TryParse(val, out var v))
+            {
+                if (s.MinValue.HasValue && v < s.MinValue.Value) return false;
+                if (s.MaxValue.HasValue && v > s.MaxValue.Value) return false;
+                return true;
+            }
+            if (s.ControlType == 1) return false; // 数值型未填/非法 → 异常
         }
         // 是否型：是/合格/正常/OK/√ 视为合格
         return val is "是" or "合格" or "正常" or "OK" or "ok" or "√" or "Y" or "y";

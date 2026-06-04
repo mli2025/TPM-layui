@@ -203,7 +203,17 @@ public class MobileController : BaseController
             p["k"] = "%" + kw + "%";
         }
         var rows = _billRepo.Find(string.Join(" AND ", conds), p, "[Id] DESC").Take(100).ToList();
-        return Json(new ResponseData { code = 0, data = rows });
+        // 设备Id → 名称，列表显示名称而非Id
+        var devIds = rows.Where(r => r.FacilityID.HasValue).Select(r => r.FacilityID!.Value).Distinct().ToArray();
+        var devMap = devIds.Length == 0 ? new Dictionary<long, string>()
+            : _deviceRepo.Find("[Id] IN @ids", new { ids = devIds })
+                .GroupBy(d => d.Id).ToDictionary(g => g.Key, g => g.First().FacilityName);
+        var data = rows.Select(r => new
+        {
+            r.Id, r.BillNo, r.BillDate, r.BeginDate, r.EndDate, r.FacilityID, r.MaintainType, r.Status, r.Remark, r.RepairStaff,
+            FacilityName = r.FacilityID.HasValue && devMap.TryGetValue(r.FacilityID.Value, out var nm) ? nm : null
+        }).ToList();
+        return Json(new ResponseData { code = 0, data = data });
     }
 
     [HttpGet("api/maintain/detail")]
@@ -212,7 +222,10 @@ public class MobileController : BaseController
         var main = _billRepo.FindSingle(id);
         if (main == null) return Json(new ResponseData { code = 404, msg = "not found" });
         var subs = _billSubRepo.Find("[MainId]=@m", new { m = id }, "[Id] ASC").ToList();
-        return Json(new ResponseData { code = 0, data = new { main, subs } });
+        string? facilityName = null;
+        if (main.FacilityID.HasValue)
+            facilityName = _deviceRepo.FindSingle(main.FacilityID.Value)?.FacilityName;
+        return Json(new ResponseData { code = 0, data = new { main, subs, facilityName } });
     }
 
     [HttpPost("api/maintain/submit")]
@@ -221,6 +234,12 @@ public class MobileController : BaseController
         if (req == null || req.Id <= 0) return Json(new ResponseData { code = 400, msg = "参数错误" });
         var main = _billRepo.FindSingle(req.Id);
         if (main == null) return Json(new ResponseData { code = 404, msg = "保养单不存在" });
+        // 未接单（状态 < 2 保养中）不允许提交完成
+        if ((main.Status ?? 0) < 2) return Json(new ResponseData { code = 400, msg = "请先接单后再提交完成" });
+        if ((main.Status ?? 0) >= 3) return Json(new ResponseData { code = 400, msg = "该保养单已完成" });
+        // 每个保养项都必须有值
+        if (req.Items != null && req.Items.Any(i => string.IsNullOrWhiteSpace(i.Result)))
+            return Json(new ResponseData { code = 400, msg = "请填写所有保养项目的值后再提交" });
         var now = DateTime.Now;
 
         if (req.Items != null)
@@ -236,13 +255,22 @@ public class MobileController : BaseController
         var uid = CurrentUser?.User?.Id ?? 0;
         var name = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account ?? uid.ToString();
         main.Status = 3;
+        main.EndDate = now;
+        main.LastMaintainTime = now;
         main.RepairStaff = main.RepairStaff ?? name;
         main.RepairStaffDate = now;
         main.IsOK = req.IsOK ?? 1;
         main.Remark = string.IsNullOrEmpty(req.Remark) ? main.Remark : req.Remark;
+        // 附件图片地址追加到 Files（[IMG]url[/IMG] 标记，不改库结构）
+        if (req.ImageUrls != null && req.ImageUrls.Count > 0)
+        {
+            var imgs = string.Join("\n", req.ImageUrls.Select(u => $"[IMG]{u}[/IMG]"));
+            main.Files = string.IsNullOrWhiteSpace(main.Files) ? imgs : main.Files + "\n" + imgs;
+        }
         main.FGC_LastModifier = uid.ToString();
         main.FGC_LastModifyDate = now.ToString("yyyy/MM/dd HH:mm:ss");
         _billRepo.Update(main);
+        _billApp.WriteBackDeviceMaintDate(main);
         return Json(new ResponseData { code = 0, msg = "ok" });
     }
 
@@ -647,6 +675,7 @@ public class MaintainSubmitReq
     public int? IsOK { get; set; }
     public string? Remark { get; set; }
     public List<MaintainSubmitItem>? Items { get; set; }
+    public List<string>? ImageUrls { get; set; }
 }
 
 public class MaintainSubmitItem

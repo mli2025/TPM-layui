@@ -70,7 +70,7 @@
             return '<a class="m-list-item" href="/m/maintain/detail?id=' + b.Id + '">'
                 + '<div class="flex-1 min-w-0">'
                 + '<div class="flex items-center gap-2"><span class="font-medium truncate">' + (b.BillNo||'-') + '</span>' + statusBadge(b.Status) + '<span class="m-badge audited">' + cycleText(b.MaintainType) + '</span></div>'
-                + '<div class="text-xs text-slate-500 mt-1 truncate">设备: ' + (b.FacilityID||'-') + ' · 计划: ' + fmt(b.BeginDate) + '</div>'
+                + '<div class="text-xs text-slate-500 mt-1 truncate">设备: ' + (b.FacilityName || b.FacilityID || '-') + ' · 计划: ' + fmt(b.BeginDate) + '</div>'
                 + (b.Remark ? '<div class="text-xs text-slate-400 mt-1 truncate">' + b.Remark + '</div>' : '')
                 + '</div>'
                 + '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 mt-1"></i>'

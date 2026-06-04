@@ -11,15 +11,10 @@
                 <div class="layui-col-md4">
                     <input type="text" id="kw" class="layui-input" placeholder="输入项目关键字">
                 </div>
-                <div class="layui-col-md2">
-                    <select id="typeFilter">
-                        <option value="2">保养项目</option>
-                        <option value="1">点检项目</option>
-                        <option value="3">模具保养</option>
-                    </select>
-                </div>
-                <div class="layui-col-md6" style="text-align:right;">
+                <div class="layui-col-md8" style="text-align:right;">
                     <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-add-1"></i> 新增</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnImport"><i class="layui-icon layui-icon-upload"></i> 导入</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnTpl"><i class="layui-icon layui-icon-download-circle"></i> 下载模板</button>
                     <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
                 </div>
             </div>
@@ -36,16 +31,7 @@
 <script type="text/html" id="tplForm">
     <form class="layui-form" lay-filter="itemForm" style="padding:14px 16px 0 0;">
         <input type="hidden" name="Id">
-        <div class="layui-form-item">
-            <label class="layui-form-label">业务类型</label>
-            <div class="layui-input-block">
-                <select name="Type" lay-verify="required">
-                    <option value="2">保养项目</option>
-                    <option value="1">点检项目</option>
-                    <option value="3">模具保养</option>
-                </select>
-            </div>
-        </div>
+        <input type="hidden" name="Type">
         <div class="layui-form-item">
             <label class="layui-form-label">项目</label>
             <div class="layui-input-block"><input name="Project" required lay-verify="required" class="layui-input"></div>
@@ -89,9 +75,11 @@
 
 @section Script{
     <script>
-        layui.use(['table', 'form', 'layer'], function () {
-            var table = layui.table, form = layui.form, layer = layui.layer;
-            var typeVal = 2;
+        layui.use(['table', 'form', 'layer', 'upload'], function () {
+            var table = layui.table, form = layui.form, layer = layui.layer, upload = layui.upload;
+            // 业务类型由菜单 URL 的 ?type= 决定（保养=2 默认 / 点检=1 / 模具=3），页面不再提供下拉切换
+            var typeVal = parseInt(new URL(location.href).searchParams.get('type') || '2', 10);
+            if (isNaN(typeVal) || typeVal < 1 || typeVal > 3) typeVal = 2;
             function ok(res) { return res && (res.code === 0 || res.code === 200); }
 
             /** API 可能为 camelCase（project）或 PascalCase（Project）；Layui 列与表单 name 均为 PascalCase，需统一。 */
@@ -206,9 +194,19 @@
             $('#btnAdd').on('click', function () { openEdit(null); });
             $('#btnReload').on('click', function () { table.reload('GridMain', { where: { page: 1, limit: 20, searchParam: getSearchParam() } }); });
             $('#kw').on('keydown', function (e) { if (e.keyCode === 13) $('#btnReload').click(); });
-            $('#typeFilter').on('change', function () {
-                typeVal = parseInt($(this).val() || '2');
-                $('#btnReload').click();
+            $('#btnTpl').on('click', function () { window.location.href = '@Url.Action("ImportItemTemplate")'; });
+            upload.render({
+                elem: '#btnImport', url: '@Url.Action("ImportItems")', auto: true, accept: 'file',
+                exts: 'xls|xlsx|csv', field: 'file', data: { type: function () { return typeVal; } },
+                before: function () { layer.load(2); },
+                done: function (res) {
+                    layer.closeAll('loading');
+                    if (!ok(res)) { App.error((res && res.msg) || '导入失败'); return; }
+                    var d = res.data || {};
+                    App.success('导入完成：成功 ' + (d.success || 0) + ' 条，失败 ' + (d.fail || 0) + ' 条');
+                    table.reload('GridMain');
+                },
+                error: function () { layer.closeAll('loading'); App.error('导入失败'); }
             });
             table.on('tool(GridMain)', function (obj) {
                 if (obj.event === 'edit') openEdit(obj.data);
