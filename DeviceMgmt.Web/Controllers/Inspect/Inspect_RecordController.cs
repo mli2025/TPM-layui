@@ -62,7 +62,10 @@ public class Inspect_RecordController : BaseController
 
     [HttpGet]
     public IActionResult GetDetail([FromQuery] long id)
-        => Json(new ResponseData { code = 0, data = new { Main = _app.Get(id), Subs = _app.GetSubs(id), Disposals = _app.GetDisposals(id) } });
+    {
+        _app.ReJudge(id); // 按当前规则自愈历史误判（区间内却显示异常）
+        return Json(new ResponseData { code = 0, data = new { Main = _app.Get(id), Subs = _app.GetSubs(id), Disposals = _app.GetDisposals(id) } });
+    }
 
     [HttpPost]
     public IActionResult Submit([FromBody] RecordSubmitReq req)

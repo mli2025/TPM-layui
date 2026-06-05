@@ -3,7 +3,7 @@
 }
 <div class="layui-fluid" style="padding:12px;">
     <div class="layui-card">
-        <div class="layui-card-header"><strong>延期申请</strong><span style="color:#94a3b8;font-size:12px;margin-left:8px;">审批</span>
+        <div class="layui-card-header"><strong>延期申请</strong><span style="color:#94a3b8;font-size:12px;margin-left:8px;">审批（仅显示新建/已派工的保养工单）</span>
             <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增申请</button>
         </div>
         <div class="layui-card-body">
@@ -17,6 +17,8 @@
     <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="agree">通过</a>
     <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="reject">驳回</a>
     <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="del">删除</a>
+    {{# } else { }}
+    <span style="color:#94a3b8;">—</span>
     {{# } }}
 </script>
 
@@ -29,10 +31,11 @@
     <div style="padding:16px;">
         <form class="layui-form" lay-filter="delayForm">
             <input type="hidden" name="Id" />
+            <input type="hidden" name="BizType" value="工单">
+            <input type="hidden" name="OldDate"><input type="hidden" name="OldEndDate">
             <div class="layui-form-item">
-                <input type="hidden" name="BizType" value="工单">
                 <div class="layui-inline"><label class="layui-form-label">保养工单</label>
-                    <div class="layui-input-inline" style="position:relative;width:260px;">
+                    <div class="layui-input-inline" style="position:relative;width:300px;">
                         <input type="hidden" name="BizId">
                         <input type="text" readonly id="bizDisp" class="layui-input" placeholder="点击选择保养工单" style="cursor:pointer;padding-right:34px;background:#fff;">
                         <i class="layui-icon layui-icon-search" id="bizBtn" title="选择保养工单" style="position:absolute;right:1px;top:1px;width:32px;height:36px;line-height:36px;text-align:center;cursor:pointer;color:#5FB878;"></i>
@@ -40,8 +43,20 @@
                 </div>
             </div>
             <div class="layui-form-item">
-                <div class="layui-inline"><label class="layui-form-label">原计划日期</label><div class="layui-input-inline"><input type="text" name="OldDate" id="fOld" class="layui-input"></div></div>
-                <div class="layui-inline"><label class="layui-form-label">申请新日期</label><div class="layui-input-inline"><input type="text" name="NewDate" id="fNew" class="layui-input"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">设备编码</label><div class="layui-input-inline"><input type="text" id="fCode" class="layui-input" readonly style="background:#f8fafc;"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">设备名称</label><div class="layui-input-inline"><input type="text" id="fName" class="layui-input" readonly style="background:#f8fafc;"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">派工人员</label><div class="layui-input-inline"><input type="text" id="fStaff" class="layui-input" readonly style="background:#f8fafc;"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">保养类型</label><div class="layui-input-inline"><input type="text" id="fType" class="layui-input" readonly style="background:#f8fafc;"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">原计划开始</label><div class="layui-input-inline"><input type="text" id="fOldBegin" class="layui-input" readonly style="background:#f8fafc;"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">原计划结束</label><div class="layui-input-inline"><input type="text" id="fOldEnd" class="layui-input" readonly style="background:#f8fafc;"></div></div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline"><label class="layui-form-label">新计划开始</label><div class="layui-input-inline"><input type="text" name="NewDate" id="fNewBegin" class="layui-input" placeholder="申请延期后开始" lay-verify="required"></div></div>
+                <div class="layui-inline"><label class="layui-form-label">新计划结束</label><div class="layui-input-inline"><input type="text" name="NewEndDate" id="fNewEnd" class="layui-input" placeholder="申请延期后结束" lay-verify="required"></div></div>
             </div>
             <div class="layui-form-item layui-form-text">
                 <label class="layui-form-label">延期理由</label>
@@ -57,46 +72,66 @@
 
 @section Script{
     <script>
-        var URL_LIST = '@Url.Action("GetMainList")', URL_SAVE = '@Url.Action("Save")', URL_APPROVE = '@Url.Action("Approve")', URL_DEL = '@Url.Action("Delete")';
-        layui.use(['table', 'form', 'layer', 'laydate'], function () {
+        var URL_LIST = '@Url.Action("GetMainList")', URL_SAVE = '@Url.Action("Save")', URL_APPROVE = '@Url.Action("Approve")', URL_DEL = '@Url.Action("Delete")', URL_WO = '@Url.Action("WorkOrders")';
+        layui.use(['table', 'form', 'layer', 'laydate', 'soulTable'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer, laydate = layui.laydate, $ = layui.$;
             function ok(r) { return r && (r.code === 0 || r.code === 200); }
-            function dcell(d, f) { return d[f] ? String(d[f]).replace('T', ' ').substring(0, 10) : ''; }
+            function dday(v) { return v ? String(v).replace('T', ' ').substring(0, 10) : ''; }
+            function rangeText(a, b) { var s = dday(a), e = dday(b); if (!s && !e) return ''; return s + (e ? ' ~ ' + e : ''); }
+
             function renderList() {
-                table.render({
-                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post',
-                    where: { page: 1, limit: 20, searchParam: [] }, page: true, height: 'full-150',
-                    cols: [[
-                        { type: 'numbers', title: '#' },
-                        { field: 'BizType', title: '类型', width: 100 },
-                        { field: 'BizId', title: '业务Id', width: 100 },
-                        { field: 'OldDate', title: '原日期', width: 120, templet: function (d) { return dcell(d, 'OldDate'); } },
-                        { field: 'NewDate', title: '新日期', width: 120, templet: function (d) { return dcell(d, 'NewDate'); } },
-                        { field: 'Reason', title: '理由', minWidth: 180 },
-                        { field: 'ApplyUser', title: '申请人', width: 110 },
-                        { field: 'ApproveStatus', title: '状态', width: 110, templet: '#statusTpl' },
-                        { title: '操作', width: 180, toolbar: '#barRow', fixed: 'right' }
-                    ]]
+                SoulGrid.loadAll(URL_LIST, { searchParam: [] }, function (rows) {
+                    SoulGrid.render({
+                        elem: '#GridMain', id: 'GridMain', data: rows, height: 'full-150', filename: '延期申请',
+                        cols: [[
+                            { type: 'numbers', title: '#' },
+                            { field: 'BillNo', title: '保养单号', width: 170, sort: true, filter: true },
+                            { field: 'FacilityCode', title: '设备编码', width: 140, sort: true, filter: true },
+                            { field: 'FacilityName', title: '设备名称', minWidth: 150, sort: true, filter: true },
+                            { field: 'RepairStaff', title: '派工人员', width: 110, sort: true, filter: true },
+                            { field: 'MaintainType', title: '保养类型', width: 100, sort: true, filter: true },
+                            { field: 'OldDate', title: '原计划日期', width: 180, sort: true, templet: function (d) { return rangeText(d.OldDate, d.OldEndDate); } },
+                            { field: 'NewDate', title: '申请新计划', width: 180, sort: true, templet: function (d) { return rangeText(d.NewDate, d.NewEndDate); } },
+                            { field: 'Reason', title: '理由', minWidth: 160, filter: true },
+                            { field: 'ApplyUser', title: '申请人', width: 100, sort: true, filter: true },
+                            { field: 'ApproveStatus', title: '状态', width: 100, sort: true, filter: true, templet: '#statusTpl' },
+                            { title: '操作', width: 180, toolbar: '#barRow', fixed: 'right' }
+                        ]]
+                    });
                 });
             }
             function openForm() {
                 layer.open({
-                    type: 1, area: ['640px', 'auto'], title: '新增延期申请', content: $('#tplForm').html(),
+                    type: 1, area: ['680px', 'auto'], title: '新增延期申请', content: $('#tplForm').html(),
                     success: function (layero, idx) {
-                        laydate.render({ elem: '#fOld', type: 'date' });
-                        laydate.render({ elem: '#fNew', type: 'date' });
+                        laydate.render({ elem: '#fNewBegin', type: 'date' });
+                        laydate.render({ elem: '#fNewEnd', type: 'date' });
                         form.render();
                         var $ctx = $(layero);
                         RefPicker.mountTablePicker({
                             $hidden: $ctx.find('input[name=BizId]'), $display: $ctx.find('#bizDisp'), $btn: $ctx.find('#bizBtn'),
-                            title: '选择保养工单', url: '/Facility_BillMain/GetMainList', area: ['720px', '560px'],
+                            title: '选择保养工单（新建/已派工）', url: URL_WO, area: ['860px', '560px'],
                             cols: [
-                                { field: 'BillNo', title: '单号', width: 180 },
-                                { field: 'MaintainType', title: '类型', width: 100 },
-                                { field: 'Status', title: '状态', width: 90 }
+                                { field: 'BillNo', title: '保养单号', width: 160 },
+                                { field: 'FacilityCode', title: '设备编码', width: 120 },
+                                { field: 'FacilityName', title: '设备名称', width: 150 },
+                                { field: 'RepairStaff', title: '派工人员', width: 100 },
+                                { field: 'MaintainType', title: '保养类型', width: 90 },
+                                { field: 'BeginDate', title: '原计划开始', width: 120, templet: function (d) { return dday(d.BeginDate); } },
+                                { field: 'EndDate', title: '原计划结束', width: 120, templet: function (d) { return dday(d.EndDate); } }
                             ],
-                            searchFields: ['BillNo', 'MaintainType'], idField: 'Id',
-                            textFormat: function (r) { return r.BillNo || ('单#' + r.Id); }
+                            searchFields: ['BillNo', 'FacilityCode', 'FacilityName', 'RepairStaff'], idField: 'Id',
+                            textFormat: function (r) { return r.BillNo || ('单#' + r.Id); },
+                            onPicked: function (r) {
+                                $ctx.find('#fCode').val(r.FacilityCode || '');
+                                $ctx.find('#fName').val(r.FacilityName || '');
+                                $ctx.find('#fStaff').val(r.RepairStaff || '');
+                                $ctx.find('#fType').val(r.MaintainType || '');
+                                $ctx.find('#fOldBegin').val(dday(r.BeginDate));
+                                $ctx.find('#fOldEnd').val(dday(r.EndDate));
+                                $ctx.find('input[name=OldDate]').val(dday(r.BeginDate));
+                                $ctx.find('input[name=OldEndDate]').val(dday(r.EndDate));
+                            }
                         });
                         $('#delayCancel').on('click', function () { layer.close(idx); });
                         form.on('submit(delaySave)', function (data) {
@@ -104,10 +139,11 @@
                             if (!f.BizId) { layer.msg('请选择保养工单', { icon: 0 }); return false; }
                             var payload = {
                                 Id: 0, BizType: '工单', BizId: parseInt(f.BizId || 0, 10),
-                                OldDate: f.OldDate || null, NewDate: f.NewDate || null, Reason: f.Reason || null
+                                OldDate: f.OldDate || null, OldEndDate: f.OldEndDate || null,
+                                NewDate: f.NewDate || null, NewEndDate: f.NewEndDate || null, Reason: f.Reason || null
                             };
                             $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) })
-                                .done(function (res) { if (ok(res)) { layer.msg('已提交', { icon: 1 }); layer.close(idx); table.reload('GridMain'); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
+                                .done(function (res) { if (ok(res)) { layer.msg('已提交', { icon: 1 }); layer.close(idx); renderList(); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
                             return false;
                         });
                     }
@@ -117,10 +153,10 @@
             table.on('tool(GridMain)', function (obj) {
                 if (obj.event === 'agree' || obj.event === 'reject') {
                     $.post(URL_APPROVE, { id: obj.data.Id, agree: obj.event === 'agree' }, function (res) {
-                        if (ok(res)) { layer.msg('已处理', { icon: 1 }); table.reload('GridMain'); } else layer.msg('失败', { icon: 2 });
+                        if (ok(res)) { layer.msg('已处理', { icon: 1 }); renderList(); } else layer.msg('失败', { icon: 2 });
                     });
                 } else if (obj.event === 'del') {
-                    layer.confirm('确认删除?', function (idx) { $.post(URL_DEL, { id: obj.data.Id }, function () { layer.close(idx); obj.del(); }); });
+                    layer.confirm('确认删除?', function (idx) { $.post(URL_DEL, { id: obj.data.Id }, function (res) { layer.close(idx); if (ok(res)) { renderList(); layer.msg('已删除', { icon: 1 }); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); }); });
                 }
             });
             renderList();

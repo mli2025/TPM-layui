@@ -327,6 +327,7 @@
         var sf = opts.searchFields || [];
 
         function setVal(id, text) { $hid.val(id || ''); $disp.val(text || ''); }
+        function picked(row) { if (opts.onPicked && row) { try { opts.onPicked(row); } catch (e) { } } }
 
         function openPicker() {
             if ($disp.is('[disabled]')) return;
@@ -359,11 +360,11 @@
                         }
                         $.post(opts.url, { page: 1, limit: 9999 }, function (res) { all = (res && res.data) || []; renderTable(all); }).fail(function () { renderTable([]); });
                         table.on('radio(' + tid + ')', function (obj) { selected = obj.data; });
-                        table.on('rowDouble(' + tid + ')', function (obj) { selected = obj.data; setVal(selected[idField], fmt(selected)); layer.close(pickerIdx); });
+                        table.on('rowDouble(' + tid + ')', function (obj) { selected = obj.data; setVal(selected[idField], fmt(selected)); picked(selected); layer.close(pickerIdx); });
                         $('#' + tid + '_search').on('click', function () { renderTable(doFilter($('#' + tid + '_kw').val())); });
                         $('#' + tid + '_kw').on('keydown', function (e) { if (e.keyCode === 13) { renderTable(doFilter($(this).val())); return false; } });
                     },
-                    yes: function (idx) { if (!selected) { layer.msg('请选择一条', { icon: 0 }); return; } setVal(selected[idField], fmt(selected)); layer.close(idx); },
+                    yes: function (idx) { if (!selected) { layer.msg('请选择一条', { icon: 0 }); return; } setVal(selected[idField], fmt(selected)); picked(selected); layer.close(idx); },
                     btn2: function (idx) { if (opts.allowClear) setVal('', ''); layer.close(idx); return false; }
                 });
             });

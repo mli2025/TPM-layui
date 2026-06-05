@@ -338,7 +338,7 @@
 
         var pickedSpare = null;
         function openPickSpare(){
-            layer.open({
+            var pickIdx = layer.open({
                 type:1, area:['640px','520px'], title:'选择备件',
                 content: $('#tplPickSpare').html(), shadeClose:false,
                 success: function(){
@@ -370,7 +370,7 @@
                             Danjia: parseFloat($(this).attr('data-price'))||0
                         };
                     });
-                    $('#btnSpCancel').on('click', function(){ layer.closeAll(); });
+                    $('#btnSpCancel').on('click', function(){ layer.close(pickIdx); });
                     $('#btnPickConfirm').on('click', function(){
                         if (!pickedSpare){ layer.msg('请选择备件',{icon:3}); return; }
                         appendSubRow({
@@ -382,7 +382,7 @@
                             Danjia: pickedSpare.Danjia
                         }, false);
                         pickedSpare = null;
-                        layer.closeAll();
+                        layer.close(pickIdx);
                     });
                 }
             });

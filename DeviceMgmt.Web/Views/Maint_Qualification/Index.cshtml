@@ -101,11 +101,14 @@
                             WarnDays: row.WarnDays || 30, Status: row.Status != null ? String(row.Status) : '1'
                         });
                         form.render(); RefPicker.autoMount($(layero));
-                        // 附件：仅已保存的记录可上传
-                        try {
-                            if (window.AttachmentWidget && row.Id) AttachmentWidget.mount({ container: '#qualAttachPanel', businessType: 'maint_qual', businessId: row.Id, readonly: !!readOnly });
-                            else $('#qualAttachPanel').html('<div style="color:#999;padding:8px;">保存后可上传附件</div>');
-                        } catch (e) { }
+                        // 附件：仅已保存的记录可上传（容器作用域限定在当前弹层，businessId 取数值主键）
+                        var bizId = parseInt(row.Id || 0, 10);
+                        var $panel = $(layero).find('#qualAttachPanel');
+                        if (window.AttachmentWidget && bizId > 0) {
+                            AttachmentWidget.mount({ container: $panel[0], businessType: 'maint_qual', businessId: bizId, readonly: !!readOnly });
+                        } else {
+                            $panel.html('<div style="color:#999;padding:8px;">保存后可上传附件</div>');
+                        }
                         if (readOnly) {
                             $(layero).find('#qualForm input, #qualForm select, #qualForm textarea').attr('disabled', true);
                             $(layero).find('#qualBtns').html('<button class="layui-btn layui-btn-primary" type="button" id="qualClose">关闭</button>');

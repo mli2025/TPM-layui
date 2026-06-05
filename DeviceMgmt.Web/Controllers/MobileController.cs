@@ -192,6 +192,10 @@ public class MobileController : BaseController
     {
         var conds = new List<string> { "([BillType] IS NULL OR [BillType] <> 'INSPECTION')" };
         var p = new Dictionary<string, object?>();
+        // 只显示「派工给当前登录人」的保养工单
+        var me = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account ?? "";
+        conds.Add("[RepairStaff]=@me");
+        p["me"] = me;
         if (!string.IsNullOrEmpty(status))
         {
             conds.Add("[Status]=@status");
@@ -261,12 +265,15 @@ public class MobileController : BaseController
         main.RepairStaffDate = now;
         main.IsOK = req.IsOK ?? 1;
         main.Remark = string.IsNullOrEmpty(req.Remark) ? main.Remark : req.Remark;
-        // 附件图片地址追加到 Files（[IMG]url[/IMG] 标记，不改库结构）
-        if (req.ImageUrls != null && req.ImageUrls.Count > 0)
-        {
-            var imgs = string.Join("\n", req.ImageUrls.Select(u => $"[IMG]{u}[/IMG]"));
-            main.Files = string.IsNullOrWhiteSpace(main.Files) ? imgs : main.Files + "\n" + imgs;
-        }
+        // 附件图片地址保存到 Files（[IMG]url[/IMG] 标记，不改库结构）；
+        // 前端会回传含历史在内的全部图片，这里先去掉旧的 [IMG] 标记再整体写入，避免重复
+        var nonImg = string.IsNullOrWhiteSpace(main.Files)
+            ? string.Empty
+            : System.Text.RegularExpressions.Regex.Replace(main.Files, @"\[IMG\].*?\[/IMG\]", "").Trim();
+        var imgs = (req.ImageUrls != null && req.ImageUrls.Count > 0)
+            ? string.Join("\n", req.ImageUrls.Select(u => $"[IMG]{u}[/IMG]"))
+            : string.Empty;
+        main.Files = string.Join("\n", new[] { nonImg, imgs }.Where(x => !string.IsNullOrWhiteSpace(x)));
         main.FGC_LastModifier = uid.ToString();
         main.FGC_LastModifyDate = now.ToString("yyyy/MM/dd HH:mm:ss");
         _billRepo.Update(main);
@@ -411,6 +418,8 @@ public class MobileController : BaseController
         if (!(id > 0)) return Json(new ResponseData { code = 400, msg = "缺少 id" });
         var main = _inspectRecordApp.Get(id.Value);
         if (main == null) return Json(new ResponseData { code = 404, msg = "执行单不存在" });
+        _inspectRecordApp.ReJudge(id.Value); // 已完成单按当前规则自愈历史误判
+        main = _inspectRecordApp.Get(id.Value) ?? main;
 
         var subs = _inspectRecordApp.GetSubs(id.Value)
             .Select(s => new { s.ItemName, s.ResultValue, IsNormal = (bool?)s.IsNormal, s.Method, s.Standard, ControlType = (int?)s.ControlType, s.MaxValue, s.MinValue, s.Remark })

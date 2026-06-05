@@ -417,6 +417,7 @@
                         { field: 'BillDate', title: '\u8ba1\u5212\u65e5\u671f', width: 160, templet: function (d) { return fmtDate(d.BillDate); } },
                         { field: 'BeginDate', title: '\u5f00\u59cb\u65f6\u95f4', width: 160, templet: function (d) { return fmtDate(d.BeginDate); } },
                         { field: 'EndDate', title: '\u7ed3\u675f\u65f6\u95f4', width: 160, templet: function (d) { return fmtDate(d.EndDate); } },
+                        { field: 'ChangedBeginDate', title: '\u53d8\u66f4\u540e\u65e5\u671f', width: 200, templet: function (d) { if (!d.ChangedBeginDate && !d.ChangedEndDate) return '<span style="color:#cbd5e1;">-</span>'; return '<span style="color:#dc2626;">' + fmtDate(d.ChangedBeginDate) + (d.ChangedEndDate ? ' ~ ' + fmtDate(d.ChangedEndDate) : '') + '</span>'; } },
                         { field: 'Status', title: '\u72b6\u6001', width: 100, templet: billStatusCell },
                         { field: 'RepairStaff', title: '\u4fdd\u517b\u4eba', width: 150, templet: function (d) { return staffDisplay(d.RepairStaff || d.repairStaff); } },
                         { field: 'Remark', title: '\u5907\u6ce8', minWidth: 160 },

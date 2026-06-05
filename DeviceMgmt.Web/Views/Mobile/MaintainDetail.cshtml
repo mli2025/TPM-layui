@@ -26,10 +26,8 @@
     <div class="m-card p-3" id="attachCard">
         <label class="text-xs text-slate-500">附件 / 现场照片</label>
         <div id="imgGrid" class="grid grid-cols-3 gap-2 mt-2"></div>
-        <label class="mt-2 block">
-            <input id="imgInput" type="file" accept="image/*" capture="environment" multiple class="hidden" />
-            <span class="m-btn block text-center" id="btnPickImg">拍照 / 选择图片</span>
-        </label>
+        <input id="imgInput" type="file" accept="image/*" multiple class="hidden" />
+        <span class="m-btn block text-center mt-2" id="btnPickImg">拍照 / 选择图片</span>
     </div>
 
     <div class="m-card p-3">
@@ -112,18 +110,37 @@
         document.getElementById('subs').innerHTML = html;
     }
 
+    function parseFiles(files){
+        var arr = []; if (!files) return arr;
+        var re = /\[IMG\](.*?)\[\/IMG\]/g, mm;
+        while ((mm = re.exec(files))) { if (mm[1]) arr.push({ url: mm[1], name: '' }); }
+        return arr;
+    }
     function refreshImgGrid(){
-        document.getElementById('imgGrid').innerHTML = uploaded.map(function(it){
-            return '<div class="relative"><img src="' + it.url + '" class="w-full h-20 object-cover rounded" /></div>';
+        var editable = isEditable();
+        var grid = document.getElementById('imgGrid');
+        if (!uploaded.length){ grid.innerHTML = '<div class="text-xs text-slate-400 col-span-3">暂无附件</div>'; return; }
+        grid.innerHTML = uploaded.map(function(it, i){
+            var del = editable ? '<button type="button" class="absolute top-0 right-0 bg-black/60 text-white text-xs w-5 h-5 leading-5 rounded-bl" data-del="' + i + '">×</button>' : '';
+            return '<div class="relative"><a href="' + it.url + '" target="_blank"><img src="' + it.url + '" class="w-full h-20 object-cover rounded" /></a>' + del + '</div>';
         }).join('');
     }
+    document.getElementById('imgGrid').addEventListener('click', function(e){
+        var b = e.target.closest('[data-del]'); if (!b) return;
+        if (!isEditable()) return;
+        uploaded.splice(parseInt(b.dataset.del, 10), 1);
+        refreshImgGrid();
+    });
 
     function applyStatusUI(){
         var editable = isEditable();
         document.getElementById('btnAccept').classList.toggle('hidden', curStatus >= 2);
         document.getElementById('btnSubmit').classList.toggle('hidden', curStatus !== 2);
-        document.getElementById('attachCard').classList.toggle('hidden', !editable);
+        // 附件卡片始终显示（便于查看历史附件），仅在不可编辑时隐藏上传按钮
+        document.getElementById('attachCard').classList.remove('hidden');
+        document.getElementById('btnPickImg').classList.toggle('hidden', !editable);
         document.getElementById('remark').readOnly = !editable;
+        refreshImgGrid();
     }
 
     function load(){
@@ -140,6 +157,7 @@
             document.getElementById('status').textContent = statusMap[curStatus] || curStatus || '-';
             document.getElementById('remark').value = m.Remark || '';
             setConclusion(m.IsOK === 0 ? '0' : '1');
+            uploaded = parseFiles(m.Files);
             renderSubs(subs);
             applyStatusUI();
         });

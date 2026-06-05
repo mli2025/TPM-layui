@@ -10,6 +10,8 @@ public class Facility_BillMain : Entity
     public string? BillType { get; set; }
     public DateTime? BeginDate { get; set; }
     public DateTime? EndDate { get; set; }
+    public DateTime? ChangedBeginDate { get; set; }
+    public DateTime? ChangedEndDate { get; set; }
     public long? FacilityID { get; set; }
     public long? TempID { get; set; }
     public string? MaintainType { get; set; }

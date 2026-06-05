@@ -54,10 +54,9 @@
 </script>
 
 <script type="text/html" id="statusTpl">
-    {{# var map = {0:'新建',1:'待接单',2:'维修中',3:'已完成',4:'已审核',5:'已关闭'}; }}
-    {{# var color = {0:'#f7b500',1:'#1e88e5',2:'#7c3aed',3:'#16a34a',4:'#475569',5:'#94a3b8'}; }}
     {{# var s = (d.Status == null) ? 0 : d.Status; }}
-    <span class="layui-badge" style="background-color:{{= color[s] || '#999' }};">{{= map[s] || s }}</span>
+    {{# var cfg = (window.REPAIR_STATUS_COLORS || {})[s] || { label: s, color: '#999' }; }}
+    <span class="layui-badge" style="background-color:{{= cfg.color }};">{{= cfg.label }}</span>
 </script>
 
 <script type="text/html" id="outsourceTpl">
@@ -346,6 +345,16 @@
     function toastOk(m){ try{ layui.layer.msg(m || '操作成功',{icon:1}); }catch(e){ alert(m); } }
     function toastErr(m){ try{ layui.layer.msg(m || '操作失败',{icon:2}); }catch(e){ alert(m); } }
     function toastWarn(m){ try{ layui.layer.msg(m || '提示',{icon:3}); }catch(e){ alert(m); } }
+
+    // 维修工单状态显示配置（标签 + 颜色），如需自定义直接修改此对象即可
+    window.REPAIR_STATUS_COLORS = {
+        0: { label: '新建',   color: '#f7b500' },
+        1: { label: '待接单', color: '#1e88e5' },
+        2: { label: '维修中', color: '#7c3aed' },
+        3: { label: '已完成', color: '#16a34a' },
+        4: { label: '已审核', color: '#475569' },
+        5: { label: '已关闭', color: '#94a3b8' }
+    };
 
     var currentStatus = '';
     var deviceCache = [];

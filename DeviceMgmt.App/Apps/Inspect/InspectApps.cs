@@ -211,6 +211,26 @@ public class Inspect_RecordApp : BaseApp<Inspect_Record>
     public List<Inspect_RecordSub> GetSubs(long recordId)
         => _subRepo.Find("[RecordId]=@r", new { r = recordId }, "[Id] ASC").ToList();
 
+    /// <summary>按当前判定规则（上下限/是否）重新核定已完成单的逐项结果与整体结果，发现与库中不一致则自愈更新。
+    /// 解决历史数据「实测值在区间内却显示异常」的问题（旧数据按是否型误判）。</summary>
+    public void ReJudge(long recordId)
+    {
+        var rec = Repository.FindSingle(recordId);
+        if (rec == null || rec.ExecTime == null) return; // 仅已完成单
+        var subs = _subRepo.Find("[RecordId]=@r", new { r = recordId }, "[Id] ASC").ToList();
+        if (subs.Count == 0) return;
+        foreach (var s in subs)
+        {
+            var nv = Judge(s);
+            if (s.IsNormal != nv) { s.IsNormal = nv; _subRepo.Update(s); }
+        }
+        var result = subs.Any(x => !x.IsNormal) ? 1 : 0;
+        if (rec.Result != result)
+        {
+            Repository.ExecuteSql("UPDATE [Inspect_Record] SET [Result]=@rs WHERE [Id]=@id", new { rs = result, id = recordId });
+        }
+    }
+
     public List<Inspect_Disposal> GetDisposals(long recordId)
         => _dispRepo.Find("[RecordId]=@r", new { r = recordId }, "[Id] ASC").ToList();
 

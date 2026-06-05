@@ -33,8 +33,10 @@ public class Maint_DelayApply : Entity
 {
     public string? BizType { get; set; }         // 计划/工单
     public long BizId { get; set; }
-    public DateTime? OldDate { get; set; }
-    public DateTime? NewDate { get; set; }
+    public DateTime? OldDate { get; set; }        // 原计划开始
+    public DateTime? OldEndDate { get; set; }     // 原计划结束
+    public DateTime? NewDate { get; set; }        // 申请新计划开始
+    public DateTime? NewEndDate { get; set; }     // 申请新计划结束
     public string? Reason { get; set; }
     public string? ApplyUser { get; set; }
     public int ApproveStatus { get; set; }       // 0待审/1通过/2驳回

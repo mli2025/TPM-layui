@@ -278,26 +278,23 @@
                     content: $('#tplRepairHistory').html(), shadeClose: false,
                     success: function(){
                         $('#rh_dev').text((row.FacilityName||'') + ' (' + (row.FacilityCode||'') + ')');
-                        table.render({
-                            elem: '#GridRepairHist',
-                            url: '/Facility_RepairBillMain/GetMainList',
-                            method: 'post',
-                            where: { searchParam: [{ field:'FacilityId', conditional:'=', value: row.Id }] },
-                            page: true, limit: 20, even: true,
-                            cols: [[
-                                { field:'BillNo', title:'维修单号', width:140 },
-                                { field:'BillDate', title:'报修时间', width:160, templet: function(d){ return fmtDt(d.BillDate); } },
-                                { field:'FaultCategory', title:'故障类别', width:110 },
-                                { field:'FaultLocation', title:'故障部位', width:130 },
-                                { field:'Status', title:'状态', width:90, templet: function(d){
-                                    var m = {0:'新建',1:'待接单',2:'维修中',3:'已完成',4:'已审核',5:'已关闭'};
-                                    return m[d.Status==null?0:d.Status] || d.Status;
-                                }},
-                                { field:'RepairStaff', title:'维修人员', width:110 },
-                                { field:'Dispatch', title:'派单人', width:110 },
-                                { field:'DispatchDate', title:'派单时间', width:160, templet: function(d){ return fmtDt(d.DispatchDate); } },
-                                { field:'Remark', title:'备注', minWidth: 160 }
-                            ]]
+                        SoulGrid.loadAll('/Facility_ResourceDetail/GetFacilityRepairHistory?facilityId=' + row.Id, {}, function(rows){
+                            SoulGrid.render({
+                                elem:'#GridRepairHist', id:'GridRepairHist', data: rows, height: 'full-160', filename:'维修记录',
+                                cols: [[
+                                    { field:'BillNo', title:'维修单号', width:140, sort:true, filter:true },
+                                    { field:'BillDate', title:'报修时间', width:150, sort:true, templet: function(d){ return fmtDt(d.BillDate); } },
+                                    { field:'ReportReason', title:'报修原因', minWidth:160, filter:true },
+                                    { field:'RepairDescr', title:'维修描述记录', minWidth:180, filter:true },
+                                    { field:'FaultAnalysis', title:'原因分析', minWidth:160, filter:true },
+                                    { field:'PreventiveMeasure', title:'预防措施', minWidth:160, filter:true },
+                                    { field:'Status', title:'状态', width:90, sort:true, filter:true, templet: function(d){
+                                        var m = {0:'新建',1:'待接单',2:'维修中',3:'已完成',4:'已审核',5:'已关闭'};
+                                        return m[d.Status==null?0:d.Status] || d.Status;
+                                    }},
+                                    { field:'RepairStaff', title:'维修人员', width:110, sort:true, filter:true }
+                                ]]
+                            });
                         });
                     }
                 });

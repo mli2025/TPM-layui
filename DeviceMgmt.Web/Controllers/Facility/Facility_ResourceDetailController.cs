@@ -25,6 +25,8 @@ public class Facility_ResourceDetailController : BaseController
     private readonly IRepository<Inspect_Record> _inspectRecordRepo;
     private readonly IRepository<Basic_Employee> _empRepo;
     private readonly IRepository<Sys_User> _userRepo;
+    private readonly IRepository<Facility_RepairBillMain> _repairRepo;
+    private readonly IRepository<Facility_RepairBillSub> _repairSubRepo;
 
     public Facility_ResourceDetailController(
         IAuth auth,
@@ -37,7 +39,9 @@ public class Facility_ResourceDetailController : BaseController
         ImportService import,
         IRepository<Inspect_Record> inspectRecordRepo,
         IRepository<Basic_Employee> empRepo,
-        IRepository<Sys_User> userRepo) : base(auth)
+        IRepository<Sys_User> userRepo,
+        IRepository<Facility_RepairBillMain> repairRepo,
+        IRepository<Facility_RepairBillSub> repairSubRepo) : base(auth)
     {
         _app = app;
         _empApp = empApp;
@@ -49,6 +53,8 @@ public class Facility_ResourceDetailController : BaseController
         _inspectRecordRepo = inspectRecordRepo;
         _empRepo = empRepo;
         _userRepo = userRepo;
+        _repairRepo = repairRepo;
+        _repairSubRepo = repairSubRepo;
     }
 
     /// <summary>把工号/用户Id 解析为姓名（已是姓名则原样返回）。</summary>
@@ -308,6 +314,35 @@ public class Facility_ResourceDetailController : BaseController
                 r.Id, r.RecordNo, r.PlanDate, r.Shift, r.Executor, r.ExecTime, r.Result, r.Remark
             }).ToList();
         return Json(new TableData { code = 0, count = rows.Count, data = rows });
+    }
+
+    /// <summary>设备维修记录（来自 Facility_RepairBillMain + 首条明细：报修原因/维修描述/原因分析/预防措施，默认报修时间倒序）。</summary>
+    [HttpGet]
+    public IActionResult GetFacilityRepairHistory([FromQuery] long facilityId)
+    {
+        var mains = _repairRepo.Find("[FacilityId]=@fid", new { fid = facilityId }).ToList();
+        var ids = mains.Select(m => m.Id).ToArray();
+        var subMap = ids.Length == 0 ? new Dictionary<long, Facility_RepairBillSub>()
+            : _repairSubRepo.Find("[MainId] IN @ids", new { ids })
+                .OrderBy(s => s.Sort ?? 0).ThenBy(s => s.Id)
+                .GroupBy(s => s.MainId ?? 0)
+                .ToDictionary(g => g.Key, g => g.First());
+
+        var data = mains
+            .OrderByDescending(m => m.BillDate ?? m.RepairEndDate)
+            .Select(m =>
+            {
+                subMap.TryGetValue(m.Id, out var sub);
+                return new
+                {
+                    m.Id, m.BillNo, m.BillDate, m.Status, m.RepairStaff, m.Dispatch, m.DispatchDate,
+                    ReportReason = m.Descr,                  // 报修原因
+                    RepairDescr = sub?.Descr,                // 维修描述记录
+                    FaultAnalysis = sub?.FaultAnalysis,      // 原因分析
+                    PreventiveMeasure = sub?.PreventiveMeasure // 预防措施
+                };
+            }).ToList();
+        return Json(new TableData { code = 0, count = data.Count, data = data });
     }
 
     [HttpPost]
