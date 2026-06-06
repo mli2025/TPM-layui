@@ -144,7 +144,7 @@
                 var rid = String(r.Id != null ? r.Id : r.id);
                 var rname = r.Name != null ? r.Name : r.name;
                 var sel = selArr.indexOf(rid) >= 0 ? 'checked' : '';
-                return '<label style="margin-right:14px;display:inline-block;"><input type="checkbox" class="role-cb" value="'+rid+'" '+sel+' /> '+(rname||'')+'</label>';
+                return '<label style="margin-right:14px;display:inline-block;cursor:pointer;"><input type="checkbox" class="role-cb" value="'+rid+'" '+sel+' lay-ignore /> '+(rname||'')+'</label>';
             }).join('');
             $box.html(html || '<span style="color:#999;font-size:12px;">无可用角色</span>');
         }
