@@ -239,6 +239,12 @@
             </div>
             <div class="layui-form-item">
                 <div class="layui-inline">
+                    <label class="layui-form-label">&#x53d8;&#x66f4;&#x540e;&#x65e5;&#x671f;</label>
+                    <div class="layui-input-inline" style="padding-top:8px;"><span id="fld_ChangedDateText"></span></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
                     <label class="layui-form-label">&#x4fdd;&#x517b;&#x4eba;</label>
                     <div class="layui-input-inline"><input name="RepairStaff" class="layui-input"></div>
                 </div>
@@ -523,6 +529,11 @@
                             $('#fld_BillNoText').text(m.BillNo || '');
                             $('#fld_MaintainTypeText').text(cycleText(rawCycle));
                             $('#fld_StatusText').text(statusText(rawStatus));
+                            if (!m.ChangedBeginDate && !m.ChangedEndDate) {
+                                $('#fld_ChangedDateText').html('<span style="color:#cbd5e1;">-</span>');
+                            } else {
+                                $('#fld_ChangedDateText').html('<span style="color:#dc2626;">' + fmtDate(m.ChangedBeginDate) + (m.ChangedEndDate ? ' ~ ' + fmtDate(m.ChangedEndDate) : '') + '</span>');
+                            }
                             renderBillActions(row.Id, rawStatus, m, dlgIdx, readOnly);
                             if (readOnly) {
                                 $('form[lay-filter=billForm] input').attr('readonly', true).attr('disabled', true);
