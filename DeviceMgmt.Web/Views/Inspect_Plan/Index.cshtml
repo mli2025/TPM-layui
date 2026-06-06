@@ -5,6 +5,7 @@
     <div class="layui-card">
         <div class="layui-card-header"><strong>点检计划</strong>
             <button class="layui-btn layui-btn-sm" id="btnAdd" style="float:right;margin-top:6px;">新增计划</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload" style="float:right;margin-top:6px;margin-right:8px;"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
         </div>
         <div class="layui-card-body">
             <div class="layui-tab layui-tab-brief" lay-filter="planTab">
@@ -228,7 +229,7 @@
                             if (roleIds.length === 0) { layer.msg('请至少选择一个执行角色', { icon: 0 }); return false; }
                             var shifts = $ctx.find('#shiftBox input[name=shift]:checked').map(function () { return $(this).val(); }).get().join(',') || null;
                             var payload = { Main: { Id: parseInt(f.Id || 0, 10), TemplateId: parseInt(f.TemplateId || 0, 10), CycleType: f.CycleType || '日', Shifts: shifts, PlanDate: f.PlanDate || null, EndDate: f.EndDate || null, Status: parseInt(f.Status != null ? f.Status : 1, 10) }, Devices: devs, RoleIds: roleIds };
-                            $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已保存并生成执行单', { icon: 1 }); layer.close(idx); table.reload('GridMain'); if (calY) renderCal(); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
+                            $.ajax({ url: URL_SAVE, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已保存并生成执行单', { icon: 1 }); layer.close(idx); renderList(); if (calY) renderCal(); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
                             return false;
                         });
                     }
@@ -289,13 +290,14 @@
             }
 
             $('#btnAdd').on('click', function () { openForm({}); });
+            $('#btnReload').on('click', function () { renderList(); });
             $('#calPrev').on('click', function () { calM--; if (calM < 1) { calM = 12; calY--; } renderCal(); });
             $('#calNext').on('click', function () { calM++; if (calM > 12) { calM = 1; calY++; } renderCal(); });
             layui.element.on('tab(planTab)', function () { if (this.getAttribute('lay-id') === 'cal' && !calY) { var now = new Date(); calY = now.getFullYear(); calM = now.getMonth() + 1; renderCal(); } });
 
             table.on('tool(GridMain)', function (obj) {
                 if (obj.event === 'edit') openForm(obj.data);
-                else if (obj.event === 'del') layer.confirm('确认删除?', function (idx) { $.post(URL_DEL, { id: obj.data.Id }, function () { layer.close(idx); obj.del(); }); });
+                else if (obj.event === 'del') layer.confirm('确认删除?', function (idx) { $.post(URL_DEL, { id: obj.data.Id }, function () { layer.close(idx); renderList(); }); });
             });
 
             loadRoles();

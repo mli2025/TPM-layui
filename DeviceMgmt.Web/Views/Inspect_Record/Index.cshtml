@@ -4,7 +4,8 @@
 <div class="layui-fluid" style="padding:12px;">
     <div class="layui-card">
         <div class="layui-card-header"><strong>点检执行单</strong>
-            <span style="float:right;margin-top:8px;font-size:12px;color:#94a3b8;">执行单由「点检计划」按设备自动生成</span>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnReload" style="float:right;margin-top:6px;"><i class="layui-icon layui-icon-refresh-3"></i> 刷新</button>
+            <span style="float:right;margin-top:8px;margin-right:12px;font-size:12px;color:#94a3b8;">执行单由「点检计划」按设备自动生成</span>
         </div>
         <div class="layui-card-body"><table id="GridMain" lay-filter="GridMain"></table></div>
     </div>
@@ -72,27 +73,30 @@
 @section Script{
     <script>
         var URL_LIST = '@Url.Action("GetMainList")', URL_PREP_REC = '@Url.Action("PrepareByRecord")', URL_SUBMIT = '@Url.Action("Submit")', URL_DETAIL = '@Url.Action("GetDetail")', URL_DISP = '@Url.Action("Dispatch")', URL_DEL = '@Url.Action("Delete")';
-        layui.use(['table', 'form', 'layer'], function () {
+        layui.use(['table', 'form', 'layer', 'soulTable'], function () {
             var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.$;
             function ok(r) { return r && (r.code === 0 || r.code === 200); }
             function dcell(v) { return v ? String(v).replace('T', ' ').substring(0, 19) : ''; }
             function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
             function renderList() {
-                table.render({
-                    elem: '#GridMain', id: 'GridMain', url: URL_LIST, method: 'post', where: { searchParam: [] }, page: true, height: 'full-150', limit: TableLimit, limits: TableLimits,
-                    cols: [[
-                        { type: 'numbers', title: '#' },
-                        { field: 'RecordNo', title: '记录号', width: 180 },
-                        { field: 'FacilityName', title: '设备', minWidth: 150, templet: function (d) { return esc(d.FacilityName || (d.FacilityId ? ('#' + d.FacilityId) : '')); } },
-                        { field: 'PlanDate', title: '计划日期', width: 120, templet: function (d) { return d.PlanDate ? dcell(d.PlanDate).substring(0, 10) : ''; } },
-                        { field: 'Shift', title: '班次', width: 80, templet: function (d) { return d.Shift || '-'; } },
-                        { field: 'Executor', title: '执行人', width: 110 },
-                        { field: 'ExecTime', title: '执行时间', width: 160, templet: function (d) { return dcell(d.ExecTime); } },
-                        { title: '状态', width: 90, templet: '#statusTpl' },
-                        { field: 'Result', title: '结果', width: 90, templet: '#resultTpl' },
-                        { title: '操作', width: 220, toolbar: '#barRow', fixed: 'right' }
-                    ]]
+                SoulGrid.loadAll(URL_LIST, { searchParam: [] }, function (rows) {
+                    (rows || []).forEach(function (r) { r.StatusText = r.ExecTime ? '已完成' : '待执行'; r.ResultText = (r.Result == 1) ? '异常' : '正常'; });
+                    SoulGrid.render({
+                        elem: '#GridMain', id: 'GridMain', data: rows, height: 'full-150', filename: '点检执行单',
+                        cols: [[
+                            { type: 'numbers', title: '#' },
+                            { field: 'RecordNo', title: '记录号', width: 180, sort: true, filter: true },
+                            { field: 'FacilityName', title: '设备', minWidth: 150, sort: true, filter: true, templet: function (d) { return esc(d.FacilityName || (d.FacilityId ? ('#' + d.FacilityId) : '')); } },
+                            { field: 'PlanDate', title: '计划日期', width: 120, sort: true, filter: { type: 'date[yyyy-MM-dd]' }, templet: function (d) { return d.PlanDate ? dcell(d.PlanDate).substring(0, 10) : ''; } },
+                            { field: 'Shift', title: '班次', width: 80, sort: true, filter: true, templet: function (d) { return d.Shift || '-'; } },
+                            { field: 'Executor', title: '执行人', width: 110, sort: true, filter: true },
+                            { field: 'ExecTime', title: '执行时间', width: 160, sort: true, templet: function (d) { return dcell(d.ExecTime); } },
+                            { field: 'StatusText', title: '状态', width: 90, sort: true, filter: true, templet: '#statusTpl' },
+                            { field: 'ResultText', title: '结果', width: 90, sort: true, filter: true, templet: '#resultTpl' },
+                            { title: '操作', width: 220, toolbar: '#barRow', fixed: 'right' }
+                        ]]
+                    });
                 });
             }
 
@@ -128,7 +132,7 @@
                                 items.push({ ItemName: $tr.attr('data-item'), ResultValue: $tr.find('.i-val').val(), IsNormal: !$tr.find('.i-abn').is(':checked'), Remark: $tr.find('.i-rk').val() });
                             });
                             var payload = { Main: { Id: parseInt(f.Id || 0, 10), PlanId: rec.PlanId || null, FacilityId: rec.FacilityId || null, Executor: f.Executor || null, Remark: f.Remark || null }, Items: items };
-                            $.ajax({ url: URL_SUBMIT, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已提交', { icon: 1 }); layer.close(idx); table.reload('GridMain'); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
+                            $.ajax({ url: URL_SUBMIT, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) }).done(function (res) { if (ok(res)) { layer.msg('已提交', { icon: 1 }); layer.close(idx); renderList(); } else layer.msg((res && res.msg) || '失败', { icon: 2 }); });
                             return false;
                         });
                     }
@@ -175,8 +179,9 @@
 
             table.on('tool(GridMain)', function (obj) {
                 if (obj.event === 'view') viewDetail(obj.data.Id);
-                else if (obj.event === 'del') layer.confirm('确认删除?', function (idx) { $.post(URL_DEL, { id: obj.data.Id }, function () { layer.close(idx); obj.del(); }); });
+                else if (obj.event === 'del') layer.confirm('确认删除?', function (idx) { $.post(URL_DEL, { id: obj.data.Id }, function () { layer.close(idx); renderList(); }); });
             });
+            $('#btnReload').on('click', function () { renderList(); });
             renderList();
         });
     </script>

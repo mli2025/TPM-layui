@@ -306,11 +306,14 @@
     </main>
 
     <!-- Tab 右键菜单（关闭 / 关闭其他 / 关闭右侧） -->
+    <!-- 全屏透明遮罩：覆盖 iframe 之上，点击/右键任意处都关闭菜单（iframe 内点击不冒泡到父文档，故需遮罩兜底） -->
+    <div x-show="tabCtxMenu.open" x-cloak class="fixed inset-0" style="z-index:299;"
+         @@click="closeTabCtx" @@contextmenu.prevent="closeTabCtx" @@wheel="closeTabCtx"></div>
     <div x-show="tabCtxMenu.open"
          x-cloak
          class="tab-ctx-menu fixed"
          :style="'left:' + tabCtxMenu.x + 'px;top:' + tabCtxMenu.y + 'px'"
-         @@click.outside="closeTabCtx">
+         @@keydown.escape.window="closeTabCtx">
         <div class="tab-ctx-menu-item" @@click.stop="ctxCloseTab">关闭</div>
         <div class="tab-ctx-menu-item" @@click.stop="ctxCloseOthers">关闭其他</div>
         <div class="tab-ctx-menu-item" @@click.stop="ctxCloseRight">关闭右侧</div>
