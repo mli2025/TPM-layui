@@ -347,16 +347,16 @@ public class MobileController : BaseController
         }
 
         // ---------- 待办：按角色过滤 + 当期/漏检 ----------
+        // 无授权即无数据：未分配角色的用户不应看到任何点检待办（与保养待办按工号过滤一致）
         var roleIds = uid > 0 ? _roleApp.GetUserRoleIds(uid) : Array.Empty<long>();
-        long[] planIds;
-        if (roleIds.Length > 0)
-        {
-            planIds = _inspectPlanRoleRepo.Find("[RoleId] IN @r", new { r = roleIds })
-                .Select(x => x.PlanId).Distinct().ToArray();
-            if (planIds.Length == 0) return Json(new ResponseData { code = 0, data = Array.Empty<object>() });
-            conds.Add("[PlanId] IN @pids");
-            p["pids"] = planIds;
-        }
+        if (roleIds.Length == 0)
+            return Json(new ResponseData { code = 0, data = Array.Empty<object>(), msg = "未分配点检角色，无法加载点检待办" });
+
+        var planIds = _inspectPlanRoleRepo.Find("[RoleId] IN @r", new { r = roleIds })
+            .Select(x => x.PlanId).Distinct().ToArray();
+        if (planIds.Length == 0) return Json(new ResponseData { code = 0, data = Array.Empty<object>() });
+        conds.Add("[PlanId] IN @pids");
+        p["pids"] = planIds;
         conds.Add("[ExecTime] IS NULL");
         var where = string.Join(" AND ", conds);
         var pending = _inspectRecordRepo.Find(where, p, "[PlanDate] ASC, [Id] ASC").ToList();

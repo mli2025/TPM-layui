@@ -108,7 +108,9 @@ public class Inspect_PlanApp : BaseApp<Inspect_Plan>
         return m.Id;
     }
 
-    /// <summary>按「设备 × 时间范围内每个到期日 × 每个班次」一次性生成待执行单（已存在相同键则跳过）。</summary>
+    /// <summary>按「设备 × 时间范围内每个到期日 × 每个班次」一次性生成待执行单。
+    /// 生成前先删除「日期范围内 + 同设备 + 未执行」的旧待执行单（不限计划来源），
+    /// 确保按当前计划/模板重新生成，避免旧模板遗留的未执行单残留或重复。</summary>
     private int GenerateRecords(Inspect_Plan plan, List<Inspect_PlanDevice> devices)
     {
         if (devices.Count == 0) return 0;
@@ -121,7 +123,19 @@ public class Inspect_PlanApp : BaseApp<Inspect_Plan>
         var dates = OccurrenceDates(start, end, cycle);
         if (dates.Count == 0) return 0;
 
-        // 已存在执行单去重（兼容重复保存）
+        // 先清除「日期范围内 + 同设备 + 未执行」的旧待执行单，再重建（已执行的保留）
+        var devIds = devices.Select(d => d.FacilityId).Distinct().ToArray();
+        if (devIds.Length > 0)
+        {
+            var endExclusive = end.AddDays(1);
+            var staleIds = _recordRepo.Find(
+                "[FacilityId] IN @ids AND [ExecTime] IS NULL AND [PlanDate] >= @s AND [PlanDate] < @e",
+                new { ids = devIds, s = start, e = endExclusive })
+                .Select(x => x.Id).ToArray();
+            if (staleIds.Length > 0) _recordRepo.Delete(staleIds);
+        }
+
+        // 已存在执行单去重（清理后通常仅剩已执行单，仍保留去重以防并发/边界）
         var existed = _recordRepo.Find("[PlanId]=@p", new { p = plan.Id }).ToList();
         var keys = new HashSet<string>(existed.Select(r => RecKey(r.FacilityId, r.PlanDate, r.Shift)));
 
