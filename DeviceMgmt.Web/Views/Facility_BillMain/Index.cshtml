@@ -262,6 +262,7 @@
         <table id="GridBillSub" lay-filter="GridBillSub"></table>
         <div style="margin:14px 0 4px;font-weight:600;">附件</div>
         <div id="maintAttachPanel"></div>
+        <div id="maintMobileImgPanel" style="display:none;"></div>
     </div>
 </script>
 
@@ -337,6 +338,42 @@
             function toastErr(msg) { layer.msg(msg || '\u64cd\u4f5c\u5931\u8d25', { icon: 2 }); }
             function toastWarn(msg) { layer.msg(msg || '', { icon: 0 }); }
             function fmtDate(s) { return s ? (s + '').replace('T', ' ').substring(0, 19) : ''; }
+            /** 移动端保养完成时写入 Facility_BillMain.Files 的 [IMG]url[/IMG] 标记 */
+            function parseMaintImgFiles(files) {
+                var arr = [];
+                if (!files) return arr;
+                var re = /\[IMG\](.*?)\[\/IMG\]/gi, mm;
+                while ((mm = re.exec(files))) { if (mm[1]) arr.push(String(mm[1]).trim()); }
+                return arr;
+            }
+            function renderMaintMobileImgs(urls) {
+                var $p = $('#maintMobileImgPanel');
+                $p.empty();
+                if (!urls.length) { $p.hide(); return; }
+                $p.show();
+                var cards = urls.map(function (u) {
+                    var safe = String(u || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                    return '<a href="' + safe + '" target="_blank" rel="noopener" style="display:block;width:120px;height:90px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;background:#f8fafc;">'
+                        + '<img src="' + safe + '" style="width:100%;height:100%;object-fit:cover;" />'
+                        + '</a>';
+                }).join('');
+                $p.html('<div style="font-size:12px;color:#64748b;margin-top:10px;margin-bottom:6px;">\u73b0\u573a\u7167\u7247\uff08\u79fb\u52a8\u7aef\u4e0a\u4f20\uff09</div>'
+                    + '<div style="display:flex;flex-wrap:wrap;gap:10px;">' + cards + '</div>');
+            }
+            function mountMaintAttachments(billId, files, readOnly) {
+                var mobileImgs = parseMaintImgFiles(files);
+                renderMaintMobileImgs(mobileImgs);
+                $.get('/Sys_Attachment/List', { businessType: 'maintain', businessId: billId }, function (attRes) {
+                    var attList = (ok(attRes) && attRes.data) ? attRes.data : [];
+                    if (window.AttachmentWidget && billId && (!readOnly || attList.length > 0)) {
+                        AttachmentWidget.mount({ container: '#maintAttachPanel', businessType: 'maintain', businessId: billId, readonly: readOnly });
+                    } else if (!attList.length && !mobileImgs.length) {
+                        $('#maintAttachPanel').html('<div style="padding:18px;text-align:center;color:#999;border:1px dashed #ddd;border-radius:6px;background:#fafafa;">\u6682\u65e0\u9644\u4ef6</div>');
+                    } else {
+                        $('#maintAttachPanel').empty();
+                    }
+                });
+            }
             function statusText(s) { return ({0:'\u65b0\u5efa',1:'\u5df2\u6d3e\u5de5',2:'\u4fdd\u517b\u4e2d',3:'\u5df2\u4fdd\u517b',4:'\u5df2\u5ba1\u6838'})[s] || (s + ''); }
             function cycleText(c) { c = (c||'').toUpperCase(); return ({YEAR:'\u5e74',QUARTER:'\u5b63\u5ea6',MONTH:'\u6708',WEEK:'\u5468'})[c] || c; }
 
@@ -553,7 +590,7 @@
                                     { field: 'Remark', title: '\u5907\u6ce8', minWidth: 120 }
                                 ]]
                             });
-                            try { if (window.AttachmentWidget && row.Id) AttachmentWidget.mount({ container: '#maintAttachPanel', businessType: 'maintain', businessId: row.Id, readonly: readOnly }); } catch (e) {}
+                            try { mountMaintAttachments(row.Id, m.Files, readOnly); } catch (e) {}
                         });
                     },
                     yes: function (idx) {
