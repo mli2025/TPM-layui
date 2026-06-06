@@ -1,4 +1,5 @@
 using DeviceMgmt.App.Apps.Facility;
+using DeviceMgmt.App.Validation;
 using DeviceMgmt.App.Constants;
 using DeviceMgmt.App.Interface;
 using DeviceMgmt.App.Request;
@@ -104,6 +105,8 @@ public class Facility_TheTemplateMainController : BaseController
         if (string.IsNullOrWhiteSpace(model.HContent)) return Json(new ResponseData { code = 400, msg = "项目不能为空" });
         model.HMethods ??= string.Empty;
         model.HStandard ??= string.Empty;
+        var rangeErr = InspectControlValidator.ValidateNumericRange(model.ControlType ?? 0, model.MinValue, model.MaxValue);
+        if (rangeErr != null) return Json(new ResponseData { code = 400, msg = rangeErr });
         if (model.Id == 0) _subApp.Add(model);
         else _subApp.Update(model);
         return Json(new ResponseData { code = 0, msg = "ok", data = model.Id });

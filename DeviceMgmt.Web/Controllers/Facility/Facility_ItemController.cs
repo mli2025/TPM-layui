@@ -1,5 +1,6 @@
 using DeviceMgmt.App.Apps.Facility;
 using DeviceMgmt.App.Constants;
+using DeviceMgmt.App.Validation;
 using DeviceMgmt.App.Interface;
 using DeviceMgmt.App.Request;
 using DeviceMgmt.App.Response;
@@ -44,6 +45,9 @@ public class Facility_ItemController : BaseController
             model.FacilityType = string.Empty;
         if (!FacilityCategoryType.IsDefined(model.Type))
             model.Type = FacilityCategoryType.Maintenance;
+
+        var rangeErr = InspectControlValidator.ValidateNumericRange(model.ControlType, model.MinValue, model.MaxValue);
+        if (rangeErr != null) return Json(new ResponseData { code = 400, msg = rangeErr });
 
         if (model.Id == 0) _app.Add(model);
         else _app.Update(model);
