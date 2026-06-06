@@ -6,15 +6,8 @@
         <div class="layui-card-header"><strong>保养模板</strong></div>
         <div class="layui-card-body">
             <div class="layui-form layui-row layui-col-space10" style="margin-bottom:8px;">
-                <div class="layui-col-md4">
+                <div class="layui-col-md6">
                     <input type="text" id="kwTpl" class="layui-input" placeholder="输入模板编号、模板名称关键字">
-                </div>
-                <div class="layui-col-md2">
-                    <select id="tplListTypeFilter" class="layui-input">
-                        <option value="2">保养模板</option>
-                        <option value="1">点检模板</option>
-                        <option value="3">模具模板</option>
-                    </select>
                 </div>
                 <div class="layui-col-md6" style="text-align:right;">
                     <button class="layui-btn layui-btn-sm" id="btnTplAdd"><i class="layui-icon layui-icon-add-1"></i> 新建</button>
@@ -532,11 +525,6 @@
                 });
             });
             $('#btnTplReload').on('click', function () { reloadMainGrid(); });
-            $('#tplListTypeFilter').on('change', function () {
-                tplListTypeVal = parseInt($(this).val() || '2', 10);
-                if (isNaN(tplListTypeVal) || tplListTypeVal < 1 || tplListTypeVal > 3) tplListTypeVal = 2;
-                reloadMainGrid();
-            });
             $('#kwTpl').on('keydown', function (e) { if (e.keyCode === 13) $('#btnTplReload').click(); });
 
             table.on('tool(GridTpl)', function (obj) {
@@ -557,7 +545,6 @@
             });
 
             renderMain();
-            $('#tplListTypeFilter').val(String(tplListTypeVal));
             form.render();
         });
     </script>
