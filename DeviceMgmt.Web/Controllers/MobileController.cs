@@ -192,10 +192,12 @@ public class MobileController : BaseController
     {
         var conds = new List<string> { "([BillType] IS NULL OR [BillType] <> 'INSPECTION')" };
         var p = new Dictionary<string, object?>();
-        // 只显示「派工给当前登录人」的保养工单
-        var me = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account ?? "";
+        // 只显示「派工给当前登录人」的保养工单（RepairStaff 存员工工号，与 PC 派工一致）
+        var empNo = GetCurrentEmployeeNumber();
+        if (string.IsNullOrWhiteSpace(empNo))
+            return Json(new ResponseData { code = 0, data = Array.Empty<object>(), msg = "未绑定员工工号，无法加载保养待办" });
         conds.Add("[RepairStaff]=@me");
-        p["me"] = me;
+        p["me"] = empNo;
         if (!string.IsNullOrEmpty(status))
         {
             conds.Add("[Status]=@status");
@@ -257,11 +259,11 @@ public class MobileController : BaseController
         }
 
         var uid = CurrentUser?.User?.Id ?? 0;
-        var name = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account ?? uid.ToString();
         main.Status = 3;
         main.EndDate = now;
         main.LastMaintainTime = now;
-        main.RepairStaff = main.RepairStaff ?? name;
+        if (string.IsNullOrWhiteSpace(main.RepairStaff))
+            main.RepairStaff = GetCurrentEmployeeNumber();
         main.RepairStaffDate = now;
         main.IsOK = req.IsOK ?? 1;
         main.Remark = string.IsNullOrEmpty(req.Remark) ? main.Remark : req.Remark;
@@ -288,9 +290,11 @@ public class MobileController : BaseController
         if (main == null) return Json(new ResponseData { code = 404, msg = "保养单不存在" });
         if ((main.Status ?? 0) >= 2) return Json(new ResponseData { code = 400, msg = "已开始/完成的不可重复接单" });
         var uid = CurrentUser?.User?.Id ?? 0;
-        var name = CurrentUser?.User?.Name ?? CurrentUser?.User?.Account ?? uid.ToString();
+        var empNo = GetCurrentEmployeeNumber();
+        if (string.IsNullOrWhiteSpace(empNo))
+            return Json(new ResponseData { code = 400, msg = "未绑定员工工号，无法接单" });
         main.Status = 2;
-        main.RepairStaff = name;
+        main.RepairStaff = empNo;
         main.RepairStaffDate = DateTime.Now;
         main.FGC_LastModifier = uid.ToString();
         main.FGC_LastModifyDate = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
@@ -675,6 +679,16 @@ public class MobileController : BaseController
         if (has) m.ComfirmFlag = 1;
         _repairRepo.Update(m);
         return Json(new ResponseData { code = 0, msg = "ok" });
+    }
+
+    /// <summary>当前登录用户绑定的员工工号（与 PC 派工写入的 RepairStaff 一致）</summary>
+    private string? GetCurrentEmployeeNumber()
+    {
+        var user = CurrentUser?.User;
+        if (user == null || user.EmployeeId <= 0) return null;
+        var emp = _empRepo.FindSingle(user.EmployeeId);
+        var no = emp?.EmployeeNumber?.Trim();
+        return string.IsNullOrEmpty(no) ? null : no;
     }
 }
 
