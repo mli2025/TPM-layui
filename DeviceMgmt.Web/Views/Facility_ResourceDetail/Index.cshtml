@@ -153,6 +153,7 @@
         var URL_TPL_OPTS       = '@Url.Action("GetTemplateOptions")';
         var URL_HISTORY        = '@Url.Action("GetFacilityHistory")';
         var URL_CHECK_HISTORY  = '@Url.Action("GetFacilityCheckHistory")';
+        var URL_REPAIR_HISTORY = '@Url.Action("GetFacilityRepairHistory")';
         var URL_IMPORT_TPL     = '@Url.Action("ImportTemplate")';
         var URL_IMPORT         = '@Url.Action("ImportExcel")';
 
@@ -278,9 +279,10 @@
                     content: $('#tplRepairHistory').html(), shadeClose: false,
                     success: function(){
                         $('#rh_dev').text((row.FacilityName||'') + ' (' + (row.FacilityCode||'') + ')');
-                        SoulGrid.loadAll('/Facility_ResourceDetail/GetFacilityRepairHistory?facilityId=' + row.Id, {}, function(rows){
+                        $.get(URL_REPAIR_HISTORY, { facilityId: row.Id }, function (res) {
+                            if (!ok(res)) { layer.msg('数据加载失败', { icon: 2 }); }
                             SoulGrid.render({
-                                elem:'#GridRepairHist', id:'GridRepairHist', data: rows, height: 'full-160', filename:'维修记录',
+                                elem:'#GridRepairHist', id:'GridRepairHist', data: ok(res) ? (res.data || []) : [], height: 'full-160', filename:'维修记录',
                                 cols: [[
                                     { field:'BillNo', title:'维修单号', width:140, sort:true, filter:true },
                                     { field:'BillDate', title:'报修时间', width:150, sort:true, templet: function(d){ return fmtDt(d.BillDate); } },
