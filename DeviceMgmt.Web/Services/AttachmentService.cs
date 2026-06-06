@@ -14,6 +14,7 @@ public sealed class AttachmentService
     private readonly IRepository<Sys_Attachment> _repo;
     private readonly SettingService _setting;
     private readonly ILogger<AttachmentService> _logger;
+    private string? _storageRoot;
     private static readonly FileExtensionContentTypeProvider _mimeProvider = new();
 
     public AttachmentService(IRepository<Sys_Attachment> repo, SettingService setting, ILogger<AttachmentService> logger)
@@ -23,16 +24,47 @@ public sealed class AttachmentService
         _logger = logger;
     }
 
-    public string StorageRoot
+    /// <summary>附件物理根目录。优先 Sys_Setting.storageRoot；不可用时回退到应用目录 uploads。</summary>
+    public string StorageRoot => _storageRoot ??= ResolveStorageRoot();
+
+    private string ResolveStorageRoot()
     {
-        get
+        var fallback = Path.Combine(AppContext.BaseDirectory, "uploads");
+        var configured = _setting.GetString("storageRoot")?.Trim();
+        string? configErr = null;
+        if (!string.IsNullOrWhiteSpace(configured) && TryPrepareRoot(configured, out configErr))
+            return configured;
+        if (!string.IsNullOrWhiteSpace(configured))
+            _logger.LogWarning("Configured storageRoot {Root} unavailable ({Reason}), fallback to {Fallback}", configured, configErr, fallback);
+        if (!TryPrepareRoot(fallback, out var fallbackErr))
+            throw new IOException($"附件存储目录不可用: {fallback} ({fallbackErr})");
+        return fallback;
+    }
+
+    private static bool TryPrepareRoot(string root, out string? error)
+    {
+        error = null;
+        try
         {
-            var root = _setting.GetString("storageRoot");
-            if (string.IsNullOrWhiteSpace(root))
+            var full = Path.GetFullPath(root);
+            var driveRoot = Path.GetPathRoot(full);
+            if (!string.IsNullOrEmpty(driveRoot) && driveRoot.Length >= 2 && driveRoot[1] == ':')
             {
-                root = Path.Combine(AppContext.BaseDirectory, "uploads");
+                var drive = driveRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var di = new DriveInfo(drive);
+                if (!di.IsReady)
+                {
+                    error = "设备未就绪";
+                    return false;
+                }
             }
-            return root!;
+            Directory.CreateDirectory(full);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
         }
     }
 
@@ -67,7 +99,8 @@ public sealed class AttachmentService
 
         var yyyymm = DateTime.Now.ToString("yyyyMM");
         var dir = Path.Combine(StorageRoot, businessType, yyyymm);
-        Directory.CreateDirectory(dir);
+        if (!TryPrepareRoot(dir, out var dirErr))
+            throw new IOException($"无法创建附件目录: {dir} ({dirErr})");
 
         var stored = $"{DateTime.Now:yyyyMMddHHmmssfff}_{Guid.NewGuid():N}.{ext}";
         var fullPath = Path.Combine(dir, stored);
